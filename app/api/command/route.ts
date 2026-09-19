@@ -9,6 +9,7 @@ export async function GET() {
     watch: state.watch.length,
     hotspots: state.hotspots.length,
     banners: state.banners.length,
+    alerts: state.alerts.length,
   });
   return Response.json(state);
 }
