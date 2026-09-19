@@ -1,4 +1,5 @@
 import { createClient, type Client } from "@libsql/client";
+import type { ConfirmationChannel } from "./types";
 
 /**
  * ARCA app data on LibSQL / SQLite — same engine Mastra uses for memory.
@@ -206,6 +207,10 @@ export async function saveReportedConfirmation(input: {
   return { reportedAt, source: "reported" };
 }
 
+function toConfirmationChannel(value: unknown): ConfirmationChannel {
+  return value === "phone" || value === "telegram" ? value : "console";
+}
+
 export async function listLatestConfirmations() {
   const db = await ensureArcaSchema();
   const result = await db.execute(
@@ -223,10 +228,7 @@ export async function listLatestConfirmations() {
       row.has_transport === null || row.has_transport === undefined
         ? null
         : Number(row.has_transport) === 1,
-    channel:
-      row.channel === "phone" || row.channel === "telegram" || row.channel === "console"
-        ? row.channel
-        : "console",
+    channel: toConfirmationChannel(row.channel),
     transcript: row.transcript == null ? null : String(row.transcript),
     selfCorrected: Number(row.self_corrected) === 1,
     discardedCount:
