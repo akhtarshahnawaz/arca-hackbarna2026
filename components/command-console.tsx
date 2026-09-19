@@ -29,6 +29,7 @@ export function CommandConsole({ initial }: Props) {
     initial.sites[0]?.id ?? initial.watch?.[0]?.id ?? null,
   );
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
 
   const watchSites = state.watch ?? [];
 
@@ -50,8 +51,8 @@ export function CommandConsole({ initial }: Props) {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background">
-      <header className="flex flex-col gap-4 border-b px-5 py-4 md:px-8">
+    <div className="flex min-h-[100dvh] flex-col bg-background lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden">
+      <header className="flex shrink-0 flex-col gap-4 border-b px-5 py-4 md:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-1">
             <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
@@ -70,11 +71,16 @@ export function CommandConsole({ initial }: Props) {
             </p>
           </div>
         </div>
-        <FreshnessStrip state={state} />
+        <ContextBar
+          state={state}
+          open={contextOpen}
+          onToggle={() => setContextOpen((value) => !value)}
+        />
+        {contextOpen ? <FreshnessStrip state={state} /> : null}
       </header>
 
-      {state.banners.length > 0 ? (
-        <div className="flex flex-col gap-1 border-b bg-muted/40 px-5 py-2 md:px-8">
+      {contextOpen && state.banners.length > 0 ? (
+        <div className="flex shrink-0 flex-col gap-1 border-b bg-muted/40 px-5 py-2 md:px-8">
           {state.banners.map((banner) => (
             <p key={banner} className="text-xs text-muted-foreground">
               {banner}
@@ -84,7 +90,7 @@ export function CommandConsole({ initial }: Props) {
       ) : null}
 
       <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="relative min-h-[52dvh] lg:min-h-0">
+        <section className="relative min-h-[52dvh] lg:h-full lg:min-h-0">
           <CommandMap state={state} selectedId={selectedId} onSelect={selectSite} />
           <div className="pointer-events-none absolute top-4 left-4 rounded-md border bg-background/90 px-3 py-2">
             <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
@@ -94,8 +100,8 @@ export function CommandConsole({ initial }: Props) {
           </div>
         </section>
 
-        <aside className="flex min-h-0 flex-col border-t lg:border-t-0 lg:border-l">
-          <div className="flex items-center justify-between px-5 py-4">
+        <aside className="flex min-h-0 flex-col border-t lg:h-full lg:overflow-hidden lg:border-t-0 lg:border-l">
+          <div className="flex shrink-0 items-center justify-between px-5 py-4">
             <div>
               <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
                 Ranked sites
@@ -107,7 +113,7 @@ export function CommandConsole({ initial }: Props) {
             <span className="font-mono text-xs text-muted-foreground">{state.sites.length}</span>
           </div>
           <Separator />
-          <ScrollArea className="h-[40dvh] lg:h-auto lg:flex-1">
+          <ScrollArea className="h-[40dvh] lg:h-auto lg:min-h-0 lg:flex-1">
             <ol className="flex flex-col">
               {state.sites.length === 0 ? (
                 <li className="px-5 py-4 text-sm text-muted-foreground">
@@ -151,7 +157,7 @@ export function CommandConsole({ initial }: Props) {
               )}
             </ol>
           </ScrollArea>
-          <div className="hidden border-t lg:block">
+          <div className="hidden shrink-0 border-t lg:block lg:max-h-[45%] lg:overflow-y-auto">
             {selected ? <SiteDetail site={selected} state={state} /> : null}
           </div>
         </aside>
@@ -172,6 +178,36 @@ export function CommandConsole({ initial }: Props) {
           ) : null}
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+function ContextBar({
+  state,
+  open,
+  onToggle,
+}: {
+  state: CommandState;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const counts = state.sources.reduce<Record<string, number>>((acc, source) => {
+    acc[source.kind] = (acc[source.kind] ?? 0) + 1;
+    return acc;
+  }, {});
+  const summary = (["live", "demo", "maybe_old"] as const)
+    .filter((kind) => counts[kind])
+    .map((kind) => `${counts[kind]} ${freshnessLabel(kind).toLowerCase()}`)
+    .join(" · ");
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      <span className="font-mono text-[11px] tracking-[0.18em] uppercase">Sources</span>
+      <span>{summary}</span>
+      {state.banners.length > 0 ? <span>· {state.banners.length} notes</span> : null}
+      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={onToggle}>
+        {open ? "Hide context" : "Show context"}
+      </Button>
     </div>
   );
 }
