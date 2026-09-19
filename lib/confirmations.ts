@@ -8,6 +8,10 @@ export type ReportedConfirmation = {
   reportedAt: string;
   source: ConfirmationStatus;
   channel?: ConfirmationChannel | null;
+  transcript?: string | null;
+  selfCorrected?: boolean | null;
+  discardedCount?: number | null;
+  correctionCopy?: string | null;
 };
 
 export function speciesMatch(a: string, b: string): boolean {
@@ -68,6 +72,10 @@ export function applyReportedConfirmations(
       confirmedAt: latestRow.reportedAt,
       confirmationStatus: status,
       confirmationChannel: latestRow.channel ?? site.confirmationChannel ?? null,
+      confirmationTranscript: latestRow.transcript ?? site.confirmationTranscript ?? null,
+      confirmationSelfCorrected: latestRow.selfCorrected ?? site.confirmationSelfCorrected ?? null,
+      confirmationDiscardedCount: latestRow.discardedCount ?? site.confirmationDiscardedCount ?? null,
+      confirmationCorrectionCopy: latestRow.correctionCopy ?? site.confirmationCorrectionCopy ?? null,
     };
   });
 }

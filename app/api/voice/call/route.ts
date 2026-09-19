@@ -18,6 +18,8 @@ export async function POST(request: Request) {
     toNumber?: unknown;
     callId?: unknown;
     town?: unknown;
+    coordinatorNumber?: unknown;
+    spareTime?: unknown;
   } | null;
 
   const action = typeof body?.action === "string" ? body.action : "";
@@ -26,16 +28,21 @@ export async function POST(request: Request) {
     if (action === "request") {
       const siteId = typeof body?.siteId === "string" ? body.siteId : "";
       const toNumber = typeof body?.toNumber === "string" ? body.toNumber : "";
-      const result = await requestSiteCall({ siteId, toNumber });
+      const spareTime = typeof body?.spareTime === "number" ? body.spareTime : null;
+      const coordinatorNumber =
+        typeof body?.coordinatorNumber === "string" ? body.coordinatorNumber : null;
+      const result = await requestSiteCall({ siteId, toNumber, spareTime, coordinatorNumber });
       return Response.json({ ok: true, ...result, voice: getVoiceStatus() });
     }
-    if (action === "approve" || action === "retry") {
+    if (action === "approve") {
       const callId = typeof body?.callId === "string" ? body.callId : "";
       const town = typeof body?.town === "string" ? body.town : undefined;
+      const coordinatorNumber =
+        typeof body?.coordinatorNumber === "string" ? body.coordinatorNumber : undefined;
       const result = await approveSiteCall({
         callId,
         town,
-        retry: action === "retry",
+        coordinatorNumber,
       });
       return Response.json({ ok: true, ...result, voice: getVoiceStatus() });
     }
@@ -44,7 +51,7 @@ export async function POST(request: Request) {
       const call = await denySiteCall(callId);
       return Response.json({ ok: true, call, voice: getVoiceStatus() });
     }
-    return Response.json({ ok: false, error: "action must be request, approve, retry, or deny" }, { status: 400 });
+    return Response.json({ ok: false, error: "action must be request, approve, or deny" }, { status: 400 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "voice call failed";
     return Response.json({ ok: false, error: message, voice: getVoiceStatus() }, { status: 400 });

@@ -31,9 +31,12 @@ export type VoiceCallStatus =
   | "approved"
   | "dialing"
   | "recording"
-  | "reported"
-  | "empty"
-  | "failed"
+  | "unanswered"
+  | "busy"
+  | "voicemail"
+  | "hung_up"
+  | "confirmed"
+  | "unreachable"
   | "denied"
   | "stubbed";
 
@@ -42,13 +45,26 @@ export type VoiceCallSummary = {
   siteId: string;
   toLast4: string;
   status: VoiceCallStatus;
+  uiStatus: "unanswered" | "busy" | "voicemail" | "hung up" | "confirmed" | "unreachable" | null;
   attempt: number;
   emptyHangup: boolean;
   flagged: boolean;
-  telegramFollowup: boolean;
   transcript: string | null;
+  selfCorrected: boolean;
+  discardedCount: number | null;
+  correctionCopy: string | null;
+  nextRetryAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ContactPolicyPublic = {
+  dashboardLabel: string;
+  approvalRequiredForAllContact: boolean;
+  oneApproveCoversRetryPlan: boolean;
+  maxAttempts: number;
+  hangupFollowUp: string;
+  autoVetoEnabled: boolean;
 };
 
 export type VoiceStatus = {
@@ -77,6 +93,10 @@ export type SiteInput = {
   confirmedAt: string | null;
   confirmationStatus?: ConfirmationStatus | null;
   confirmationChannel?: ConfirmationChannel | null;
+  confirmationTranscript?: string | null;
+  confirmationSelfCorrected?: boolean | null;
+  confirmationDiscardedCount?: number | null;
+  confirmationCorrectionCopy?: string | null;
   capacityUpdatedAt: string | null;
   source: "registry" | "resident" | "osm" | "demo";
   shelterHint: string;
@@ -147,6 +167,7 @@ export type CommandState = {
   shelterLabel: string;
   voice: VoiceStatus;
   voiceCalls: VoiceCallSummary[];
+  contactPolicy: ContactPolicyPublic;
 };
 
 export type EvacConfig = {

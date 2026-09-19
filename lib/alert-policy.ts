@@ -1,25 +1,23 @@
+import { loadContactPolicy } from "@/lib/contact-policy";
+
+const policy = loadContactPolicy();
+
 /**
- * Mass-alert policy. Anything that reaches many people at once is risky.
- *
- * If the coordinator does not Approve for 30 minutes while the fire moves,
- * ARCA must NOT mass-alert residents. Escalate: nudge the coordinator, then
- * the backup contact. Never auto-approve a blast because the clock ran out.
- *
- * Narrow auto-exception — comment/config only, NEVER default-on:
- * a single opted-in resident already inside the polygon in ≥9/10 runs with
- * negative spare_time. That is one person who already opted in, not 200.
- * Do not encode a silent send. Leave `allowSingleResidentAutoAlert` false.
+ * Mass-alert policy. Values come from config/contact-policy.json.
+ * Demo: a human Approves every contact. The opted-in 9/10 + veto window
+ * stays in that file with enabled: false.
  */
 export const MASS_ALERT_POLICY = {
-  requireCoordinatorApproval: true,
-  escalateAfterMinutes: 30,
-  allowSingleResidentAutoAlert: false,
+  requireCoordinatorApproval: policy.approvalRequiredForAllContact,
+  escalateAfterMinutes: policy.unapprovedAlertEscalateAfterMinutes,
+  allowSingleResidentAutoAlert: policy.autoVetoWindow.enabled,
   singleResidentAutoAlert: {
-    optedIn: true,
-    minRunsInsidePolygon: 9,
-    ensembleMembers: 10,
-    requireNegativeSpareTime: true,
-    maxRecipients: 1,
+    optedIn: policy.autoVetoWindow.optedIn,
+    minRunsInsidePolygon: policy.autoVetoWindow.minRunsInsidePolygon,
+    ensembleMembers: policy.autoVetoWindow.ensembleMembers,
+    requireNegativeSpareTime: policy.autoVetoWindow.requireNegativeSpareTime,
+    maxRecipients: policy.autoVetoWindow.maxRecipients,
+    vetoMinutes: policy.autoVetoWindow.vetoMinutes,
   },
 } as const;
 
@@ -29,8 +27,8 @@ export function shouldEscalateUnapprovedAlert(pendingMinutes: number): boolean {
 
 export function massAlertBlockedReason(): string {
   return [
-    "Resident mass-alert is blocked until a coordinator Approves.",
+    loadContactPolicy().dashboardLabel,
     `If Approve does not arrive in ${MASS_ALERT_POLICY.escalateAfterMinutes} minutes, escalate — do not blast.`,
-    "ARCA never auto-sends to a list because the fire moved.",
+    "The auto-veto window is off for this demo.",
   ].join(" ");
 }

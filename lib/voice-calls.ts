@@ -1,7 +1,16 @@
 import { randomUUID } from "node:crypto";
 import {
+  canScheduleRetry,
+  classifyVonageStatus,
+  loadContactPolicy,
+  nextRetryAt,
+  uiCallStatus,
+  type MissedOutcome,
+} from "@/lib/contact-policy";
+import {
   getVoiceCall,
   insertVoiceCall,
+  listDueVoiceRetries,
   listVoiceCalls,
   saveReportedConfirmation,
   saveSlngLog,
@@ -18,17 +27,12 @@ import {
   synthesizeSpeech,
   transcribeAudio,
 } from "@/lib/slng";
-import { last4 } from "@/lib/voice-status";
-import {
-  canReapproveVoiceRetry,
-  isEmptyVoiceCapture,
-  voiceEmptyHangupCopy,
-  VOICE_CALL_POLICY,
-} from "@/lib/voice-policy";
-import { createOutboundCall, publicAudioUrl } from "@/lib/vonage";
 import { coordinatorChatId, sendTelegramMessage, sendTelegramVoice } from "@/lib/telegram";
-import type { VoiceCallSummary } from "@/lib/types";
+import type { VoiceCallStatus, VoiceCallSummary } from "@/lib/types";
+import { last4 } from "@/lib/voice-status";
 import { getVoiceStatus } from "@/lib/voice-status";
+import { outcomeFromCapture } from "@/lib/voice-policy";
+import { createOutboundCall, publicAudioUrl, transferCall } from "@/lib/vonage";
 
 setSlngSink({
   persistLog: async (log) => {
@@ -40,17 +44,33 @@ setSlngSink({
   },
 });
 
+function statusFromOutcome(outcome: MissedOutcome, attempt: number): VoiceCallStatus {
+  const ui = uiCallStatus(outcome, attempt);
+  if (ui === "hung up") return "hung_up";
+  if (ui === "confirmed") return "confirmed";
+  if (ui === "unreachable") return "unreachable";
+  if (ui === "unanswered") return "unanswered";
+  if (ui === "busy") return "busy";
+  if (ui === "voicemail") return "voicemail";
+  return "dialing";
+}
+
 export function toVoiceSummary(row: VoiceCallRow): VoiceCallSummary {
+  const outcome = (row.outcome as MissedOutcome | null) ?? null;
   return {
     id: row.id,
     siteId: row.siteId,
     toLast4: last4(row.toNumber),
-    status: row.status as VoiceCallSummary["status"],
+    status: row.status as VoiceCallStatus,
+    uiStatus: uiCallStatus(outcome, row.attempt),
     attempt: row.attempt,
     emptyHangup: row.emptyHangup,
     flagged: row.flagged,
-    telegramFollowup: row.telegramFollowup,
     transcript: row.transcript,
+    selfCorrected: row.selfCorrected,
+    discardedCount: row.discardedCount,
+    correctionCopy: row.correctionCopy,
+    nextRetryAt: row.nextRetryAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -67,6 +87,8 @@ export async function listVoiceSummaries(): Promise<VoiceCallSummary[]> {
 export async function requestSiteCall(input: {
   siteId: string;
   toNumber: string;
+  coordinatorNumber?: string | null;
+  spareTime?: number | null;
 }): Promise<{ call: VoiceCallSummary; detail: string }> {
   const toNumber = input.toNumber.trim();
   if (!toNumber) {
@@ -78,10 +100,12 @@ export async function requestSiteCall(input: {
     toNumber,
     status: "awaiting_approval",
     attempt: 0,
+    coordinatorNumber: input.coordinatorNumber ?? null,
+    spareTime: input.spareTime ?? null,
   });
   return {
     call: toVoiceSummary(row),
-    detail: "Waiting for Approve. ARCA will not dial until a human says yes.",
+    detail: `${loadContactPolicy().dashboardLabel} Approve once — that covers the retry plan (max ${loadContactPolicy().maxAttempts}).`,
   };
 }
 
@@ -91,59 +115,61 @@ async function prepareCallAudio(town: string): Promise<{ audioId: string; dtmfAu
   return { audioId: intro.audioId, dtmfAudioId: dtmf.audioId };
 }
 
+async function dial(row: VoiceCallRow, town: string): Promise<VoiceCallRow> {
+  const audio = row.audioId
+    ? { audioId: row.audioId, dtmfAudioId: row.dtmfAudioId }
+    : await prepareCallAudio(town);
+  const placed = await createOutboundCall({
+    toNumber: row.toNumber,
+    callId: row.id,
+  });
+  const next = await updateVoiceCall(row.id, {
+    status: placed.stub ? "stubbed" : placed.ok ? "dialing" : "failed",
+    vonageUuid: placed.uuid,
+    audioId: audio.audioId,
+    dtmfAudioId: audio.dtmfAudioId,
+    nextRetryAt: null,
+  });
+  return next ?? row;
+}
+
 export async function approveSiteCall(input: {
   callId: string;
   town?: string;
-  retry?: boolean;
+  coordinatorNumber?: string | null;
 }): Promise<{ call: VoiceCallSummary; detail: string; stub: boolean }> {
   const existing = await getVoiceCall(input.callId);
   if (!existing) throw new Error("Unknown call request.");
-
-  if (input.retry) {
-    if (
-      !canReapproveVoiceRetry({
-        attempt: existing.attempt,
-        emptyHangup: existing.emptyHangup,
-        coordinatorReapproved: true,
-      })
-    ) {
-      throw new Error("No more retries. Empty hangup already used its one re-Approve.");
-    }
-  } else if (existing.status !== "awaiting_approval") {
+  if (existing.status !== "awaiting_approval" && existing.status !== "approved") {
     throw new Error(`Call is ${existing.status}, not waiting for Approve.`);
   }
 
-  const town = input.town ?? "Font-rubí";
-  const audio = await prepareCallAudio(town);
-  const attempt = input.retry ? existing.attempt + 1 : existing.attempt;
-  await updateVoiceCall(existing.id, {
-    status: "approved",
-    attempt,
-    audioId: audio.audioId,
-    dtmfAudioId: audio.dtmfAudioId,
-  });
-
-  const placed = await createOutboundCall({
-    toNumber: existing.toNumber,
-    callId: existing.id,
-  });
-
-  const next = await updateVoiceCall(existing.id, {
-    status: placed.stub ? "stubbed" : placed.ok ? "dialing" : "failed",
-    vonageUuid: placed.uuid,
-  });
-
+  const policy = loadContactPolicy();
+  if (input.coordinatorNumber) {
+    await updateVoiceCall(existing.id, { coordinatorNumber: input.coordinatorNumber });
+  }
+  await updateVoiceCall(existing.id, { status: "approved", attempt: Math.max(existing.attempt, 1) });
+  const fresh = (await getVoiceCall(existing.id)) ?? existing;
+  const dialed = await dial(fresh, input.town ?? "Font-rubí");
   return {
-    call: toVoiceSummary(next ?? existing),
-    detail: placed.detail,
-    stub: placed.stub,
+    call: toVoiceSummary(dialed),
+    detail: policy.oneApproveCoversRetryPlan
+      ? `Approved. This Approve covers the retry plan (max ${policy.maxAttempts}).`
+      : "Approved.",
+    stub: dialed.status === "stubbed",
   };
 }
 
 export async function denySiteCall(callId: string): Promise<VoiceCallSummary> {
-  const next = await updateVoiceCall(callId, { status: "denied" });
+  const next = await updateVoiceCall(callId, { status: "denied", nextRetryAt: null });
   if (!next) throw new Error("Unknown call request.");
   return toVoiceSummary(next);
+}
+
+async function pingCoordinator(text: string): Promise<void> {
+  const chatId = coordinatorChatId();
+  if (!chatId) return;
+  await sendTelegramMessage(chatId, text);
 }
 
 async function savePhoneReport(siteId: string, report: PhoneReport): Promise<void> {
@@ -154,7 +180,87 @@ async function savePhoneReport(siteId: string, report: PhoneReport): Promise<voi
     count: report.count,
     hasTransport: report.truck,
     channel: "phone",
+    transcript: report.transcript,
+    selfCorrected: report.self_corrected,
+    discardedCount: report.discardedCount,
+    correctionCopy: report.correctionCopy,
   });
+}
+
+async function applyOutcome(row: VoiceCallRow, outcome: MissedOutcome, extra?: Partial<VoiceCallRow>) {
+  const policy = loadContactPolicy();
+  const attempt = Math.max(row.attempt, 1);
+  const status = statusFromOutcome(outcome, attempt);
+  const flag =
+    outcome === "answered_hung_up_fast" ||
+    (status === "unreachable" && policy.missedCall.allTriesFailed.pingCoordinator);
+
+  let retryIso: string | null = null;
+  if (
+    canScheduleRetry({
+      attempt,
+      outcome,
+      approved: true,
+    })
+  ) {
+    const when = nextRetryAt({
+      attempt,
+      outcome,
+      spareTime: row.spareTime,
+    });
+    retryIso = when?.toISOString() ?? null;
+  }
+
+  const next = await updateVoiceCall(row.id, {
+    status: status === "dialing" ? row.status : status,
+    outcome,
+    attempt,
+    flagged: flag || row.flagged,
+    emptyHangup: outcome === "answered_hung_up_fast",
+    nextRetryAt: retryIso,
+    ...extra,
+  });
+
+  if (outcome === "answered_hung_up_fast") {
+    await pingCoordinator(
+      `ARCA flag: ${row.siteId} answered then hung up. Status unconfirmed — not safe. Rank unchanged. Call by hand if needed.`,
+    );
+  }
+  if (status === "unreachable") {
+    await pingCoordinator(
+      `ARCA: ${row.siteId} unreachable after ${policy.maxAttempts} tries. Call by hand or send someone.`,
+    );
+  }
+  return next ?? row;
+}
+
+export async function handleVonageEvent(input: {
+  callId: string;
+  status?: string;
+  durationSeconds?: number | null;
+  machine?: boolean | null;
+  uuid?: string | null;
+}): Promise<VoiceCallSummary | null> {
+  const call = await getVoiceCall(input.callId);
+  if (!call) return null;
+  if (input.uuid && !call.vonageUuid) {
+    await updateVoiceCall(call.id, { vonageUuid: input.uuid });
+  }
+  const mid = (input.status ?? "").toLowerCase();
+  if (mid === "started" || mid === "ringing" || mid === "answered") {
+    return toVoiceSummary(call);
+  }
+  const outcome = classifyVonageStatus({
+    status: input.status,
+    durationSeconds: input.durationSeconds,
+    machine: input.machine,
+    transcript: call.transcript,
+  });
+  if (outcome === "answered_talked" && call.transcript) {
+    return toVoiceSummary(call);
+  }
+  const next = await applyOutcome(call, outcome);
+  return toVoiceSummary(next);
 }
 
 export async function handleRecordingWebhook(input: {
@@ -163,6 +269,7 @@ export async function handleRecordingWebhook(input: {
   bytes?: Buffer;
   durationSeconds?: number | null;
   sizeBytes?: number | null;
+  vonageStatus?: string | null;
 }): Promise<VoiceCallSummary> {
   const call = await getVoiceCall(input.callId);
   if (!call) throw new Error("Unknown call for recording webhook.");
@@ -178,43 +285,55 @@ export async function handleRecordingWebhook(input: {
     url: !bytes ? input.recordingUrl : undefined,
     mimeType: "audio/mpeg",
   });
-  const empty = isEmptyVoiceCapture({
+  const outcome = outcomeFromCapture({
+    vonageStatus: input.vonageStatus,
     durationSeconds: input.durationSeconds,
     sizeBytes: input.sizeBytes ?? bytes?.length ?? null,
     transcript: stt.transcript,
   });
 
-  if (empty) {
+  if (outcome === "answered_talked") {
+    const report = await structurePhoneReport(stt.transcript);
+    await savePhoneReport(call.siteId, report);
     const next = await updateVoiceCall(call.id, {
-      status: "empty",
-      transcript: stt.transcript || null,
-      emptyHangup: true,
-      flagged: true,
+      status: "confirmed",
+      outcome,
+      transcript: stt.transcript,
+      selfCorrected: report.self_corrected,
+      discardedCount: report.discardedCount,
+      correctionCopy: report.correctionCopy,
+      emptyHangup: false,
+      nextRetryAt: null,
     });
-    if (VOICE_CALL_POLICY.telegramFollowUpOnEmpty && !call.telegramFollowup) {
-      const chatId = coordinatorChatId();
-      if (chatId) {
-        await sendTelegramMessage(
-          chatId,
-          [
-            `ARCA: empty Voice answer for ${call.siteId} (last4 ${last4(call.toNumber)}).`,
-            voiceEmptyHangupCopy(),
-          ].join(" "),
-        );
-        await updateVoiceCall(call.id, { telegramFollowup: true });
-      }
-    }
+    await handoffToCoordinator(next ?? call);
     return toVoiceSummary(next ?? call);
   }
 
-  const report = await structurePhoneReport(stt.transcript);
-  await savePhoneReport(call.siteId, report);
-  const next = await updateVoiceCall(call.id, {
-    status: "reported",
-    transcript: stt.transcript,
-    emptyHangup: false,
+  const next = await applyOutcome(call, outcome, { transcript: stt.transcript || null });
+  return toVoiceSummary(next);
+}
+
+async function handoffToCoordinator(call: VoiceCallRow): Promise<void> {
+  const policy = loadContactPolicy();
+  const seconds = policy.missedCall.answered_talked.connectCoordinatorSeconds;
+  if (!call.vonageUuid || !call.coordinatorNumber) {
+    await pingCoordinator(
+      `ARCA: ${call.siteId} talked. Connect skipped (no coordinator number). Call them back.`,
+    );
+    return;
+  }
+  const callback = await synthesizeSpeech(policy.missedCall.answered_talked.coordinatorNoAnswerCopy);
+  const transferred = await transferCall({
+    uuid: call.vonageUuid,
+    coordinatorNumber: call.coordinatorNumber,
+    timeoutSeconds: seconds,
+    fallbackStreamUrl: publicAudioUrl(callback.audioId),
   });
-  return toVoiceSummary(next ?? call);
+  if (!transferred.ok) {
+    await pingCoordinator(
+      `ARCA: ${call.siteId} talked. Coordinator connect failed. ${policy.missedCall.answered_talked.coordinatorNoAnswerCopy}`,
+    );
+  }
 }
 
 export async function handleDtmfWebhook(input: {
@@ -223,23 +342,42 @@ export async function handleDtmfWebhook(input: {
 }): Promise<VoiceCallSummary> {
   const call = await getVoiceCall(input.callId);
   if (!call) throw new Error("Unknown call for DTMF.");
-  if (call.status === "reported") return toVoiceSummary(call);
+  if (call.status === "confirmed") return toVoiceSummary(call);
 
   const report = dtmfToReport(input.digits);
   if (report.count === null || !report.species) {
-    const next = await updateVoiceCall(call.id, {
-      status: call.emptyHangup ? "empty" : call.status,
-      flagged: true,
+    const next = await applyOutcome(call, call.emptyHangup ? "answered_hung_up_fast" : "no_answer", {
       transcript: `${call.transcript ?? ""}\n${report.transcript}`.trim(),
     });
-    return toVoiceSummary(next ?? call);
+    return toVoiceSummary(next);
   }
   await savePhoneReport(call.siteId, report);
   const next = await updateVoiceCall(call.id, {
-    status: "reported",
+    status: "confirmed",
+    outcome: "answered_talked",
     transcript: report.transcript,
+    nextRetryAt: null,
   });
+  await handoffToCoordinator(next ?? call);
   return toVoiceSummary(next ?? call);
+}
+
+export async function processDueVoiceRetries(town = "Font-rubí"): Promise<number> {
+  const due = await listDueVoiceRetries().catch(() => []);
+  let n = 0;
+  for (const row of due) {
+    const attempt = row.attempt + 1;
+    const policy = loadContactPolicy();
+    if (attempt > policy.maxAttempts) {
+      await applyOutcome({ ...row, attempt }, row.outcome as MissedOutcome ?? "no_answer");
+      continue;
+    }
+    await updateVoiceCall(row.id, { attempt, nextRetryAt: null, status: "dialing" });
+    const fresh = (await getVoiceCall(row.id)) ?? row;
+    await dial(fresh, town);
+    n += 1;
+  }
+  return n;
 }
 
 export async function sendApprovedTelegramVoice(input: {
@@ -257,6 +395,17 @@ export function voiceBanner(): string | null {
 }
 
 export function publicStreamUrl(audioId: string | null): string | null {
-  if (!audioId) return null;
-  return publicAudioUrl(audioId);
+  return audioId ? publicAudioUrl(audioId) : null;
+}
+
+export function contactPolicyPublic() {
+  const policy = loadContactPolicy();
+  return {
+    dashboardLabel: policy.dashboardLabel,
+    approvalRequiredForAllContact: policy.approvalRequiredForAllContact,
+    oneApproveCoversRetryPlan: policy.oneApproveCoversRetryPlan,
+    maxAttempts: policy.maxAttempts,
+    hangupFollowUp: policy.hangupFollowUp,
+    autoVetoEnabled: policy.autoVetoWindow.enabled,
+  };
 }

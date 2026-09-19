@@ -80,6 +80,18 @@ export function CommandMap({ state, selectedId, onSelect }: Props) {
           </Tooltip>
         </CircleMarker>
       ))}
+      {(state.shelters ?? []).map((shelter) => (
+        <CircleMarker
+          key={shelter.id}
+          center={[shelter.lat, shelter.lon]}
+          radius={6}
+          pathOptions={{ color: "#3f6212", weight: 1, fillColor: "#84cc16", fillOpacity: 0.7 }}
+        >
+          <Tooltip>
+            {shelter.name} · Configured by coordinator (not live data)
+          </Tooltip>
+        </CircleMarker>
+      ))}
       {allSites.map((site) => {
         const active = site.id === selectedId;
         const watch = site.label === "watch";

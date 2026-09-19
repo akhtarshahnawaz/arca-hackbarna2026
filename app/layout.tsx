@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ARCA — Evacuation coordinator",
   description:
-    "Deepfire tells us where the fire may go. ARCA tells us who may be in danger and who needs help first.",
+    "Deepfire tells us where the fire may go. ARCA tells us who needs help first.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

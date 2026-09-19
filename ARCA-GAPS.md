@@ -12,8 +12,8 @@ Workspace `/Users/demianneo/Downloads/hackbarna` was empty. Handoff files live i
 | Nebius | **MISSING KEY** | Booth/console: OpenAI-compatible key + free credits. |
 | Telegram | **WIRED** (polling) | Token in ignored `.env.local` as `TELEGRAM_BOT_TOKEN` only. No webhook required for `mastra:dev`. |
 | Mastra | **IN REPO** | `nvm use 22 && npm run mastra:dev` → Studio :4111. |
-| Vonage / video | **SKIP** | Product decision: coordinator places the call. Do not chase Video API. |
-| SLNG | **SKIP** | No voice pipeline. |
+| Vonage Voice | **STUB / LIVE if keys** | Voice only. Call after Approve. Public webhook required. |
+| SLNG | **ADAPTER + MOCK** | TTS/STT. Latency logged. Needs `SLNG_API_KEY`. |
 | Galtea / Norma | **SUNDAY** | CLI / MCP documented in README. Do not fake a scan today. |
 | WeatherNext / local ELMFIRE / MTG raw / Pyro-SDIS | **SKIP** | Pyro-SDIS is a public HF **training image** set, not live cameras. |
 

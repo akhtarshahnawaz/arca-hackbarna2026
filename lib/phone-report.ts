@@ -5,6 +5,9 @@ export type PhoneReport = {
   canMoveNow: boolean | null;
   confidence: number;
   transcript: string;
+  self_corrected: boolean;
+  discardedCount: number | null;
+  correctionCopy: string | null;
 };
 
 const NUMBER_WORDS: Record<string, number> = {
@@ -131,6 +134,48 @@ export function extractLastCorrectedCount(transcript: string): number | null {
   return lastAfterCorrection ?? lastNumber;
 }
 
+export function extractCorrectionEvidence(transcript: string): {
+  count: number | null;
+  discardedCount: number | null;
+  self_corrected: boolean;
+  correctionCopy: string | null;
+} {
+  const tokens = tokenizePhoneTranscript(transcript);
+  const numbers: number[] = [];
+  let sawCorrection = false;
+  let lastAfterCorrection: number | null = null;
+  let pendingCorrection = false;
+
+  for (const token of tokens) {
+    if (CORRECTION.test(token)) {
+      sawCorrection = true;
+      pendingCorrection = true;
+      continue;
+    }
+    const value = wordNumber(token);
+    if (value === null) continue;
+    numbers.push(value);
+    if (pendingCorrection) {
+      lastAfterCorrection = value;
+      pendingCorrection = false;
+    }
+  }
+
+  const first = numbers[0] ?? null;
+  const count = lastAfterCorrection ?? (numbers.length ? numbers[numbers.length - 1] : null);
+  const self_corrected =
+    sawCorrection && first !== null && count !== null && first !== count;
+  const discardedCount = self_corrected ? first : null;
+  return {
+    count,
+    discardedCount,
+    self_corrected,
+    correctionCopy: self_corrected
+      ? `farmer said ${discardedCount}, corrected to ${count}, ARCA saved ${count}`
+      : null,
+  };
+}
+
 export function inferSpecies(transcript: string): string | null {
   for (const row of SPECIES) {
     if (row.pattern.test(transcript)) return row.species;
@@ -159,14 +204,17 @@ export function inferCanMoveNow(transcript: string): boolean | null {
 }
 
 export function parsePhoneReportFromTranscript(transcript: string): PhoneReport {
-  const count = extractLastCorrectedCount(transcript);
+  const evidence = extractCorrectionEvidence(transcript);
   return {
     species: inferSpecies(transcript),
-    count,
+    count: evidence.count,
     truck: inferTruck(transcript),
     canMoveNow: inferCanMoveNow(transcript),
-    confidence: count === null ? 0.2 : 0.7,
+    confidence: evidence.count === null ? 0.2 : 0.7,
     transcript,
+    self_corrected: evidence.self_corrected,
+    discardedCount: evidence.discardedCount,
+    correctionCopy: evidence.correctionCopy,
   };
 }
 
@@ -201,6 +249,9 @@ export function dtmfToReport(digits: string): PhoneReport {
     canMoveNow: null,
     confidence: species && count ? 0.55 : 0.25,
     transcript: `DTMF ${cleaned || "(none)"}`,
+    self_corrected: false,
+    discardedCount: null,
+    correctionCopy: null,
   };
 }
 
@@ -211,5 +262,6 @@ export const PHONE_PARSE_PROMPT = [
   "truck and canMoveNow are booleans or null.",
   "confidence is 0 to 1.",
   LAST_CORRECTED_NUMBER_RULE,
+  "Also set self_corrected true and discardedCount to the number they abandoned.",
   "Do not invent a count that was not spoken.",
 ].join(" ");

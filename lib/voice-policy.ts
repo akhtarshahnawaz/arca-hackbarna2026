@@ -1,44 +1,25 @@
-/**
- * Outbound Voice policy. A human Approves every call. ARCA never loops.
- *
- * Empty ~3 s hangup: Vonage still posts the recording webhook. Flag the
- * coordinator. Optional one Telegram follow-up. Do not auto-retry.
- * Max one retry, and only if the coordinator Approves again. Then stop.
- */
+import {
+  classifyVonageStatus,
+  loadContactPolicy,
+  type MissedOutcome,
+} from "@/lib/contact-policy";
+
+const policy = loadContactPolicy();
+
+/** Voice timings and caps — values come from config/contact-policy.json. */
 export const VOICE_CALL_POLICY = {
-  requireCoordinatorApproval: true,
-  recordSeconds: 18,
-  emptyHangupSilenceSeconds: 3,
+  requireCoordinatorApproval: policy.approvalRequiredForAllContact,
+  oneApproveCoversRetryPlan: policy.oneApproveCoversRetryPlan,
+  recordSeconds: policy.recordSeconds,
+  emptyHangupSilenceSeconds: policy.fastHangupSeconds,
   autoRetryOnEmpty: false,
-  telegramFollowUpOnEmpty: true,
-  maxAttempts: 2,
-  maxRetryAfterReapprove: 1,
+  hangupFollowUp: policy.hangupFollowUp,
+  maxAttempts: policy.maxAttempts,
   dtmfFallback: true,
 } as const;
 
-export type VoiceRetryInput = {
-  attempt: number;
-  emptyHangup: boolean;
-  coordinatorReapproved: boolean;
-};
-
 export function shouldAutoRetryVoiceCall(): boolean {
-  return VOICE_CALL_POLICY.autoRetryOnEmpty;
-}
-
-export function canReapproveVoiceRetry(input: VoiceRetryInput): boolean {
-  if (!input.emptyHangup) return false;
-  if (!input.coordinatorReapproved) return false;
-  return input.attempt < VOICE_CALL_POLICY.maxRetryAfterReapprove;
-}
-
-export function voiceEmptyHangupCopy(): string {
-  return [
-    "Empty or near-silent answer. Vonage still delivered the webhook.",
-    "Not retrying in a loop.",
-    "Optional one Telegram follow-up to the coordinator.",
-    "Approve once more for a single retry, then ARCA stops.",
-  ].join(" ");
+  return false;
 }
 
 export function isEmptyVoiceCapture(input: {
@@ -53,6 +34,33 @@ export function isEmptyVoiceCapture(input: {
   if (typeof input.sizeBytes === "number" && input.sizeBytes > 0 && input.sizeBytes < 2500) {
     return true;
   }
-  const text = input.transcript?.trim() ?? "";
-  return text.length === 0;
+  return (input.transcript?.trim() ?? "").length === 0;
+}
+
+export function outcomeFromCapture(input: {
+  vonageStatus?: string | null;
+  durationSeconds?: number | null;
+  sizeBytes?: number | null;
+  transcript?: string | null;
+  machine?: boolean | null;
+}): MissedOutcome {
+  if (input.machine) return "voicemail";
+  if (input.vonageStatus) {
+    return classifyVonageStatus({
+      status: input.vonageStatus,
+      durationSeconds: input.durationSeconds,
+      machine: input.machine,
+      transcript: input.transcript,
+    });
+  }
+  if (isEmptyVoiceCapture(input)) return "answered_hung_up_fast";
+  return "answered_talked";
+}
+
+export function voiceHungUpCopy(): string {
+  return [
+    "Answered then hung up fast. Status unconfirmed — not safe.",
+    "Not retrying. Rank is unchanged.",
+    "Coordinator flagged. No Telegram to the farmer.",
+  ].join(" ");
 }

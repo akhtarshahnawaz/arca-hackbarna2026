@@ -16,6 +16,6 @@ describe("mass alert policy", () => {
     expect(shouldEscalateUnapprovedAlert(29)).toBe(false);
     expect(shouldEscalateUnapprovedAlert(30)).toBe(true);
     expect(massAlertBlockedReason()).toMatch(/do not blast/i);
-    expect(massAlertBlockedReason()).toMatch(/Approve/i);
+    expect(massAlertBlockedReason()).toMatch(/human approval required/i);
   });
 });

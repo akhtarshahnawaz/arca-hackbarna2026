@@ -1,5 +1,6 @@
 import {
   applyLastCorrectedCount,
+  extractCorrectionEvidence,
   parsePhoneReportFromTranscript,
   PHONE_PARSE_PROMPT,
   type PhoneReport,
@@ -15,6 +16,7 @@ function asReport(value: unknown, transcript: string): PhoneReport | null {
   if (!value || typeof value !== "object") return null;
   const row = value as Partial<PhoneReport>;
   const count = typeof row.count === "number" && Number.isFinite(row.count) ? Math.round(row.count) : null;
+  const evidence = extractCorrectionEvidence(transcript);
   return {
     species: typeof row.species === "string" ? row.species : null,
     count,
@@ -22,6 +24,9 @@ function asReport(value: unknown, transcript: string): PhoneReport | null {
     canMoveNow: typeof row.canMoveNow === "boolean" ? row.canMoveNow : null,
     confidence: typeof row.confidence === "number" ? row.confidence : 0.5,
     transcript,
+    self_corrected: evidence.self_corrected,
+    discardedCount: evidence.discardedCount,
+    correctionCopy: evidence.correctionCopy,
   };
 }
 
@@ -57,12 +62,17 @@ export async function structurePhoneReport(transcript: string): Promise<PhoneRep
     const parsed = match ? asReport(JSON.parse(match[0]), transcript) : null;
     if (!parsed) return fallback;
     const withCorrection = applyLastCorrectedCount(parsed, transcript);
+    const evidence = extractCorrectionEvidence(transcript);
     return {
       ...withCorrection,
       species: withCorrection.species ?? fallback.species,
       truck: withCorrection.truck ?? fallback.truck,
       canMoveNow: withCorrection.canMoveNow ?? fallback.canMoveNow,
       transcript,
+      self_corrected: evidence.self_corrected,
+      discardedCount: evidence.discardedCount,
+      correctionCopy: evidence.correctionCopy,
+      count: evidence.count ?? withCorrection.count,
     };
   } catch {
     return fallback;

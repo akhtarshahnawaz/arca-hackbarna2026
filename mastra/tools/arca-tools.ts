@@ -314,6 +314,10 @@ export const transcribeVoiceNoteTool = createTool({
         count: report.count,
         hasTransport: report.truck,
         channel: "telegram",
+        transcript: report.transcript,
+        selfCorrected: report.self_corrected,
+        discardedCount: report.discardedCount,
+        correctionCopy: report.correctionCopy,
       });
     }
     return {

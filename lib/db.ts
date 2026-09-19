@@ -105,7 +105,18 @@ async function ensureOptionalColumns(db: Client): Promise<void> {
   const extras = [
     "ALTER TABLE confirmations ADD COLUMN has_transport INTEGER",
     "ALTER TABLE confirmations ADD COLUMN channel TEXT",
+    "ALTER TABLE confirmations ADD COLUMN transcript TEXT",
+    "ALTER TABLE confirmations ADD COLUMN self_corrected INTEGER",
+    "ALTER TABLE confirmations ADD COLUMN discarded_count INTEGER",
+    "ALTER TABLE confirmations ADD COLUMN correction_copy TEXT",
     "ALTER TABLE residents ADD COLUMN opted_in INTEGER NOT NULL DEFAULT 1",
+    "ALTER TABLE voice_calls ADD COLUMN outcome TEXT",
+    "ALTER TABLE voice_calls ADD COLUMN next_retry_at TEXT",
+    "ALTER TABLE voice_calls ADD COLUMN coordinator_number TEXT",
+    "ALTER TABLE voice_calls ADD COLUMN self_corrected INTEGER",
+    "ALTER TABLE voice_calls ADD COLUMN discarded_count INTEGER",
+    "ALTER TABLE voice_calls ADD COLUMN correction_copy TEXT",
+    "ALTER TABLE voice_calls ADD COLUMN spare_time REAL",
   ];
   for (const sql of extras) {
     try {
@@ -165,12 +176,16 @@ export async function saveReportedConfirmation(input: {
   count: number;
   hasTransport?: boolean | null;
   channel?: "phone" | "telegram" | "console" | null;
+  transcript?: string | null;
+  selfCorrected?: boolean | null;
+  discardedCount?: number | null;
+  correctionCopy?: string | null;
 }): Promise<{ reportedAt: string; source: "reported" }> {
   const db = await ensureArcaSchema();
   const reportedAt = new Date().toISOString();
   await db.execute({
-    sql: `INSERT INTO confirmations (site_id, species, count, source, reported_at, has_transport, channel)
-          VALUES (?, ?, ?, 'reported', ?, ?, ?)`,
+    sql: `INSERT INTO confirmations (site_id, species, count, source, reported_at, has_transport, channel, transcript, self_corrected, discarded_count, correction_copy)
+          VALUES (?, ?, ?, 'reported', ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       input.siteId.trim(),
       input.species.trim(),
@@ -182,6 +197,10 @@ export async function saveReportedConfirmation(input: {
           ? 1
           : 0,
       input.channel ?? "console",
+      input.transcript ?? null,
+      input.selfCorrected ? 1 : 0,
+      input.discardedCount ?? null,
+      input.correctionCopy ?? null,
     ],
   });
   return { reportedAt, source: "reported" };
@@ -190,7 +209,7 @@ export async function saveReportedConfirmation(input: {
 export async function listLatestConfirmations() {
   const db = await ensureArcaSchema();
   const result = await db.execute(
-    `SELECT site_id, species, count, source, reported_at, has_transport, channel
+    `SELECT site_id, species, count, source, reported_at, has_transport, channel, transcript, self_corrected, discarded_count, correction_copy
      FROM confirmations
      ORDER BY reported_at ASC`,
   );
@@ -208,6 +227,13 @@ export async function listLatestConfirmations() {
       row.channel === "phone" || row.channel === "telegram" || row.channel === "console"
         ? row.channel
         : "console",
+    transcript: row.transcript == null ? null : String(row.transcript),
+    selfCorrected: Number(row.self_corrected) === 1,
+    discardedCount:
+      row.discarded_count === null || row.discarded_count === undefined
+        ? null
+        : Number(row.discarded_count),
+    correctionCopy: row.correction_copy == null ? null : String(row.correction_copy),
   }));
 }
 
@@ -322,6 +348,13 @@ export type VoiceCallRow = {
   emptyHangup: boolean;
   flagged: boolean;
   telegramFollowup: boolean;
+  outcome: string | null;
+  nextRetryAt: string | null;
+  coordinatorNumber: string | null;
+  selfCorrected: boolean;
+  discardedCount: number | null;
+  correctionCopy: string | null;
+  spareTime: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -340,6 +373,17 @@ function mapVoiceCall(row: Record<string, unknown>): VoiceCallRow {
     emptyHangup: Number(row.empty_hangup) === 1,
     flagged: Number(row.flagged) === 1,
     telegramFollowup: Number(row.telegram_followup) === 1,
+    outcome: row.outcome == null ? null : String(row.outcome),
+    nextRetryAt: row.next_retry_at == null ? null : String(row.next_retry_at),
+    coordinatorNumber: row.coordinator_number == null ? null : String(row.coordinator_number),
+    selfCorrected: Number(row.self_corrected) === 1,
+    discardedCount:
+      row.discarded_count === null || row.discarded_count === undefined
+        ? null
+        : Number(row.discarded_count),
+    correctionCopy: row.correction_copy == null ? null : String(row.correction_copy),
+    spareTime:
+      row.spare_time === null || row.spare_time === undefined ? null : Number(row.spare_time),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -351,13 +395,25 @@ export async function insertVoiceCall(input: {
   toNumber: string;
   status: string;
   attempt?: number;
+  coordinatorNumber?: string | null;
+  spareTime?: number | null;
 }): Promise<VoiceCallRow> {
   const db = await ensureArcaSchema();
   const now = new Date().toISOString();
   await db.execute({
-    sql: `INSERT INTO voice_calls (id, site_id, to_number, status, attempt, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    args: [input.id, input.siteId, input.toNumber, input.status, input.attempt ?? 0, now, now],
+    sql: `INSERT INTO voice_calls (id, site_id, to_number, status, attempt, coordinator_number, spare_time, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      input.id,
+      input.siteId,
+      input.toNumber,
+      input.status,
+      input.attempt ?? 0,
+      input.coordinatorNumber ?? null,
+      input.spareTime ?? null,
+      now,
+      now,
+    ],
   });
   const row = await getVoiceCall(input.id);
   if (!row) throw new Error("voice call insert failed");
@@ -386,6 +442,13 @@ export async function updateVoiceCall(
     emptyHangup: boolean;
     flagged: boolean;
     telegramFollowup: boolean;
+    outcome: string | null;
+    nextRetryAt: string | null;
+    coordinatorNumber: string | null;
+    selfCorrected: boolean;
+    discardedCount: number | null;
+    correctionCopy: string | null;
+    spareTime: number | null;
   }>,
 ): Promise<VoiceCallRow | null> {
   const current = await getVoiceCall(id);
@@ -399,7 +462,9 @@ export async function updateVoiceCall(
   await db.execute({
     sql: `UPDATE voice_calls
           SET status = ?, attempt = ?, vonage_uuid = ?, audio_id = ?, dtmf_audio_id = ?,
-              transcript = ?, empty_hangup = ?, flagged = ?, telegram_followup = ?, updated_at = ?
+              transcript = ?, empty_hangup = ?, flagged = ?, telegram_followup = ?,
+              outcome = ?, next_retry_at = ?, coordinator_number = ?, self_corrected = ?,
+              discarded_count = ?, correction_copy = ?, spare_time = ?, updated_at = ?
           WHERE id = ?`,
     args: [
       next.status,
@@ -411,11 +476,29 @@ export async function updateVoiceCall(
       next.emptyHangup ? 1 : 0,
       next.flagged ? 1 : 0,
       next.telegramFollowup ? 1 : 0,
+      next.outcome,
+      next.nextRetryAt,
+      next.coordinatorNumber,
+      next.selfCorrected ? 1 : 0,
+      next.discardedCount,
+      next.correctionCopy,
+      next.spareTime,
       next.updatedAt,
       id,
     ],
   });
   return getVoiceCall(id);
+}
+
+export async function listDueVoiceRetries(nowIso = new Date().toISOString()): Promise<VoiceCallRow[]> {
+  const db = await ensureArcaSchema();
+  const result = await db.execute({
+    sql: `SELECT * FROM voice_calls
+          WHERE next_retry_at IS NOT NULL AND next_retry_at <= ? AND status NOT IN ('confirmed', 'denied', 'hung_up', 'unreachable')
+          ORDER BY next_retry_at ASC`,
+    args: [nowIso],
+  });
+  return result.rows.map((row) => mapVoiceCall(row as Record<string, unknown>));
 }
 
 export async function listVoiceCalls(limit = 40): Promise<VoiceCallRow[]> {

@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { siteKindLabel } from "@/lib/demo-data";
 import { confirmedCopy, freshnessLabel, formatClock, registeredCopy } from "@/lib/freshness";
 import { ensembleReachCopy, formatHours, spareTimeCopy } from "@/lib/ranking";
-import type { CommandState, RankedSite } from "@/lib/types";
+import type { CommandState, RankedSite, Shelter, VoiceCallSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const CommandMap = dynamic(() => import("@/components/command-map"), {
@@ -64,6 +64,7 @@ export function CommandConsole({ initial }: Props) {
           </div>
           <div className="flex flex-col items-start gap-1 md:items-end">
             <Badge variant="outline">INC-DEMO Bages</Badge>
+            <Badge>{state.contactPolicy?.dashboardLabel ?? "Contact policy: human approval required."}</Badge>
             <p className="font-mono text-xs text-muted-foreground">
               {state.fire.municipality} · {state.fire.ensembleMembers} runs · {state.fire.horizonHours} h
             </p>
@@ -151,7 +152,7 @@ export function CommandConsole({ initial }: Props) {
             </ol>
           </ScrollArea>
           <div className="hidden border-t lg:block">
-            {selected ? <SiteDetail site={selected} /> : null}
+            {selected ? <SiteDetail site={selected} state={state} /> : null}
           </div>
         </aside>
       </div>
@@ -166,7 +167,7 @@ export function CommandConsole({ initial }: Props) {
                   {siteKindLabel(selected.kind)} · {selected.municipality}
                 </SheetDescription>
               </SheetHeader>
-              <SiteDetail site={selected} showHeader={false} />
+              <SiteDetail site={selected} state={state} showHeader={false} />
             </>
           ) : null}
         </SheetContent>
@@ -257,9 +258,11 @@ function SpareChip({ site }: { site: RankedSite }) {
 
 function SiteDetail({
   site,
+  state,
   showHeader = true,
 }: {
   site: RankedSite;
+  state: CommandState;
   showHeader?: boolean;
 }) {
   return (
@@ -305,8 +308,11 @@ function SiteDetail({
               </p>
               <p className={animal.confirmedCount === null ? "text-destructive" : "text-foreground"}>
                 Headcount {animal.confirmedCount ?? "—"} ·{" "}
-                {confirmedCopy(site.confirmedAt, site.confirmationStatus)}
+                {confirmedCopy(site.confirmedAt, site.confirmationStatus, site.confirmationChannel)}
               </p>
+              {site.confirmationCorrectionCopy ? (
+                <p className="text-xs text-muted-foreground">{site.confirmationCorrectionCopy}</p>
+              ) : null}
             </div>
           ))
         )}
@@ -329,8 +335,13 @@ function SiteDetail({
         <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
           Shelter that takes animals
         </p>
+        <p className="text-xs font-medium">{state.shelterLabel}</p>
         <p>{site.shelterHint}</p>
       </div>
+
+      <ShelterList shelters={state.shelters} />
+
+      <CallApprove site={site} calls={state.voiceCalls} voice={state.voice} />
 
       <p className="text-[11px] text-muted-foreground">
         Minimal personal data. Site codes and counts only. No names or phones in this briefing.
@@ -388,8 +399,8 @@ function LogOutcome({ site }: { site: RankedSite }) {
   return (
     <form className="flex flex-col gap-3" onSubmit={onSubmit}>
       <p className="text-sm leading-relaxed text-muted-foreground">
-        Coordinator calls. ARCA does not place the call. Log what they told you — reported, not
-        verified. Telegram works the same way.
+        You can still call yourself and log here. Or Approve a Voice call above. Counts are
+        reported, not verified.
       </p>
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
@@ -425,6 +436,113 @@ function LogOutcome({ site }: { site: RankedSite }) {
         {busy ? "Saving report…" : "Log outcome"}
       </Button>
     </form>
+  );
+}
+
+function ShelterList({ shelters }: { shelters: Shelter[] }) {
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+        Configured pet shelters
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Configured by coordinator (not live data). Edit config/shelters.json.
+      </p>
+      <ul className="flex flex-col gap-1">
+        {shelters.map((shelter) => (
+          <li key={shelter.id} className="text-xs text-muted-foreground">
+            {shelter.name}
+            {shelter.municipality ? ` · ${shelter.municipality}` : ""}
+            {shelter.pets_allowed ? " · dogs yes" : " · no pets"}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function CallApprove({
+  site,
+  calls,
+  voice,
+}: {
+  site: RankedSite;
+  calls: VoiceCallSummary[];
+  voice: CommandState["voice"];
+}) {
+  const latest = calls.find((call) => call.siteId === site.code || call.siteId === site.id);
+  const [number, setNumber] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function post(action: "request" | "approve" | "deny") {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/voice/call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          siteId: site.code,
+          toNumber: number,
+          callId: latest?.id,
+          spareTime: site.spareTime,
+        }),
+      });
+      const json = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !json.ok) {
+        setError(json.error ?? "Voice request failed.");
+        setBusy(false);
+        return;
+      }
+      window.location.reload();
+    } catch {
+      setError("Voice request failed.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+        Voice call
+      </p>
+      {voice?.banner ? <p className="text-xs text-muted-foreground">{voice.banner}</p> : null}
+      <p className="text-xs text-muted-foreground">
+        Call then Approve. One Approve covers the retry plan (max 3). Hang-up is flag-only — no
+        Telegram to the farmer.
+      </p>
+      {latest ? (
+        <p className="text-sm">
+          Status{" "}
+          <span className="font-medium">
+            {latest.uiStatus ?? latest.status.replaceAll("_", " ")}
+          </span>
+          {latest.correctionCopy ? ` · ${latest.correctionCopy}` : ""}
+        </p>
+      ) : null}
+      <input
+        className="rounded-md border bg-background px-3 py-2 text-sm"
+        placeholder="E.164 — coordinator typed, not in seed"
+        value={number}
+        onChange={(event) => setNumber(event.target.value)}
+      />
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" className="flex-1" disabled={busy} onClick={() => post("request")}>
+          Call
+        </Button>
+        <Button
+          type="button"
+          className="flex-1"
+          disabled={busy || !latest || latest.status !== "awaiting_approval"}
+          onClick={() => post("approve")}
+        >
+          Approve
+        </Button>
+      </div>
+    </div>
   );
 }
 

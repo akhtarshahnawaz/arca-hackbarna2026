@@ -1,5 +1,4 @@
-import { getVoiceCall, updateVoiceCall } from "@/lib/db";
-import { VOICE_CALL_POLICY } from "@/lib/voice-policy";
+import { handleVonageEvent, processDueVoiceRetries } from "@/lib/voice-calls";
 
 export const dynamic = "force-dynamic";
 
@@ -9,21 +8,38 @@ export async function POST(request: Request) {
     status?: string;
     duration?: string | number;
     uuid?: string;
+    detail?: string;
   } | null;
+
+  const duration =
+    typeof body?.duration === "number"
+      ? body.duration
+      : typeof body?.duration === "string"
+        ? Number(body.duration)
+        : null;
 
   console.info("ARCA Vonage event", {
     callId,
     status: body?.status,
-    duration: body?.duration,
-    autoRetry: VOICE_CALL_POLICY.autoRetryOnEmpty,
+    duration,
+    autoRetryLoop: false,
   });
 
-  if (callId && body?.uuid) {
-    const existing = await getVoiceCall(callId).catch(() => null);
-    if (existing && !existing.vonageUuid) {
-      await updateVoiceCall(callId, { vonageUuid: body.uuid });
-    }
+  if (callId) {
+    await handleVonageEvent({
+      callId,
+      status: body?.status,
+      durationSeconds: Number.isFinite(duration) ? duration : null,
+      machine: body?.status === "machine" || body?.detail === "machine",
+      uuid: body?.uuid,
+    }).catch((error) => {
+      console.info("ARCA Vonage event handler", {
+        callId,
+        error: error instanceof Error ? error.message : "failed",
+      });
+    });
   }
 
-  return Response.json({ ok: true, autoRetry: false });
+  const due = await processDueVoiceRetries().catch(() => 0);
+  return Response.json({ ok: true, autoRetryLoop: false, dueRetries: due });
 }

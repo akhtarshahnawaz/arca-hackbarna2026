@@ -162,3 +162,63 @@ export function publicAudioUrl(audioId: string): string {
   if (!base) return `/api/voice/audio/${audioId}`;
   return `${base}/api/voice/audio/${audioId}`;
 }
+
+export function buildHandoffNcco(input: {
+  coordinatorNumber: string;
+  timeoutSeconds: number;
+  fallbackStreamUrl: string;
+}): NccoAction[] {
+  const from = process.env.VONAGE_FROM_NUMBER?.trim() ?? "";
+  return [
+    {
+      action: "connect",
+      timeout: input.timeoutSeconds,
+      from,
+      endpoint: [{ type: "phone", number: input.coordinatorNumber.replace(/\D/g, "") }],
+    },
+    {
+      action: "stream",
+      streamUrl: [input.fallbackStreamUrl],
+    },
+  ];
+}
+
+export async function transferCall(input: {
+  uuid: string;
+  coordinatorNumber: string;
+  timeoutSeconds: number;
+  fallbackStreamUrl: string;
+}): Promise<{ ok: boolean; stub: boolean; detail: string }> {
+  const status = getVoiceStatus();
+  if (!status.canPlaceLiveCall) {
+    return { ok: true, stub: true, detail: "Connect stubbed — Vonage not live." };
+  }
+  const token = await vonageBearer();
+  if (!token) return { ok: false, stub: true, detail: "Vonage JWT missing." };
+  try {
+    const response = await fetch(`https://api.nexmo.com/v1/calls/${input.uuid}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "transfer",
+        destination: {
+          type: "ncco",
+          ncco: buildHandoffNcco(input),
+        },
+      }),
+    });
+    if (!response.ok) {
+      return { ok: false, stub: false, detail: `Vonage transfer failed (${response.status})` };
+    }
+    return { ok: true, stub: false, detail: "connect" };
+  } catch (error) {
+    return {
+      ok: false,
+      stub: false,
+      detail: error instanceof Error ? error.message : "transfer failed",
+    };
+  }
+}

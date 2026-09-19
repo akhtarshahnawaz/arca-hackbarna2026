@@ -7,8 +7,9 @@ import { rankSites } from "@/lib/ranking";
 import { fetchRegistryFarms } from "@/lib/registry";
 import { applyConfiguredShelters, loadShelterConfig, shelterSourceDetail } from "@/lib/shelters";
 import type { CommandState, EvacConfig, SiteInput } from "@/lib/types";
-import { listVoiceSummaries } from "@/lib/voice-calls";
+import { contactPolicyPublic, listVoiceSummaries, processDueVoiceRetries } from "@/lib/voice-calls";
 import { getVoiceStatus } from "@/lib/voice-status";
+import { loadContactPolicy } from "@/lib/contact-policy";
 
 const config = evacConfig as EvacConfig;
 
@@ -17,12 +18,14 @@ export async function getCommandState(): Promise<CommandState> {
   const demoClusterId = process.env.DEMO_CLUSTER_ID?.trim() || "";
   const voice = getVoiceStatus();
   const shelterConfig = loadShelterConfig();
+  const contactPolicy = loadContactPolicy();
   const banners: string[] = [
     "Hour polygons are DEMO — an ensemble built for the Bages / Font-rubí briefing, not a live Deepfire spread.",
-    "Formula ranks automatically. LLM explains. Human Approves any outbound contact — Telegram or Voice.",
-    "Coordinator can still call themselves. ARCA may place a Vonage Voice call only after Approve.",
+    contactPolicy.dashboardLabel,
+    "Formula ranks automatically. LLM explains. One Approve covers the Voice retry plan (max 3).",
   ];
   if (voice.banner) banners.push(voice.banner);
+  await processDueVoiceRetries().catch(() => 0);
 
   try {
     await ensureArcaSchema();
@@ -151,6 +154,7 @@ export async function getCommandState(): Promise<CommandState> {
     shelterLabel: shelterConfig.label,
     voice,
     voiceCalls: await listVoiceSummaries(),
+    contactPolicy: contactPolicyPublic(),
   };
 }
 
