@@ -128,11 +128,18 @@ export function CommandConsole({ initial }: Props) {
             </p>
           </div>
         </div>
+        {/*
+          `details` holds the notes only. A degraded feed never goes in here: it
+          is collapsed by default, so a failure would read as one more line of
+          demo copy. Capped and scrollable because at `lg` the page itself does
+          not scroll, and an unbounded strip squeezes the map and the ranked
+          list with no way to get them back.
+        */}
         <details>
           <summary className="cursor-pointer text-xs text-muted-foreground select-none">
             Data status
           </summary>
-          <div className="mt-3 flex flex-col gap-2">
+          <div className="mt-3 flex max-h-[38dvh] flex-col gap-2 overflow-y-auto">
             <FreshnessStrip state={state} />
             {state.banners.map((banner) => (
               <p key={banner} className="text-xs text-muted-foreground">
@@ -142,6 +149,19 @@ export function CommandConsole({ initial }: Props) {
           </div>
         </details>
       </header>
+
+      {state.alerts.length > 0 ? (
+        <div
+          role="alert"
+          className="flex max-h-[24dvh] shrink-0 flex-col gap-1 overflow-y-auto border-b border-destructive/40 bg-destructive/10 px-5 py-2 md:px-8"
+        >
+          {state.alerts.map((alert) => (
+            <p key={alert} className="text-xs font-medium text-destructive">
+              {alert}
+            </p>
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_380px] lg:grid-rows-1">
         <section className="relative min-h-[52dvh] lg:min-h-0 lg:h-full">
