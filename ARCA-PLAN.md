@@ -5,19 +5,21 @@ Track: Norrsken "AI for Wildfire" → **Values at risk**
 
 ## 1. The idea
 
-In a wildfire, people delay or refuse evacuation because of their animals.
-Pets are family. Livestock is income. Moving animals takes time.
+During a wildfire, emergency teams do not suffer from a lack of data. They suffer from having too much fragmented data and too little time to turn it into action.
 
-ARCA tells the emergency coordinator, before the first knock on the door:
+A fire-spread map can show where the fire may go, but it does not tell the coordinator which care home, school or farm needs to be contacted first. A map may show that a fire will reach a particular area in three hours. That is the gap, not ARCA’s claim. ARCA’s own output stays ensemble language: “in N of 10 runs”.
 
-- where the fire will probably go, hour by hour, with uncertainty
-- which people, animals and assets are in the way
-- who to evacuate first
-- where people can go **with** their animals
+ARCA is an AI emergency assistant that identifies which people, buildings and animals are threatened by a wildfire, decides who may need help first, and helps a human coordinator contact them. It converts wildfire predictions into a prioritised evacuation plan.
 
-The coordinator approves resident alerts. ARCA does not place calls. The coordinator phones the site; ARCA says who to call first and why.
+ARCA does not rank locations only by distance. It compares the estimated time before the fire arrives with the time each location may need to evacuate (`spare_time`). Filter first, then rank. The watch list stays separate. “Decides who may need help first” is the deterministic ranking engine. The AI explains. The formula ranks.
 
-**Pitch:** In a wildfire, people don't refuse to leave because they're stupid. They refuse because the dog is family and the goats are the rent. ARCA tells the emergency coordinator, before the first knock, who's in the fire's path, what animals they have, and where they can go together.
+The system recommends an action. A human coordinator must approve any external message. ARCA does not place the call. The coordinator places the call.
+
+This gives vulnerable facilities more warning, reduces the time coordinators spend combining different datasets and includes farms, shelters and residents with animals in the evacuation picture. People delay or refuse evacuation because of their animals. Pets are family. Livestock is income. Moving animals takes time. The dog is family. The goats are the rent.
+
+> Deepfire tells us where the fire may go. ARCA tells us who may be in danger and who needs help first.
+
+Spoken 60-second: `PITCH.md`.
 
 **Primary user:** emergency coordinator (municipality / civil protection).
 **Secondary user:** residents in wildland areas, who register their animals.
@@ -185,12 +187,12 @@ Do not jump to resident blasts before ranking exists.
 
 ## 11. Demo script (3 min, no slides)
 
-1. The problem in one line: people don't leave without their animals.
-2. Telegram: ARCA messages the coordinator first — fire detected, simulation running.
-3. Ranked alert: care home, sheep farm, household with dogs and no car — with "7 of 10 runs" language.
-4. Coordinator calls (human). Log “200 sheep, truck yes”. Reported, not verified. Rank moves.
-5. Approve resident alerts → opted-in residents get fire window + shelter that accepts dogs. No Approve → escalate, no blast.
-6. One line on Galtea before/after and Norma score (Sunday).
+1. Too much fragmented data, too little time. Emergency teams do not suffer from a lack of data.
+2. A fire-spread map does not tell the coordinator which care home, school or farm to contact first. A map may show three hours — that is the problem, not ARCA’s forecast.
+3. ARCA converts wildfire predictions into a prioritised evacuation plan. Telegram: briefing — fire, simulation, ranked list.
+4. Not distance alone: `spare_time` (time before arrival vs time to evacuate). Filter then rank; watch list separate. Care home, sheep farm, household with dogs and no car — “in N of 10 runs”.
+5. Recommend only. Coordinator must approve any external message. Coordinator places the call. Log “200 sheep, truck yes”. Reported, not verified. Rank moves.
+6. Impact: more warning for vulnerable facilities; farms, shelters and residents with animals in the picture. People delay because of pets and livestock. Approve resident alerts → opted-in residents get fire window + a shelter that accepts dogs. No Approve → escalate, no blast. Sunday: Galtea + Norma.
 
 ## 12. Galtea test ideas
 

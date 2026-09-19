@@ -59,8 +59,7 @@ export function CommandConsole({ initial }: Props) {
             </p>
             <h1 className="font-heading text-3xl tracking-tight">ARCA</h1>
             <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-              People do not refuse to leave because they are careless. The dog is family.
-              The goats are the rent. Filter first, then spare time. AI only explains.
+              Deepfire tells us where the fire may go. ARCA tells us who may be in danger and who needs help first.
             </p>
           </div>
           <div className="flex flex-col items-start gap-1 md:items-end">

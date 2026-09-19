@@ -1,12 +1,24 @@
 # ARCA
 
-Wildfire coordinator console. HackBarna AI Summit 2026, Norrsken House Barcelona.
+HackBarna AI Summit 2026, Norrsken House Barcelona.
 
-People do not refuse to leave because they are careless. The dog is family. The goats are the rent. ARCA tells the coordinator who is in the path, what animals they have, and where they can go together.
+ARCA is an AI emergency assistant that identifies which people, buildings and animals are threatened by a wildfire, decides who may need help first, and helps a human coordinator contact them.
 
-**User:** municipal / civil protection coordinator. Residents can opt in on Telegram. ARCA does not place calls. The coordinator phones the site; ARCA says who to call first and why.
+> Deepfire tells us where the fire may go. ARCA tells us who may be in danger and who needs help first.
 
-Read `ARCA-PLAN.md` before extending this.
+During a wildfire, the problem is not simply detecting the fire. Emergency teams already have satellite data, weather information and fire-spread models. They do not suffer from a lack of data. They suffer from having too much fragmented data and too little time to turn it into action.
+
+A map may show that a fire will reach a particular area in three hours. A fire-spread map can show where the fire may go, but it does not tell the coordinator which care home, school or farm needs to be contacted first.
+
+ARCA converts wildfire predictions into a prioritised evacuation plan. It connects those predictions with hospitals, care homes, schools, farms and animal shelters. It does not rank locations only by distance. It compares the estimated time before the fire arrives with the time each location may need to evacuate (`spare_time`). Filter first, then rank. The watch list stays separate. ARCA speaks in ensemble language — “in N of 10 runs” — not a flat three hours.
+
+It then gives the emergency coordinator a prioritised recommendation. The coordinator remains in control and must approve any external message. ARCA does not place the call. The coordinator places the call.
+
+This gives vulnerable facilities more warning, reduces the time coordinators spend combining different datasets and includes farms, shelters and residents with animals in the evacuation picture. People delay or refuse evacuation because of their animals. The dog is family. The goats are the rent.
+
+**User:** municipal / civil protection coordinator. Residents can opt in on Telegram.
+
+Spoken 60-second and six beats: `PITCH.md`. Read `ARCA-PLAN.md` before extending this.
 
 ## Run
 
@@ -62,14 +74,14 @@ Residents ┘     LibSQL: coordinators, residents, reported counts, simulation i
 - **Livestock registry** — `7bpt-5azk`. Capacity ≠ animals present.
 - **OSM** — care homes / shelters (demo-curated in this pass).
 - **Mastra** — ARCA agent, tools, Telegram channel (`@mastra/telegram`, polling).
-- **Nebius Token Factory** — `Qwen/Qwen3-30B-A3B-Instruct-2507`. Explains ranking; never sorts.
+- **Nebius Token Factory** — `Qwen/Qwen3-30B-A3B-Instruct-2507`. The AI explains. The formula ranks. Pitch “decides who may need help first” is the ranking engine, not the LLM.
 - **LibSQL** — `arca.db` + `mastra.db`.
 
 No Vonage. No video. Bad signal is the point of a wildfire; the coordinator has a phone.
 
 ## Ranking
 
-Filter first, then rank. AI does not sort.
+Filter first, then rank. The AI explains. The formula ranks.
 
 1. **Main list:** likely (`p_reach ≥ 0.7`) and possible (`0.3–0.7`).
 2. **Watch:** below 3/10. Never competes for rank 1.
@@ -87,12 +99,12 @@ Local files survive a laptop reboot. Many cloud hosts wipe disk on restart. For 
 
 ## Demo script (3 min)
 
-1. People do not leave without their animals.
-2. Telegram `/briefing`: Font-rubí / demo fire, simulation status, ranked list with ensemble language.
-3. Care home, sheep farm, household with dogs and no car — filter then spare time.
-4. Coordinator calls (human). Log “200 sheep, has a truck” in Telegram or **Log outcome** on the console. Rank updates. Label stays reported, not verified.
-5. Approve resident alerts. Only then do opted-in residents get fire window + a shelter that takes pets. Deny or wait → escalate, no blast.
-6. Sunday: Galtea attack + Norma scan (below).
+1. Too much fragmented data, too little time. Emergency teams do not suffer from a lack of data.
+2. A fire-spread map does not tell the coordinator which care home, school or farm to contact first. A map may show three hours — that is the problem, not ARCA’s forecast.
+3. ARCA converts wildfire predictions into a prioritised evacuation plan. Telegram `/briefing`: Font-rubí / demo fire, ranked list in ensemble language (“in N of 10 runs”).
+4. Not distance alone: `spare_time` (time before arrival vs time to evacuate). Filter then rank; watch list separate. Care home, sheep farm, household with dogs and no car.
+5. Recommend only. Coordinator must approve any external message. Coordinator places the call. Log “200 sheep, has a truck” in Telegram or **Log outcome**. Rank updates. Reported, not verified.
+6. Impact: more warning for vulnerable facilities; farms, shelters and residents with animals in the picture. People delay because of pets and livestock. Approve resident alerts → opted-in residents get fire window + a shelter that takes pets. Deny or wait → escalate, no blast. Sunday: Galtea + Norma.
 
 ## Sunday — Galtea + Norma
 
