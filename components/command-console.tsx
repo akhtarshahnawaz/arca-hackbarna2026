@@ -1,9 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { confirmedCopy, freshnessLabel, formatClock, registeredCopy } from "@/lib/freshness";
 import {
@@ -30,23 +29,34 @@ const PRIMARY_ACTIONS: ProtectiveAction[] = ["confine", "evacuate"];
 const SECONDARY_ACTIONS: ProtectiveAction[] = ["monitor", "latent"];
 
 const tierRowClass: Record<UrgencyTier, string> = {
-  late: "bg-red-50 text-red-950 hover:bg-red-100",
-  now: "bg-orange-50 text-orange-950 hover:bg-orange-100",
-  prepare: "bg-amber-50 text-amber-950 hover:bg-amber-100/80",
-  none: "bg-background text-foreground hover:bg-muted/70",
+  late: "hover:bg-red-50",
+  now: "hover:bg-orange-50",
+  prepare: "hover:bg-green-50",
+  none: "hover:bg-muted/60",
+};
+
+const tierDotClass: Record<UrgencyTier, string> = {
+  late: "bg-red-600",
+  now: "bg-orange-500",
+  prepare: "bg-green-700",
+  none: "bg-stone-300",
+};
+
+const tierClockClass: Record<UrgencyTier, string> = {
+  late: "font-medium text-red-700",
+  now: "font-medium text-orange-700",
+  prepare: "font-medium text-green-800",
+  none: "text-foreground/55",
 };
 
 type Props = {
   initial: CommandState;
 };
 
-function firstUndecidedId(sites: RankedSite[]): string | null {
-  return sites.find((site) => !site.protectiveAction)?.id ?? sites[0]?.id ?? null;
-}
-
 export function CommandConsole({ initial }: Props) {
   const [state, setState] = useState(initial);
-  const [openId, setOpenId] = useState<string | null>(() => firstUndecidedId(initial.sites ?? []));
+  const [openId, setOpenId] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [basemap, setBasemap] = useState<"map" | "satellite">("satellite");
 
   const ranked = state.sites ?? [];
@@ -64,11 +74,13 @@ export function CommandConsole({ initial }: Props) {
   const decidedCount = ranked.length - undecided.length;
 
   useEffect(() => {
-    if (!openId) return;
-    document.getElementById(`site-item-${openId}`)?.scrollIntoView({
-      block: "nearest",
-      behavior: "smooth",
-    });
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (openId) {
+      if (!dialog.open) dialog.showModal();
+    } else if (dialog.open) {
+      dialog.close();
+    }
   }, [openId]);
 
   function openSiteById(id: string) {
@@ -81,6 +93,7 @@ export function CommandConsole({ initial }: Props) {
       ranked.slice(from + 1).find((site) => !site.protectiveAction) ??
       ranked.find((site) => !site.protectiveAction);
     if (next) setOpenId(next.id);
+    else dialogRef.current?.close();
   }
 
   function patchSite(siteKey: string, patch: Partial<RankedSite>) {
@@ -104,19 +117,22 @@ export function CommandConsole({ initial }: Props) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden">
       <header className="flex shrink-0 flex-col gap-1.5 border-b px-5 py-3 md:px-7">
-        <p className="text-sm text-foreground/55">ARCA · {firePlace} fire</p>
-        <h1 className="min-w-0 font-heading text-xl leading-tight tracking-tight break-words md:text-2xl">
-          {undecided.length === 0
-            ? "Every urgent place has a decision"
-            : undecided.length === 1
-              ? "1 place still needs your decision"
-              : `${undecided.length} places still need your decision`}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <h1 className="min-w-0 text-base font-medium leading-snug">
+            {undecided.length === 0
+              ? "Every urgent place has a decision"
+              : undecided.length === 1
+                ? "1 place still needs your decision"
+                : `${undecided.length} places still need your decision`}
+          </h1>
           {ranked.length > 0 ? (
-            <span className="ml-2 text-sm font-normal tracking-normal text-foreground/55 tabular-nums">
-              {decidedCount} of {ranked.length}
+            <span className="text-sm text-foreground/55 tabular-nums">
+              ARCA · {decidedCount} of {ranked.length} · {firePlace}
             </span>
-          ) : null}
-        </h1>
+          ) : (
+            <span className="text-sm text-foreground/55">{firePlace}</span>
+          )}
+        </div>
         <details>
           <summary className="cursor-pointer text-sm text-foreground/55 select-none">
             Data sources and notes
@@ -147,19 +163,7 @@ export function CommandConsole({ initial }: Props) {
 
       <div className="grid flex-1 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_440px] lg:grid-rows-1">
         <aside className="order-1 flex min-w-0 flex-col border-b lg:order-2 lg:h-full lg:min-h-0 lg:overflow-hidden lg:border-b-0 lg:border-l">
-          {openSite ? (
-            <FocusCard
-              key={openSite.id}
-              site={openSite}
-              rankedCount={ranked.length}
-              calls={state.voiceCalls ?? []}
-              onPatchSite={patchSite}
-              onUpsertCall={upsertCall}
-              nextCount={undecided.filter((item) => item.id !== openSite.id).length}
-              onOpenNext={() => openNextUndecided(openSite.id)}
-            />
-          ) : null}
-          <p className="px-5 py-2 text-sm text-foreground/55">Places, most urgent first</p>
+          <p className="px-5 py-3 text-sm text-foreground/55">Tap a place. Most urgent first.</p>
           <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
             <ol className="flex flex-col">
               {ranked.length === 0 ? (
@@ -193,8 +197,8 @@ export function CommandConsole({ initial }: Props) {
             onSelect={openSiteById}
             basemap={basemap}
           />
-          <p className="pointer-events-none absolute bottom-3 left-4 z-30 max-w-[18rem] text-[11px] leading-snug text-foreground/50">
-            Orange rings: where the fire may be in the next hours
+          <p className="pointer-events-none absolute bottom-3 left-4 z-30 max-w-[18rem] text-sm leading-snug text-foreground/50">
+            Orange rings: possible fire in the next hours
           </p>
           <div className="absolute top-3 right-4 z-30 flex gap-2.5">
             <button
@@ -202,7 +206,7 @@ export function CommandConsole({ initial }: Props) {
               aria-pressed={basemap === "map"}
               onClick={() => setBasemap("map")}
               className={cn(
-                "text-xs",
+                "text-sm",
                 basemap === "map" ? "text-foreground underline underline-offset-4" : "text-foreground/50 hover:text-foreground/80",
               )}
             >
@@ -213,7 +217,7 @@ export function CommandConsole({ initial }: Props) {
               aria-pressed={basemap === "satellite"}
               onClick={() => setBasemap("satellite")}
               className={cn(
-                "text-xs",
+                "text-sm",
                 basemap === "satellite"
                   ? "text-foreground underline underline-offset-4"
                   : "text-foreground/50 hover:text-foreground/80",
@@ -224,6 +228,29 @@ export function CommandConsole({ initial }: Props) {
           </div>
         </section>
       </div>
+
+      <dialog
+        ref={dialogRef}
+        className="arca-dialog"
+        onClose={() => setOpenId(null)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close();
+        }}
+      >
+        {openSite ? (
+          <FocusCard
+            key={openSite.id}
+            site={openSite}
+            rankedCount={ranked.length}
+            calls={state.voiceCalls ?? []}
+            onPatchSite={patchSite}
+            onUpsertCall={upsertCall}
+            nextCount={undecided.filter((item) => item.id !== openSite.id).length}
+            onOpenNext={() => openNextUndecided(openSite.id)}
+            onClose={() => dialogRef.current?.close()}
+          />
+        ) : null}
+      </dialog>
     </div>
   );
 }
@@ -250,7 +277,7 @@ function WatchList({
       </button>
       {open ? (
         <div>
-          <p className="px-5 pb-2 text-xs text-foreground/45">
+          <p className="px-5 pb-2 text-sm text-foreground/45">
             Fire is not expected here soon. Open only if you still want to mark a decision.
           </p>
           <ol className="flex flex-col pb-2">
@@ -285,7 +312,7 @@ function FreshnessStrip({ sources }: { sources: CommandState["sources"] }) {
               <Badge variant={source.kind === "live" ? "default" : "outline"}>{freshnessLabel(source.kind)}</Badge>
             </div>
             <p className="text-sm leading-snug text-foreground/70">{source.detail}</p>
-            <p className="text-xs text-foreground/60">
+            <p className="text-sm text-foreground/60">
               {source.fetchedAt ? `Updated ${formatClock(source.fetchedAt)}` : "No update time"}
             </p>
           </div>
@@ -308,7 +335,6 @@ function SiteRow({
 }) {
   const tier = urgencyTier(site);
   const decided = Boolean(site.protectiveAction);
-  const urgentClock = tier === "late" || tier === "now";
   const clock =
     site.locationQuality === "municipality_centroid" ? "Timing unknown" : timeLeftCopy(site);
 
@@ -316,36 +342,33 @@ function SiteRow({
     <li id={`site-item-${site.id}`}>
       <button
         type="button"
-        aria-current={active ? "true" : undefined}
-        aria-controls="focus-card"
+        aria-haspopup="dialog"
         onClick={() => onSelect(site.id)}
         className={cn(
-          "flex w-full min-w-0 items-center gap-3 border-l-2 border-transparent px-4 py-2.5 text-left transition-colors",
+          "flex w-full min-w-0 cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors active:bg-muted",
           tierRowClass[tier],
-          decided && "opacity-60",
-          active && "border-l-foreground",
+          decided && "opacity-55",
+          active && "bg-muted",
         )}
       >
-        <span className="w-6 shrink-0 text-center text-sm tabular-nums text-foreground/50">
+        <span className={cn("size-2 shrink-0 rounded-full", tierDotClass[tier])} aria-hidden />
+        <span className="w-6 shrink-0 text-center text-sm tabular-nums text-foreground/45">
           {showRank ? site.rank : "·"}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm">{site.name ?? site.code}</span>
-          <span className="mt-0.5 block truncate text-xs text-foreground/50">
+          <span className="mt-0.5 block truncate text-sm text-foreground/50">
             {siteKindLabel(site.kind)} · {site.municipality}
           </span>
         </span>
         <span className="flex shrink-0 flex-col items-end gap-0.5">
           <span
-            className={cn(
-              "text-sm tabular-nums",
-              !decided && urgentClock ? "font-semibold text-red-700" : "text-foreground/55",
-            )}
+            className={cn("text-sm tabular-nums", decided ? "text-foreground/55" : tierClockClass[tier])}
           >
             {clock}
           </span>
           {decided && site.protectiveAction ? (
-            <span className="text-xs text-foreground/70">
+            <span className="text-sm text-foreground/70">
               {actionUi[site.protectiveAction].title} ✓
             </span>
           ) : null}
@@ -387,6 +410,7 @@ function FocusCard({
   onUpsertCall,
   nextCount,
   onOpenNext,
+  onClose,
 }: {
   site: RankedSite;
   rankedCount: number;
@@ -395,60 +419,63 @@ function FocusCard({
   onUpsertCall: (call: VoiceCallSummary) => void;
   nextCount: number;
   onOpenNext: () => void;
+  onClose: () => void;
 }) {
   const facts = siteFactsLine(site);
   const mayCall = arcaMayCall(site.protectiveAction);
 
   return (
-    <div
-      id="focus-card"
-      className="flex min-w-0 shrink-0 flex-col gap-4 border-b bg-background px-5 py-4 lg:max-h-[58%] lg:overflow-y-auto"
-    >
-      <div className="flex flex-col gap-1.5">
-        <p className="text-xs text-foreground/50">{focusPlaceMeta(site, rankedCount)}</p>
-        <p className="font-heading text-xl leading-snug tracking-tight break-words md:text-[1.35rem]">
+    <div className="flex max-h-[min(32rem,calc(100dvh-2rem))] flex-col">
+      <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5">
+        <p className="text-sm text-foreground/55">{focusPlaceMeta(site, rankedCount)}</p>
+        <button type="button" className="h-8 shrink-0 px-2 text-sm text-foreground/70" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <div className="flex flex-col gap-3 overflow-y-auto px-4 py-3">
+        <p className={cn("text-base leading-snug", tierClockClass[urgencyTier(site)])}>
           {(site.name ?? site.code).trim()}. {focusClockCopy(site)}
         </p>
+
+        <ProtectiveChoice site={site} onPatchSite={onPatchSite} nextCount={nextCount} onOpenNext={onOpenNext} />
+
+        {mayCall ? <CallApprove site={site} calls={calls} onUpsertCall={onUpsertCall} /> : null}
+
+        {facts ? <p className="text-sm text-foreground/50">{facts}</p> : null}
+
+        <details className="text-sm text-foreground/55">
+          <summary className="cursor-pointer select-none">More about this place</summary>
+          <div className="mt-2 flex flex-col gap-1">
+            {site.sourceUrl ? (
+              <p>
+                <a className="underline" href={site.sourceUrl} target="_blank" rel="noreferrer">
+                  {site.attribution} · {site.sourceRecordId}
+                </a>
+                {site.capacitySourceUrl ? (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <a className="underline" href={site.capacitySourceUrl} target="_blank" rel="noreferrer">
+                      Capacity source
+                    </a>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+            {site.animals.map((animal) => (
+              <p key={animal.species}>
+                {animal.species}: {animal.confirmedCount ?? "—"} / {animal.registeredCapacity ?? "—"}
+                {site.confirmedAt
+                  ? ` · ${confirmedCopy(site.confirmedAt, site.confirmationStatus, site.confirmationChannel)}`
+                  : site.capacityUpdatedAt
+                    ? ` · ${registeredCopy(site.capacityUpdatedAt)}`
+                    : ""}
+              </p>
+            ))}
+            {site.shelterHint ? <p>{site.shelterHint}</p> : null}
+          </div>
+        </details>
       </div>
-
-      <ProtectiveChoice site={site} onPatchSite={onPatchSite} nextCount={nextCount} onOpenNext={onOpenNext} />
-
-      {mayCall ? <CallApprove site={site} calls={calls} onUpsertCall={onUpsertCall} /> : null}
-
-      {facts ? <p className="text-xs text-foreground/50">{facts}</p> : null}
-
-      <details className="text-xs text-foreground/55">
-        <summary className="cursor-pointer select-none">More about this place</summary>
-        <div className="mt-2 flex flex-col gap-1">
-          {site.sourceUrl ? (
-            <p>
-              <a className="underline" href={site.sourceUrl} target="_blank" rel="noreferrer">
-                {site.attribution} · {site.sourceRecordId}
-              </a>
-              {site.capacitySourceUrl ? (
-                <>
-                  {" "}
-                  ·{" "}
-                  <a className="underline" href={site.capacitySourceUrl} target="_blank" rel="noreferrer">
-                    Capacity source
-                  </a>
-                </>
-              ) : null}
-            </p>
-          ) : null}
-          {site.animals.map((animal) => (
-            <p key={animal.species}>
-              {animal.species}: {animal.confirmedCount ?? "—"} / {animal.registeredCapacity ?? "—"}
-              {site.confirmedAt
-                ? ` · ${confirmedCopy(site.confirmedAt, site.confirmationStatus, site.confirmationChannel)}`
-                : site.capacityUpdatedAt
-                  ? ` · ${registeredCopy(site.capacityUpdatedAt)}`
-                  : ""}
-            </p>
-          ))}
-          {site.shelterHint ? <p>{site.shelterHint}</p> : null}
-        </div>
-      </details>
     </div>
   );
 }
@@ -538,21 +565,24 @@ function CallApprove({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-foreground/10 bg-muted/30 p-3">
-      <h2 className="text-sm font-medium text-foreground/80">Call this place</h2>
-      {latest ? <p className="text-sm font-medium">{callStatusForCoordinator(latest)}</p> : null}
+    <div className="flex flex-col gap-2 border-t pt-3">
+      <p className="text-sm">{latest ? callStatusForCoordinator(latest) : "Call this place"}</p>
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor={fieldId} className="text-sm font-medium">
+      <div className="flex flex-col gap-1">
+        <label htmlFor={fieldId} className="text-sm">
           Phone number
-          {phoneRequired ? <span className="text-red-800"> Required</span> : <span className="font-normal text-foreground/55"> Optional</span>}
+          {phoneRequired ? (
+            <span className="text-red-700"> · required</span>
+          ) : (
+            <span className="text-foreground/55"> · optional</span>
+          )}
         </label>
         <input
           id={fieldId}
           type="tel"
           inputMode="tel"
           autoComplete="tel"
-          className="min-h-12 rounded-md border bg-background px-3 text-base"
+          className="h-8 rounded-md border bg-background px-2.5 text-sm"
           placeholder="600 111 222"
           value={number}
           aria-invalid={Boolean(error)}
@@ -562,50 +592,49 @@ function CallApprove({
             if (error) setError(null);
           }}
         />
-        <p id={`${fieldId}-hint`} className="text-xs text-foreground/50">
+        <p id={`${fieldId}-hint`} className="text-sm text-foreground/50">
           {site.phoneOnFile
-            ? "A number is already on file. Leave this blank to use it, or type another. Spaces are fine."
-            : "Type the number. Spaces and extra zeros are fine."}
+            ? "A number is already on file. Leave this blank to use it, or type another."
+            : "Spaces are fine."}
         </p>
       </div>
 
       {error ? (
-        <p id={errorId} className="rounded-md bg-red-100 px-3 py-2 text-sm font-medium text-red-900" role="alert">
+        <p id={errorId} className="text-sm text-red-700" role="alert">
           {error}
         </p>
       ) : null}
 
       {waiting ? (
-        <div className="flex flex-col gap-2">
-          <Button
+        <div className="flex flex-wrap items-center gap-3">
+          <button
             type="button"
-            className="min-h-12 w-full text-base"
+            className="h-8 rounded-md bg-foreground px-3 text-sm text-background disabled:opacity-50"
             disabled={busy}
             onClick={() => post("approve")}
           >
-            {busy ? "Starting the call…" : "Approve and dial"}
-          </Button>
+            {busy ? "Starting…" : "Approve and dial"}
+          </button>
           <button
             type="button"
-            className="min-h-11 text-sm text-foreground/70 underline underline-offset-4"
+            className="h-8 text-sm text-foreground/55 underline underline-offset-4 disabled:opacity-50"
             disabled={busy}
             onClick={() => post("request")}
           >
-            Prepare again with this number
+            Prepare again
           </button>
         </div>
       ) : (
-        <Button
+        <button
           type="button"
-          variant="outline"
-          className="min-h-12 w-full text-base"
+          className="h-8 w-fit rounded-md border px-3 text-sm disabled:opacity-50"
           disabled={busy}
           onClick={() => post("request")}
         >
           {busy ? "Preparing…" : "Prepare this call"}
-        </Button>
+        </button>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -656,13 +685,13 @@ function ProtectiveChoice({
   }
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold tracking-tight">What should they do?</h2>
+    <section className="flex flex-col gap-2">
+      <h2 className="text-base">What should they do?</h2>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {PRIMARY_ACTIONS.map((action) => {
           const selected = site.protectiveAction === action;
-          const copy = actionUi[action];
+          const leave = action === "evacuate";
           return (
             <button
               key={action}
@@ -671,75 +700,73 @@ function ProtectiveChoice({
               aria-pressed={selected}
               onClick={() => choose(action)}
               className={cn(
-                "flex min-h-16 min-w-0 items-center justify-center rounded-lg border px-2 text-center text-base font-semibold transition-colors sm:px-3 sm:text-lg",
-                selected
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-foreground/20 bg-background hover:bg-muted/70",
+                "h-8 rounded-md px-3 text-sm transition-colors disabled:opacity-50",
+                leave
+                  ? "bg-foreground text-background hover:bg-foreground/85"
+                  : selected
+                    ? "border border-foreground/40 bg-muted"
+                    : "border border-foreground/15 bg-background hover:bg-muted/60",
               )}
             >
-              {busy === action ? "Saving…" : copy.title}
+              {busy === action ? "Saving…" : actionUi[action].title}
+              {selected && busy !== action ? " ✓" : ""}
             </button>
           );
         })}
-      </div>
-
-      <div className="flex flex-col gap-2">
         <button
           type="button"
           aria-expanded={moreOpen}
           onClick={() => setMoreOpen((open) => !open)}
-          className="self-start text-xs text-foreground/50 hover:text-foreground/80"
+          className="h-8 px-1 text-sm text-foreground/50 hover:text-foreground/80"
         >
           More options
         </button>
-        {moreOpen ? (
-          <div className="flex flex-col gap-1.5">
-            {SECONDARY_ACTIONS.map((action) => {
-              const selected = site.protectiveAction === action;
-              const copy = actionUi[action];
-              return (
-                <button
-                  key={action}
-                  type="button"
-                  disabled={busy !== null}
-                  aria-pressed={selected}
-                  onClick={() => choose(action)}
-                  className={cn(
-                    "flex min-h-10 items-center justify-between rounded-md border px-3 text-left text-sm transition-colors",
-                    selected
-                      ? "border-foreground/40 bg-muted"
-                      : "border-foreground/10 text-foreground/70 hover:bg-muted/50",
-                  )}
-                >
-                  <span>{busy === action ? "Saving…" : copy.title}</span>
-                  <span className="text-xs text-foreground/45">{copy.hint}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
       </div>
 
+      {moreOpen ? (
+        <div className="flex flex-wrap gap-2">
+          {SECONDARY_ACTIONS.map((action) => {
+            const selected = site.protectiveAction === action;
+            return (
+              <button
+                key={action}
+                type="button"
+                disabled={busy !== null}
+                aria-pressed={selected}
+                onClick={() => choose(action)}
+                className={cn(
+                  "h-8 rounded-md border px-3 text-sm disabled:opacity-50",
+                  selected
+                    ? "border-foreground/40 bg-muted"
+                    : "border-transparent text-foreground/60 hover:bg-muted/50",
+                )}
+              >
+                {busy === action ? "Saving…" : actionUi[action].title}
+                {selected && busy !== action ? " ✓" : ""}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       {error ? (
-        <p className="rounded-md bg-red-100 px-3 py-2 text-sm font-medium text-red-900" role="alert">
+        <p className="text-sm text-red-700" role="alert">
           {error}
         </p>
       ) : null}
 
       {saved && !error ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm text-foreground/80">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-sm text-foreground/70">
             Saved: {actionUi[saved].title}.{" "}
-            {actionUi[saved].unlocksCall
-              ? "Next: prepare the call below."
-              : "We will not call this place."}
+            {actionUi[saved].unlocksCall ? "Prepare the call below." : "We will not call."}
           </p>
           {nextCount > 0 ? (
-            <Button type="button" variant="outline" className="min-h-12 text-base" onClick={onOpenNext}>
+            <button type="button" className="h-8 text-sm underline underline-offset-4" onClick={onOpenNext}>
               Next place
-            </Button>
+            </button>
           ) : (
-            <p className="text-xs text-foreground/50">No other urgent places are waiting on a decision.</p>
+            <p className="text-sm text-foreground/50">Nothing else is waiting.</p>
           )}
         </div>
       ) : null}

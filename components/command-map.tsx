@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { LatLngBoundsExpression, LatLngTuple } from "leaflet";
 import { CircleMarker, MapContainer, Polygon, TileLayer, Tooltip, useMap } from "react-leaflet";
-import { siteKindMarkerColor } from "@/lib/site-kind";
-import type { CommandState, RankedSite, SiteKind } from "@/lib/types";
+import { urgencyTier } from "@/lib/urgency";
+import type { CommandState, RankedSite } from "@/lib/types";
 import "leaflet/dist/leaflet.css";
 
 export type BasemapKey = "map" | "satellite";
@@ -122,13 +122,11 @@ const BASEMAPS = {
   },
 } as const;
 
-const SATELLITE_KIND_FILL: Record<SiteKind, string> = {
-  care_home: "#c4b5fd",
-  cap: "#5eead4",
-  hospital: "#fb7185",
-  school: "#7dd3fc",
-  farm: "#6ee7b7",
-  household: "#fcd34d",
+const TIER_MARKER: Record<"late" | "now" | "prepare" | "none", string> = {
+  late: "#b91c1c",
+  now: "#c2410c",
+  prepare: "#15803d",
+  none: "#a8a29e",
 };
 
 const PALETTES = {
@@ -202,7 +200,6 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
   const selected = allSites.find((site) => site.id === selectedId);
   const rings = state.fire.polygons.filter((polygon) => polygon.member === state.fire.displayMember);
   const palette = PALETTES[basemap];
-  const kindFill = basemap === "satellite" ? SATELLITE_KIND_FILL : siteKindMarkerColor;
   const bounds = useMemo(() => featureBounds(state), [state]);
 
   return (
@@ -273,7 +270,7 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
         {allSites.map((site) => {
           const active = site.id === selectedId;
           const watch = site.label === "watch";
-          const fill = kindFill[site.kind];
+          const fill = TIER_MARKER[urgencyTier(site)];
           return (
             <CircleMarker
               key={site.id}

@@ -169,11 +169,27 @@
   box-shadow: none !important;
   color: var(--foreground) !important;
   font-family: var(--font-sans), ui-sans-serif, sans-serif !important;
-  font-size: 12px !important;
+  font-size: 14px !important;
   font-weight: 600 !important;
   padding: 4px 8px !important;
 }
 
 .arca-site-tip::before {
   display: none !important;
+}
+
+.arca-dialog {
+  width: min(26rem, calc(100vw - 2rem));
+  max-height: min(36rem, calc(100dvh - 2rem));
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 24px 48px -28px oklch(0.22 0.012 55 / 0.45);
+}
+
+.arca-dialog::backdrop {
+  background: oklch(0.22 0.012 55 / 0.32);
 }
