@@ -72,3 +72,19 @@ export function urgencySituationCopy(site: RankedSite): string {
   }
   return "The fire is not expected here soon.";
 }
+
+/** Focus card clocks: one sentence. Never an order. */
+export function focusClockCopy(site: RankedSite): string {
+  if (site.locationQuality === "municipality_centroid") {
+    return "Location is approximate — verify the address. Fire timing is unknown.";
+  }
+  if (site.tArrival === null) {
+    return `Fire is not expected here soon. They need ${plainDuration(site.tEvac)} to leave.`;
+  }
+  const arrival = `Fire arrives in about ${plainDuration(site.tArrival)}.`;
+  const need = `They need ${plainDuration(site.tEvac)} to leave`;
+  if (site.spareTime === null) return `${arrival} ${need}.`;
+  if (site.spareTime < 0) return `${arrival} ${need} — ${plainDuration(site.spareTime)} short.`;
+  if (site.spareTime === 0) return `${arrival} ${need} — no time to spare.`;
+  return `${arrival} ${need} — ${plainDuration(site.spareTime)} to spare.`;
+}

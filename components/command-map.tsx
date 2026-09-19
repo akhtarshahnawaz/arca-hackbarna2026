@@ -278,17 +278,27 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
             <CircleMarker
               key={site.id}
               center={[site.lat, site.lon]}
-              radius={active ? 11 : watch ? 7 : 8}
+              radius={active ? 11 : watch ? 4.5 : 8}
               eventHandlers={{ click: () => onSelect(site.id) }}
               pathOptions={{
                 color: active ? (basemap === "satellite" ? "#ffffff" : "#1c1917") : fill,
                 weight: active ? 2.5 : 1,
                 fillColor: fill,
-                fillOpacity: active ? 1 : watch ? 0.55 : 0.9,
+                fillOpacity: active ? 1 : watch ? 0.32 : 0.9,
               }}
             >
-              <Tooltip permanent direction="top" offset={[0, -8]} className="arca-site-tip">
-                {site.locationQuality === "municipality_centroid" ? `Approximate · ${site.name ?? site.code}` : watch ? `Watch · ${site.name ?? site.code}` : `${site.rank} · ${site.name ?? site.code}`}
+              <Tooltip
+                key={`${site.id}-tip-${active ? "on" : "off"}`}
+                permanent={active}
+                direction="top"
+                offset={[0, -8]}
+                className="arca-site-tip"
+              >
+                {site.locationQuality === "municipality_centroid"
+                  ? `Approximate · ${site.name ?? site.code}`
+                  : watch
+                    ? `Watch · ${site.name ?? site.code}`
+                    : `${site.rank} · ${site.name ?? site.code}`}
               </Tooltip>
             </CircleMarker>
           );

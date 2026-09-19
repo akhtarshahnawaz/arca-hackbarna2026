@@ -1,10 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { confirmedCopy, freshnessLabel, formatClock, registeredCopy } from "@/lib/freshness";
 import {
@@ -14,11 +13,8 @@ import {
 } from "@/lib/protective-action";
 import { siteKindLabel } from "@/lib/site-kind";
 import {
-  plainDuration,
+  focusClockCopy,
   timeLeftCopy,
-  urgencyBadgeLabel,
-  urgencyRowCopy,
-  urgencySituationCopy,
   urgencyTier,
   type UrgencyTier,
 } from "@/lib/urgency";
@@ -30,25 +26,14 @@ const CommandMap = dynamic(() => import("@/components/command-map"), {
   loading: () => <Skeleton className="size-full rounded-none" />,
 });
 
+const PRIMARY_ACTIONS: ProtectiveAction[] = ["confine", "evacuate"];
+const SECONDARY_ACTIONS: ProtectiveAction[] = ["monitor", "latent"];
+
 const tierRowClass: Record<UrgencyTier, string> = {
   late: "bg-red-50 text-red-950 hover:bg-red-100",
   now: "bg-orange-50 text-orange-950 hover:bg-orange-100",
   prepare: "bg-amber-50 text-amber-950 hover:bg-amber-100/80",
   none: "bg-background text-foreground hover:bg-muted/70",
-};
-
-const tierBadgeClass: Record<UrgencyTier, string> = {
-  late: "bg-red-700 text-white",
-  now: "bg-orange-700 text-white",
-  prepare: "bg-amber-200 text-amber-950",
-  none: "bg-muted text-foreground",
-};
-
-const tierPanelClass: Record<UrgencyTier, string> = {
-  late: "bg-red-50/90 text-red-950",
-  now: "bg-orange-50/90 text-orange-950",
-  prepare: "bg-amber-50/80 text-amber-950",
-  none: "bg-muted/40 text-foreground",
 };
 
 type Props = {
@@ -86,10 +71,6 @@ export function CommandConsole({ initial }: Props) {
     });
   }, [openId]);
 
-  function toggleSite(id: string) {
-    setOpenId((current) => (current === id ? null : id));
-  }
-
   function openSiteById(id: string) {
     setOpenId(id);
   }
@@ -122,25 +103,22 @@ export function CommandConsole({ initial }: Props) {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden">
-      <header className="flex shrink-0 flex-col gap-2 border-b px-5 py-3 md:px-7">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="text-sm text-foreground/70">ARCA · {firePlace} fire</p>
-            <h1 className="font-heading text-xl leading-tight tracking-tight md:text-2xl">
-              {undecided.length === 0
-                ? "Every urgent place has a decision"
-                : undecided.length === 1
-                  ? "1 place still needs your decision"
-                  : `${undecided.length} places still need your decision`}
-            </h1>
-            <p className="max-w-xl text-sm text-foreground/80 md:text-base">
-              Red is most urgent. You choose stay or leave. ARCA does not.
-            </p>
-          </div>
-          <DecisionProgress decided={decidedCount} total={ranked.length} />
-        </div>
+      <header className="flex shrink-0 flex-col gap-1.5 border-b px-5 py-3 md:px-7">
+        <p className="text-sm text-foreground/55">ARCA · {firePlace} fire</p>
+        <h1 className="min-w-0 font-heading text-xl leading-tight tracking-tight break-words md:text-2xl">
+          {undecided.length === 0
+            ? "Every urgent place has a decision"
+            : undecided.length === 1
+              ? "1 place still needs your decision"
+              : `${undecided.length} places still need your decision`}
+          {ranked.length > 0 ? (
+            <span className="ml-2 text-sm font-normal tracking-normal text-foreground/55 tabular-nums">
+              {decidedCount} of {ranked.length}
+            </span>
+          ) : null}
+        </h1>
         <details>
-          <summary className="cursor-pointer text-sm text-foreground/70 select-none">
+          <summary className="cursor-pointer text-sm text-foreground/55 select-none">
             Data sources and notes
           </summary>
           <div className="mt-3 flex max-h-[38dvh] flex-col gap-2 overflow-y-auto">
@@ -168,16 +146,24 @@ export function CommandConsole({ initial }: Props) {
       ) : null}
 
       <div className="grid flex-1 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_440px] lg:grid-rows-1">
-        <aside className="order-1 flex flex-col border-b lg:order-2 lg:h-full lg:min-h-0 lg:overflow-hidden lg:border-b-0 lg:border-l">
-          <div className="flex flex-col gap-2 px-5 py-4">
-            <p className="text-base font-medium">Places, most urgent first</p>
-            <UrgencyLegend />
-          </div>
-          <Separator />
+        <aside className="order-1 flex min-w-0 flex-col border-b lg:order-2 lg:h-full lg:min-h-0 lg:overflow-hidden lg:border-b-0 lg:border-l">
+          {openSite ? (
+            <FocusCard
+              key={openSite.id}
+              site={openSite}
+              rankedCount={ranked.length}
+              calls={state.voiceCalls ?? []}
+              onPatchSite={patchSite}
+              onUpsertCall={upsertCall}
+              nextCount={undecided.filter((item) => item.id !== openSite.id).length}
+              onOpenNext={() => openNextUndecided(openSite.id)}
+            />
+          ) : null}
+          <p className="px-5 py-2 text-sm text-foreground/55">Places, most urgent first</p>
           <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
             <ol className="flex flex-col">
               {ranked.length === 0 ? (
-                <li className="px-5 py-6 text-base text-foreground/70">
+                <li className="px-5 py-6 text-sm text-foreground/55">
                   No places in range yet. Check the map, or open data sources.
                 </li>
               ) : (
@@ -185,30 +171,17 @@ export function CommandConsole({ initial }: Props) {
                   <SiteRow
                     key={site.id}
                     site={site}
-                    open={openSite?.id === site.id}
-                    onToggle={toggleSite}
+                    active={openSite?.id === site.id}
+                    onSelect={openSiteById}
                     showRank
-                  >
-                    <SitePanel
-                      site={site}
-                      calls={state.voiceCalls ?? []}
-                      onPatchSite={patchSite}
-                      onUpsertCall={upsertCall}
-                      nextCount={undecided.filter((item) => item.id !== site.id).length}
-                      onOpenNext={() => openNextUndecided(site.id)}
-                    />
-                  </SiteRow>
+                  />
                 ))
               )}
             </ol>
             <WatchList
               sites={watchSites}
-              openId={openSite?.id ?? null}
-              onToggle={toggleSite}
-              calls={state.voiceCalls ?? []}
-              onPatchSite={patchSite}
-              onUpsertCall={upsertCall}
-              onOpenNext={() => openNextUndecided()}
+              activeId={openSite?.id ?? null}
+              onSelect={openSiteById}
             />
           </div>
         </aside>
@@ -220,17 +193,17 @@ export function CommandConsole({ initial }: Props) {
             onSelect={openSiteById}
             basemap={basemap}
           />
-          <div className="pointer-events-none absolute bottom-4 left-4 z-30 rounded-md border bg-background/95 px-3 py-2">
-            <p className="text-sm text-foreground">Orange rings: where the fire may be in the next hours</p>
-          </div>
-          <div className="absolute top-4 right-4 z-30 flex overflow-hidden rounded-md border bg-background shadow-sm">
+          <p className="pointer-events-none absolute bottom-3 left-4 z-30 max-w-[18rem] text-[11px] leading-snug text-foreground/50">
+            Orange rings: where the fire may be in the next hours
+          </p>
+          <div className="absolute top-3 right-4 z-30 flex gap-2.5">
             <button
               type="button"
               aria-pressed={basemap === "map"}
               onClick={() => setBasemap("map")}
               className={cn(
-                "min-h-11 px-4 text-sm font-medium",
-                basemap === "map" ? "bg-foreground text-background" : "text-foreground/70 hover:text-foreground",
+                "text-xs",
+                basemap === "map" ? "text-foreground underline underline-offset-4" : "text-foreground/50 hover:text-foreground/80",
               )}
             >
               Map
@@ -240,10 +213,10 @@ export function CommandConsole({ initial }: Props) {
               aria-pressed={basemap === "satellite"}
               onClick={() => setBasemap("satellite")}
               className={cn(
-                "min-h-11 px-4 text-sm font-medium",
+                "text-xs",
                 basemap === "satellite"
-                  ? "bg-foreground text-background"
-                  : "text-foreground/70 hover:text-foreground",
+                  ? "text-foreground underline underline-offset-4"
+                  : "text-foreground/50 hover:text-foreground/80",
               )}
             >
               Satellite
@@ -257,20 +230,12 @@ export function CommandConsole({ initial }: Props) {
 
 function WatchList({
   sites,
-  openId,
-  onToggle,
-  calls,
-  onPatchSite,
-  onUpsertCall,
-  onOpenNext,
+  activeId,
+  onSelect,
 }: {
   sites: RankedSite[];
-  openId: string | null;
-  onToggle: (id: string) => void;
-  calls: VoiceCallSummary[];
-  onPatchSite: (siteKey: string, patch: Partial<RankedSite>) => void;
-  onUpsertCall: (call: VoiceCallSummary) => void;
-  onOpenNext: () => void;
+  activeId: string | null;
+  onSelect: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -279,63 +244,32 @@ function WatchList({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="flex min-h-12 w-full items-center px-5 py-4 text-left text-base text-foreground/80"
+        className="flex min-h-11 w-full items-center px-5 py-3 text-left text-sm text-foreground/55"
       >
         Far from the fire — {sites.length} {sites.length === 1 ? "place" : "places"}
       </button>
       {open ? (
         <div>
-          <p className="px-5 pb-2 text-sm text-foreground/70">
+          <p className="px-5 pb-2 text-xs text-foreground/45">
             Fire is not expected here soon. Open only if you still want to mark a decision.
           </p>
           <ol className="flex flex-col pb-2">
             {sites.length === 0 ? (
-              <li className="px-5 py-3 text-base text-foreground/70">No far places on this list.</li>
+              <li className="px-5 py-3 text-sm text-foreground/55">No far places on this list.</li>
             ) : (
               sites.map((site) => (
                 <SiteRow
                   key={site.id}
                   site={site}
-                  open={openId === site.id}
-                  onToggle={onToggle}
+                  active={activeId === site.id}
+                  onSelect={onSelect}
                   showRank={false}
-                >
-                  <SitePanel
-                    site={site}
-                    calls={calls}
-                    onPatchSite={onPatchSite}
-                    onUpsertCall={onUpsertCall}
-                    nextCount={0}
-                    onOpenNext={onOpenNext}
-                  />
-                </SiteRow>
+                />
               ))
             )}
           </ol>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function DecisionProgress({ decided, total }: { decided: number; total: number }) {
-  if (total === 0) return null;
-  const percent = Math.round((decided / total) * 100);
-  return (
-    <div className="flex min-w-[12rem] flex-col gap-2">
-      <p className="text-sm font-medium">
-        {decided} of {total} decided
-      </p>
-      <div
-        className="h-2.5 overflow-hidden rounded-full bg-muted"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={total}
-        aria-valuenow={decided}
-        aria-label={`${decided} of ${total} places decided`}
-      >
-        <div className="h-full bg-foreground" style={{ width: `${percent}%` }} />
-      </div>
     </div>
   );
 }
@@ -361,80 +295,62 @@ function FreshnessStrip({ sources }: { sources: CommandState["sources"] }) {
   );
 }
 
-function UrgencyLegend() {
-  const tiers: UrgencyTier[] = ["late", "now", "prepare", "none"];
-  return (
-    <div className="flex flex-wrap gap-2">
-      {tiers.map((tier) => (
-        <span
-          key={tier}
-          className={cn("rounded-md px-2.5 py-1 text-sm font-semibold", tierBadgeClass[tier])}
-        >
-          {urgencyBadgeLabel[tier]}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function SiteRow({
   site,
-  open,
-  onToggle,
+  active,
+  onSelect,
   showRank,
-  children,
 }: {
   site: RankedSite;
-  open: boolean;
-  onToggle: (id: string) => void;
+  active: boolean;
+  onSelect: (id: string) => void;
   showRank: boolean;
-  children: ReactNode;
 }) {
   const tier = urgencyTier(site);
   const decided = Boolean(site.protectiveAction);
+  const urgentClock = tier === "late" || tier === "now";
+  const clock =
+    site.locationQuality === "municipality_centroid" ? "Timing unknown" : timeLeftCopy(site);
+
   return (
     <li id={`site-item-${site.id}`}>
       <button
         type="button"
-        aria-expanded={open}
-        aria-controls={`site-panel-${site.id}`}
-        onClick={() => onToggle(site.id)}
+        aria-current={active ? "true" : undefined}
+        aria-controls="focus-card"
+        onClick={() => onSelect(site.id)}
         className={cn(
-          "flex w-full min-w-0 max-w-full flex-col gap-2 px-4 py-4 text-left transition-colors sm:flex-row sm:items-start sm:gap-3",
+          "flex w-full min-w-0 items-center gap-3 border-l-2 border-transparent px-4 py-2.5 text-left transition-colors",
           tierRowClass[tier],
-          open && "ring-2 ring-foreground/60 ring-inset",
+          decided && "opacity-60",
+          active && "border-l-foreground",
         )}
       >
-        <span className="flex min-w-0 w-full flex-1 items-start gap-3">
-          <span className="w-8 pt-0.5 text-center text-xl font-semibold tabular-nums">
-            {showRank ? site.rank : "·"}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-lg font-medium">{site.name ?? site.code}</span>
-            <span className="mt-0.5 block text-sm">
-              {siteKindLabel(site.kind)} · {site.municipality}
-            </span>
-            <span className="mt-1 block text-sm text-current/80">{site.locationQuality === "municipality_centroid" ? "Location needs verification · fire exposure unknown" : urgencyRowCopy(site)}</span>
+        <span className="w-6 shrink-0 text-center text-sm tabular-nums text-foreground/50">
+          {showRank ? site.rank : "·"}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm">{site.name ?? site.code}</span>
+          <span className="mt-0.5 block truncate text-xs text-foreground/50">
+            {siteKindLabel(site.kind)} · {site.municipality}
           </span>
         </span>
-        <span className="flex w-full flex-col items-start gap-1 pl-11 sm:w-auto sm:shrink-0 sm:items-end sm:pl-0">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className={cn("rounded-md px-2.5 py-1 text-sm font-bold", tierBadgeClass[tier])}>
-              {urgencyBadgeLabel[tier]}
-            </span>
-            <span className="text-sm font-medium">{site.locationQuality === "municipality_centroid" ? "Timing unknown" : timeLeftCopy(site)}</span>
-          </span>
+        <span className="flex shrink-0 flex-col items-end gap-0.5">
           <span
             className={cn(
-              "text-sm font-semibold",
-              decided ? "text-current" : "underline decoration-2 underline-offset-4",
+              "text-sm tabular-nums",
+              !decided && urgentClock ? "font-semibold text-red-700" : "text-foreground/55",
             )}
           >
-            {decided ? actionUi[site.protectiveAction!].title : "Needs a decision"}
+            {clock}
           </span>
+          {decided && site.protectiveAction ? (
+            <span className="text-xs text-foreground/70">
+              {actionUi[site.protectiveAction].title} ✓
+            </span>
+          ) : null}
         </span>
       </button>
-      {open ? children : null}
     </li>
   );
 }
@@ -455,8 +371,17 @@ function siteFactsLine(site: RankedSite): string | null {
   return bits.length ? bits.join(" · ") : null;
 }
 
-function SitePanel({
+function focusPlaceMeta(site: RankedSite, rankedCount: number): string {
+  const kindTown = `${siteKindLabel(site.kind)} · ${site.municipality}`;
+  if (site.label === "watch" || site.rank === 0) {
+    return `Far from the fire · ${kindTown}`;
+  }
+  return `Place ${site.rank} of ${rankedCount} · ${kindTown}`;
+}
+
+function FocusCard({
   site,
+  rankedCount,
   calls,
   onPatchSite,
   onUpsertCall,
@@ -464,40 +389,53 @@ function SitePanel({
   onOpenNext,
 }: {
   site: RankedSite;
+  rankedCount: number;
   calls: VoiceCallSummary[];
   onPatchSite: (siteKey: string, patch: Partial<RankedSite>) => void;
   onUpsertCall: (call: VoiceCallSummary) => void;
   nextCount: number;
   onOpenNext: () => void;
 }) {
-  const tier = urgencyTier(site);
   const facts = siteFactsLine(site);
   const mayCall = arcaMayCall(site.protectiveAction);
 
   return (
-    <div id={`site-panel-${site.id}`} className={cn("flex flex-col gap-5 border-t px-4 py-4", tierPanelClass[tier])}>
-      {site.locationQuality === "municipality_centroid" ? <p className="text-sm font-semibold">Approximate municipality location — verify the address. Fire-arrival estimates are unavailable for this facility.</p> : null}
-      {site.sourceUrl ? <p className="text-sm"><a className="underline" href={site.sourceUrl} target="_blank" rel="noreferrer">{site.attribution} · {site.sourceRecordId}</a>{site.capacitySourceUrl ? <> · <a className="underline" href={site.capacitySourceUrl} target="_blank" rel="noreferrer">Capacity source</a></> : null}</p> : null}
-      <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold tracking-wide uppercase">What the clocks say</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <Metric
-            label="Fire may arrive"
-            value={site.locationQuality === "municipality_centroid" ? "Unknown location" : site.tArrival === null ? "Not soon" : `About ${plainDuration(site.tArrival)}`}
-          />
-          <Metric label="Time they need to leave" value={plainDuration(site.tEvac)} />
-        </div>
-        <p className="text-sm leading-relaxed">{site.locationQuality === "municipality_centroid" ? "Verify the facility coordinates before using fire-arrival estimates." : urgencySituationCopy(site)}</p>
-        {facts ? <p className="text-sm">{facts}</p> : null}
-      </section>
+    <div
+      id="focus-card"
+      className="flex min-w-0 shrink-0 flex-col gap-4 border-b bg-background px-5 py-4 lg:max-h-[58%] lg:overflow-y-auto"
+    >
+      <div className="flex flex-col gap-1.5">
+        <p className="text-xs text-foreground/50">{focusPlaceMeta(site, rankedCount)}</p>
+        <p className="font-heading text-xl leading-snug tracking-tight break-words md:text-[1.35rem]">
+          {(site.name ?? site.code).trim()}. {focusClockCopy(site)}
+        </p>
+      </div>
 
       <ProtectiveChoice site={site} onPatchSite={onPatchSite} nextCount={nextCount} onOpenNext={onOpenNext} />
 
       {mayCall ? <CallApprove site={site} calls={calls} onUpsertCall={onUpsertCall} /> : null}
 
-      <details className="text-sm">
-        <summary className="cursor-pointer font-medium select-none">More about this place</summary>
-        <div className="mt-2 flex flex-col gap-1 text-current/80">
+      {facts ? <p className="text-xs text-foreground/50">{facts}</p> : null}
+
+      <details className="text-xs text-foreground/55">
+        <summary className="cursor-pointer select-none">More about this place</summary>
+        <div className="mt-2 flex flex-col gap-1">
+          {site.sourceUrl ? (
+            <p>
+              <a className="underline" href={site.sourceUrl} target="_blank" rel="noreferrer">
+                {site.attribution} · {site.sourceRecordId}
+              </a>
+              {site.capacitySourceUrl ? (
+                <>
+                  {" "}
+                  ·{" "}
+                  <a className="underline" href={site.capacitySourceUrl} target="_blank" rel="noreferrer">
+                    Capacity source
+                  </a>
+                </>
+              ) : null}
+            </p>
+          ) : null}
           {site.animals.map((animal) => (
             <p key={animal.species}>
               {animal.species}: {animal.confirmedCount ?? "—"} / {animal.registeredCapacity ?? "—"}
@@ -600,14 +538,14 @@ function CallApprove({
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-current/15 bg-background/70 p-3">
-      <h2 className="text-sm font-semibold tracking-wide uppercase">Call this place</h2>
-      {latest ? <p className="text-base font-medium">{callStatusForCoordinator(latest)}</p> : null}
+    <section className="flex flex-col gap-3 rounded-lg border border-foreground/10 bg-muted/30 p-3">
+      <h2 className="text-sm font-medium text-foreground/80">Call this place</h2>
+      {latest ? <p className="text-sm font-medium">{callStatusForCoordinator(latest)}</p> : null}
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor={fieldId} className="text-sm font-medium">
           Phone number
-          {phoneRequired ? <span className="text-red-800"> Required</span> : <span className="font-normal"> Optional</span>}
+          {phoneRequired ? <span className="text-red-800"> Required</span> : <span className="font-normal text-foreground/55"> Optional</span>}
         </label>
         <input
           id={fieldId}
@@ -624,7 +562,7 @@ function CallApprove({
             if (error) setError(null);
           }}
         />
-        <p id={`${fieldId}-hint`} className="text-sm text-current/70">
+        <p id={`${fieldId}-hint`} className="text-xs text-foreground/50">
           {site.phoneOnFile
             ? "A number is already on file. Leave this blank to use it, or type another. Spaces are fine."
             : "Type the number. Spaces and extra zeros are fine."}
@@ -649,7 +587,7 @@ function CallApprove({
           </Button>
           <button
             type="button"
-            className="min-h-11 text-sm underline underline-offset-4"
+            className="min-h-11 text-sm text-foreground/70 underline underline-offset-4"
             disabled={busy}
             onClick={() => post("request")}
           >
@@ -671,13 +609,6 @@ function CallApprove({
   );
 }
 
-function decisionGroups(tier: UrgencyTier): { heading: string; actions: ProtectiveAction[] }[] {
-  const stay = { heading: "No call", actions: ["monitor", "latent"] as ProtectiveAction[] };
-  const contact = { heading: "We can call them", actions: ["confine", "evacuate"] as ProtectiveAction[] };
-  if (tier === "late" || tier === "now") return [contact, stay];
-  return [stay, contact];
-}
-
 function ProtectiveChoice({
   site,
   onPatchSite,
@@ -692,7 +623,8 @@ function ProtectiveChoice({
   const [busy, setBusy] = useState<ProtectiveAction | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState<ProtectiveAction | null>(site.protectiveAction);
-  const tier = urgencyTier(site);
+  const saved = justSaved ?? site.protectiveAction;
+  const [moreOpen, setMoreOpen] = useState(saved === "monitor" || saved === "latent");
 
   async function choose(action: ProtectiveAction) {
     const previous = site.protectiveAction;
@@ -700,6 +632,7 @@ function ProtectiveChoice({
     setError(null);
     onPatchSite(site.id, { protectiveAction: action });
     setJustSaved(action);
+    if (action === "monitor" || action === "latent") setMoreOpen(true);
     try {
       const response = await fetch("/api/protective-action", {
         method: "POST",
@@ -722,22 +655,46 @@ function ProtectiveChoice({
     }
   }
 
-  const saved = justSaved ?? site.protectiveAction;
-
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex flex-col gap-0.5">
-        <h2 className="text-sm font-semibold tracking-wide uppercase">Your decision</h2>
-        <p className="text-sm">
-          Required. Pick one. This is not an order from ARCA — it is your choice.
-        </p>
+      <h2 className="text-lg font-semibold tracking-tight">What should they do?</h2>
+
+      <div className="grid grid-cols-2 gap-2">
+        {PRIMARY_ACTIONS.map((action) => {
+          const selected = site.protectiveAction === action;
+          const copy = actionUi[action];
+          return (
+            <button
+              key={action}
+              type="button"
+              disabled={busy !== null}
+              aria-pressed={selected}
+              onClick={() => choose(action)}
+              className={cn(
+                "flex min-h-16 min-w-0 items-center justify-center rounded-lg border px-2 text-center text-base font-semibold transition-colors sm:px-3 sm:text-lg",
+                selected
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-foreground/20 bg-background hover:bg-muted/70",
+              )}
+            >
+              {busy === action ? "Saving…" : copy.title}
+            </button>
+          );
+        })}
       </div>
 
-      {decisionGroups(tier).map((group) => (
-        <div key={group.heading} className="flex flex-col gap-2">
-          <p className="text-sm font-medium">{group.heading}</p>
-          <div className="flex flex-col gap-2">
-            {group.actions.map((action) => {
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((open) => !open)}
+          className="self-start text-xs text-foreground/50 hover:text-foreground/80"
+        >
+          More options
+        </button>
+        {moreOpen ? (
+          <div className="flex flex-col gap-1.5">
+            {SECONDARY_ACTIONS.map((action) => {
               const selected = site.protectiveAction === action;
               const copy = actionUi[action];
               return (
@@ -748,24 +705,20 @@ function ProtectiveChoice({
                   aria-pressed={selected}
                   onClick={() => choose(action)}
                   className={cn(
-                    "flex min-h-14 flex-col items-start gap-0.5 rounded-lg border px-3 py-3 text-left transition-colors",
+                    "flex min-h-10 items-center justify-between rounded-md border px-3 text-left text-sm transition-colors",
                     selected
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-current/20 bg-background/80 hover:bg-background",
+                      ? "border-foreground/40 bg-muted"
+                      : "border-foreground/10 text-foreground/70 hover:bg-muted/50",
                   )}
                 >
-                  <span className="text-base font-semibold">
-                    {busy === action ? "Saving…" : copy.title}
-                  </span>
-                  <span className={cn("text-sm", selected ? "text-background/80" : "text-current/75")}>
-                    {copy.hint}
-                  </span>
+                  <span>{busy === action ? "Saving…" : copy.title}</span>
+                  <span className="text-xs text-foreground/45">{copy.hint}</span>
                 </button>
               );
             })}
           </div>
-        </div>
-      ))}
+        ) : null}
+      </div>
 
       {error ? (
         <p className="rounded-md bg-red-100 px-3 py-2 text-sm font-medium text-red-900" role="alert">
@@ -774,8 +727,8 @@ function ProtectiveChoice({
       ) : null}
 
       {saved && !error ? (
-        <div className="flex flex-col gap-2 rounded-lg bg-background/80 px-3 py-3">
-          <p className="text-base font-medium">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-foreground/80">
             Saved: {actionUi[saved].title}.{" "}
             {actionUi[saved].unlocksCall
               ? "Next: prepare the call below."
@@ -783,22 +736,13 @@ function ProtectiveChoice({
           </p>
           {nextCount > 0 ? (
             <Button type="button" variant="outline" className="min-h-12 text-base" onClick={onOpenNext}>
-              Open the next place ({nextCount} left)
+              Next place
             </Button>
           ) : (
-            <p className="text-sm">No other urgent places are waiting on a decision.</p>
+            <p className="text-xs text-foreground/50">No other urgent places are waiting on a decision.</p>
           )}
         </div>
       ) : null}
     </section>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <p className="text-sm text-current/70">{label}</p>
-      <p className="text-xl font-semibold tracking-tight">{value}</p>
-    </div>
   );
 }
