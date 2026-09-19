@@ -1,4 +1,5 @@
 import { briefingChoices, formatCta } from "./coordinator-cta";
+import { corroborationCopy } from "./crosscheck";
 import { actionLabel } from "./protective-action";
 import { ensembleReachCopy, formatHours, spareTimeCopy } from "./ranking";
 import type { CommandState, RankedSite } from "./types";
@@ -22,8 +23,13 @@ function siteLine(site: RankedSite): string {
         ? "has transport / truck"
         : "no own truck";
 
+  // Rank 1 is not always the site with least spare time — a corroborated fire
+  // pins a site above the clock — so a pinned row says why it is where it is.
+  const agree = corroborationCopy(site);
+
   return [
     `${site.rank}. ${site.code} · ${site.kind} · ${site.municipality}`,
+    ...(agree ? [`   PINNED BY CROSS-CHECK: ${agree}`] : []),
     `   ${ensembleReachCopy(site.runsReach, site.ensembleMembers, site.tArrival)}`,
     `   Spare ${site.spareTime === null ? "—" : formatHours(site.spareTime)} · ${spareTimeCopy(site.spareTime)}`,
     `   ${animals || "no animals on file"} · ${truck}`,
@@ -50,7 +56,7 @@ export function formatCoordinatorBriefing(state: CommandState): string {
     "Formula ranks this list. You do not tap-rank it. LLM explains. One Approve covers the Voice retry plan (max 3). Do not ask for a second Approve to retry.",
     "Call the farm yourself, or request a call then tap Approve. Typing Call is not approval.",
     "",
-    "Ranked (likely + possible only; filter then spare time):",
+    "Ranked (likely + possible only; filter then spare time). A hotspot two feeds agree on pins its site above the clock — those rows say so:",
     ranked || "No likely or possible sites.",
     "",
     "Watch (below 3/10 — cannot win rank 1):",

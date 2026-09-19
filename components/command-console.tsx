@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { corroborationCopy } from "@/lib/crosscheck";
 import { confirmedCopy, freshnessLabel, formatClock, registeredCopy } from "@/lib/freshness";
 import {
   actionUi,
@@ -360,6 +361,14 @@ function SiteRow({
           <span className="mt-0.5 block truncate text-sm text-foreground/50">
             {siteKindLabel(site.kind)} · {site.municipality}
           </span>
+          {site.corroboration ? (
+            <span className="mt-1 flex flex-wrap items-center gap-1.5">
+              <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-red-900">
+                {site.corroboration.feeds.length} FEEDS AGREE
+              </span>
+              <span className="text-xs font-medium text-red-700">{corroborationCopy(site)}</span>
+            </span>
+          ) : null}
         </span>
         <span className="flex shrink-0 flex-col items-end gap-0.5">
           <span

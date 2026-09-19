@@ -129,7 +129,14 @@ export type HourPolygon = {
 };
 
 export type RankedSite = SiteInput & {
+  /** Display rank: position in the list the coordinator is looking at. */
   rank: number;
+  /**
+   * Rank by the clock alone — least spare time first — before the cross-check
+   * re-sort. Broadcast copy has to speak for the site that is actually running
+   * out of time, not for whichever site two satellites happen to agree about.
+   */
+  timeRank?: number;
   pReach: number;
   runsReach: number;
   ensembleMembers: number;
@@ -142,6 +149,8 @@ export type RankedSite = SiteInput & {
   protectiveAction: ProtectiveAction | null;
   /** True when a number is on file from env. The digits are never sent to the browser. */
   phoneOnFile?: boolean;
+  /** Set when two or more feeds see fire near this site. Null when only one does. */
+  corroboration?: SiteCorroboration | null;
 };
 
 export type RankedPartition = {
@@ -157,6 +166,60 @@ export type Hotspot = {
   clusterId: string | null;
   confidence: string | null;
   country: string | null;
+};
+
+/** Which feed saw a fire at a point. "deepfire" is the primary feed. */
+export type FireFeedId = "deepfire" | "firms" | "effis";
+
+/** A detection from a cross-check feed, normalised to the Deepfire hotspot shape. */
+export type FeedDetection = {
+  id: string;
+  feed: FireFeedId;
+  lat: number;
+  lon: number;
+  observedAt: string | null;
+  confidence: string | null;
+};
+
+/** A Deepfire hotspot after the cross-check pass. */
+export type CheckedHotspot = Hotspot & {
+  /** Feeds that saw fire at this point, "deepfire" always included. */
+  confirmedBy: FireFeedId[];
+  /** Distance to the nearest cross-feed detection, km. Null when nothing matched. */
+  matchKm: number | null;
+  /** Label of the static heat source this hotspot sits on, when it does. */
+  staticHeat: string | null;
+  /**
+   * True when the chimney mask was read in full. False means "no chimney found"
+   * could not be told apart from "the mask never loaded", so this hotspot is
+   * never promoted: an empty mask must not corroborate every flare in Catalonia.
+   */
+  maskReady: boolean;
+};
+
+/** A known persistent thermal anomaly — a chimney, a quarry, a glasshouse. */
+export type HeatSource = {
+  id: string;
+  label: string;
+  type: string | null;
+  remarks: string | null;
+  source: string | null;
+  year: number | null;
+  lat: number;
+  lon: number;
+  /**
+   * Outer ring per part: one for a Polygon, one each for a MultiPolygon. Every
+   * part masks, and every part is drawn.
+   */
+  rings: LonLat[][];
+};
+
+/** How many independent feeds see fire near one site. */
+export type SiteCorroboration = {
+  /** Feeds that saw fire within the match radius, "deepfire" first. */
+  feeds: FireFeedId[];
+  /** Distance from the site to that hotspot, km. */
+  km: number;
 };
 
 export type DataSourceStatus = {
@@ -185,7 +248,15 @@ export type CommandState = {
   watch: RankedSite[];
   /** From config/ranking-policy.json. Watch is fewer than this many reaching runs. */
   watchIfFewerThanRuns: number;
-  hotspots: Hotspot[];
+  hotspots: CheckedHotspot[];
+  heatSources: HeatSource[];
+  /**
+   * Cross-feed detections near a hotspot or a listed site. Drawn, never ranked
+   * on their own. Clipped before it leaves the server: the raw Catalonia box
+   * runs to thousands of pixels in fire season, and all of them were being
+   * serialised into the page and drawn as individual markers.
+   */
+  detections: FeedDetection[];
   sources: DataSourceStatus[];
   /** Notes that explain the demo. Safe to collapse. */
   banners: string[];
