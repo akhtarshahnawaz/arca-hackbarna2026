@@ -128,6 +128,8 @@ export type RankedSite = SiteInput & {
   protectiveAction: ProtectiveAction | null;
   /** True when a number is on file from env. The digits are never sent to the browser. */
   phoneOnFile?: boolean;
+  /** Set when two or more feeds see fire near this site. Null when only one does. */
+  corroboration?: SiteCorroboration | null;
 };
 
 export type RankedPartition = {
@@ -143,6 +145,52 @@ export type Hotspot = {
   clusterId: string | null;
   confidence: string | null;
   country: string | null;
+};
+
+/** Which feed saw a fire at a point. "deepfire" is the primary feed. */
+export type FireFeedId = "deepfire" | "firms" | "effis";
+
+/** A detection from a cross-check feed, normalised to the Deepfire hotspot shape. */
+export type FeedDetection = {
+  id: string;
+  feed: FireFeedId;
+  lat: number;
+  lon: number;
+  observedAt: string | null;
+  confidence: string | null;
+};
+
+/** A Deepfire hotspot after the cross-check pass. */
+export type CheckedHotspot = Hotspot & {
+  /** Feeds that saw fire at this point, "deepfire" always included. */
+  confirmedBy: FireFeedId[];
+  /** Distance to the nearest cross-feed detection, km. Null when nothing matched. */
+  matchKm: number | null;
+  /** Remarks of the static heat source this hotspot sits on, when it does. */
+  staticHeat: string | null;
+};
+
+/** A known persistent thermal anomaly — a chimney, a quarry, a glasshouse. */
+export type HeatSource = {
+  id: string;
+  label: string;
+  type: string | null;
+  remarks: string | null;
+  source: string | null;
+  year: number | null;
+  lat: number;
+  lon: number;
+  ring: LonLat[];
+};
+
+/** How many independent feeds see fire near one site. */
+export type SiteCorroboration = {
+  /** Feeds that saw fire within the match radius, "deepfire" first. */
+  feeds: FireFeedId[];
+  /** Distance from the site to that hotspot, km. */
+  km: number;
+  /** Set when the corroborating hotspot sits on a known static heat source. */
+  staticHeat: string | null;
 };
 
 export type DataSourceStatus = {
@@ -171,7 +219,10 @@ export type CommandState = {
   watch: RankedSite[];
   /** From config/ranking-policy.json. Watch is fewer than this many reaching runs. */
   watchIfFewerThanRuns: number;
-  hotspots: Hotspot[];
+  hotspots: CheckedHotspot[];
+  heatSources: HeatSource[];
+  /** Cross-feed detections that are not Deepfire hotspots. Drawn, never ranked on their own. */
+  detections: FeedDetection[];
   sources: DataSourceStatus[];
   /** Notes that explain the demo. Safe to collapse. */
   banners: string[];

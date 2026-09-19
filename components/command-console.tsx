@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { corroborationCopy } from "@/lib/crosscheck";
 import { confirmedCopy, freshnessLabel, formatClock, registeredCopy } from "@/lib/freshness";
 import {
   arcaMayCall,
@@ -357,6 +358,14 @@ function SiteRow({
           <span className="mt-1 block text-xs text-muted-foreground">
             {site.municipality} · {urgencyRowCopy(site)}
           </span>
+          {site.corroboration ? (
+            <span className="mt-1 flex flex-wrap items-center gap-1.5">
+              <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-red-900">
+                {site.corroboration.feeds.length} FEEDS AGREE
+              </span>
+              <span className="text-xs font-medium text-red-700">{corroborationCopy(site)}</span>
+            </span>
+          ) : null}
         </span>
         <span className="flex shrink-0 flex-col items-end gap-1">
           <span

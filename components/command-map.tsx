@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { LatLngBoundsExpression, LatLngTuple } from "leaflet";
 import { CircleMarker, MapContainer, Polygon, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { feedLabel } from "@/lib/crosscheck";
 import { siteKindMarkerColor } from "@/lib/site-kind";
 import type { CommandState, RankedSite, SiteKind } from "@/lib/types";
 import "leaflet/dist/leaflet.css";
@@ -141,6 +142,11 @@ const PALETTES = {
     hotspotWeight: 1,
     shelterStroke: "#3f6212",
     shelterFill: "#84cc16",
+    confirmStroke: "#dc2626",
+    detectionStroke: "#9a3412",
+    detectionFill: "#fdba74",
+    heatStroke: "rgba(87, 83, 78, 0.8)",
+    heatFill: "rgba(120, 113, 108, 0.25)",
   },
   satellite: {
     ringAlphaBase: 0.22,
@@ -152,6 +158,11 @@ const PALETTES = {
     hotspotWeight: 1.5,
     shelterStroke: "#1a2e05",
     shelterFill: "#bef264",
+    confirmStroke: "#fef08a",
+    detectionStroke: "#fed7aa",
+    detectionFill: "#f97316",
+    heatStroke: "rgba(226, 232, 240, 0.9)",
+    heatFill: "rgba(148, 163, 184, 0.3)",
   },
 } as const;
 
@@ -236,24 +247,69 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
             </Tooltip>
           </Polygon>
         ))}
-        {state.hotspots.map((spot) => (
-          <CircleMarker
-            key={spot.id}
-            center={[spot.lat, spot.lon]}
-            radius={5}
+        {(state.heatSources ?? []).map((heat) => (
+          <Polygon
+            key={heat.id}
+            positions={heat.ring.map(([lon, lat]) => [lat, lon])}
             pathOptions={{
-              color: palette.hotspotStroke,
-              weight: palette.hotspotWeight,
-              fillColor: palette.hotspotFill,
-              fillOpacity: 0.9,
+              color: palette.heatStroke,
+              weight: 1,
+              dashArray: "3 3",
+              fillColor: palette.heatFill,
+              fillOpacity: 1,
+            }}
+          >
+            <Tooltip sticky>
+              Static heat source · {heat.label}
+              {heat.year ? ` · mapped ${heat.year}` : ""}
+            </Tooltip>
+          </Polygon>
+        ))}
+        {(state.detections ?? []).map((detection) => (
+          <CircleMarker
+            key={detection.id}
+            center={[detection.lat, detection.lon]}
+            radius={3}
+            pathOptions={{
+              color: palette.detectionStroke,
+              weight: 1,
+              fillColor: palette.detectionFill,
+              fillOpacity: 0.85,
             }}
           >
             <Tooltip>
-              Live hotspot
-              {spot.observedAt ? ` · ${spot.observedAt}` : ""}
+              {feedLabel[detection.feed]} detection
+              {detection.observedAt ? ` · ${detection.observedAt}` : ""}
             </Tooltip>
           </CircleMarker>
         ))}
+        {state.hotspots.map((spot) => {
+          const agreed = spot.confirmedBy.length > 1 && !spot.staticHeat;
+          const chimney = spot.staticHeat !== null;
+          return (
+            <CircleMarker
+              key={spot.id}
+              center={[spot.lat, spot.lon]}
+              radius={agreed ? 8 : 5}
+              pathOptions={{
+                color: agreed ? palette.confirmStroke : palette.hotspotStroke,
+                weight: agreed ? 2.5 : palette.hotspotWeight,
+                fillColor: palette.hotspotFill,
+                fillOpacity: chimney ? 0.35 : 0.9,
+                dashArray: chimney ? "2 3" : undefined,
+              }}
+            >
+              <Tooltip>
+                {agreed
+                  ? `Confirmed by ${spot.confirmedBy.map((feed) => feedLabel[feed]).join(" + ")}`
+                  : "Deepfire hotspot only"}
+                {spot.matchKm !== null ? ` · ${spot.matchKm} km apart` : ""}
+                {chimney ? ` · on static heat source (${spot.staticHeat})` : ""}
+                {spot.observedAt ? ` · ${spot.observedAt}` : ""}
+              </Tooltip>
+            </CircleMarker>
+          );
+        })}
         {(state.shelters ?? []).map((shelter) => (
           <CircleMarker
             key={shelter.id}

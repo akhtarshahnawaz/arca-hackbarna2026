@@ -104,7 +104,10 @@ You do **not** need `mastra:dev` just to open the coordinator UI at `:3000`. You
 
 Needed for a full local demo:
 
-- `DEEPFIRE_CLIENT_ID` / `DEEPFIRE_CLIENT_SECRET` — live hotspots; UI stays on demo polygons if this fails
+- `DEEPFIRE_CLIENT_ID` / `DEEPFIRE_CLIENT_SECRET` — live hotspots and the static heat-source mask; UI stays on demo polygons if this fails
+- `FIRMS_MAP_KEY` — NASA FIRMS cross-check. Free and instant: <https://firms.modaps.eosdis.nasa.gov/api/map_key/>. Unset means single-source hotspots and a visible alert. Optional: `FIRMS_SENSORS` (default `VIIRS_NOAA20_NRT,VIIRS_SNPP_NRT`), `FIRMS_DAY_RANGE` (default `1`)
+- `EFFIS_GEOJSON_URL` — optional third feed. Any GeoJSON point layer of active fires. Copernicus EFFIS serves its current-situation layer from `maps.effis.emergency.copernicus.eu`, which is not reachable from every network, so this is configuration rather than a constant
+- Cross-check tuning: `CROSSCHECK_MATCH_KM` (3), `CROSSCHECK_MATCH_HOURS` (24), `CROSSCHECK_SITE_KM` (12)
 - `NEBIUS_API_KEY` — Mastra explainer
 - `TELEGRAM_BOT_TOKEN` — BotFather token. Local delivery is **polling**, not a webhook
 - `COORDINATOR_TELEGRAM_CHAT_ID` / `TELEGRAM_BACKUP_CHAT_ID` — escalate nudges. Chat id after `/start`, not a mobile number
@@ -118,6 +121,7 @@ Vonage cannot hit localhost. Set `VONAGE_VOICE_WEBHOOK_URL` to an ngrok or deplo
 
 ```bash
 npm run demo:reset   # wipe leftover Confine/Evacuate and pending calls; keep Galtea traces and archived transcripts
+npm run firms:ping   # check the cross-check key and see today's detections in the Catalonia box
 ```
 
 Sunday setup: (1) `COORDINATOR_TELEGRAM_CHAT_ID` after the coordinator messages the bot, (2) a public HTTPS URL for Vonage, (3) a mobile hotspot backup.
@@ -131,7 +135,8 @@ OSM ──────┤     Mastra agent (Nebius) + Telegram
 Residents ┘     LibSQL: coordinators, residents, reported counts, simulation ids
 ```
 
-- **Deepfire** — token + Catalonia hotspots. Hour rings on the map are a labelled DEMO ensemble.
+- **Deepfire** — token + Catalonia hotspots + the static heat-source mask (`deepfire:static-heat-sources`). Hour rings on the map are a labelled DEMO ensemble.
+- **NASA FIRMS** — second opinion on every hotspot. Google Maps has no public fire-alerts API and MITECO publishes statistics (EGIF), not a live active-fire endpoint; FIRMS is the machine-readable feed both of those products rest on.
 - **Livestock registry** — `7bpt-5azk`. Capacity ≠ animals present.
 - **OSM** — care-home seed only. Not the pet-evac list.
 - **Pet shelters** — `config/shelters.json`. Edit the file. Labelled in the UI as configured by the coordinator.
@@ -148,6 +153,8 @@ Filter first, then rank. The AI explains. The formula ranks.
 1. **Main list:** likely (`p_reach ≥ 0.7`) and possible (`0.3–0.7`).
 2. **Watch:** below 3/10. Never competes for rank 1.
 3. Sort main list by `spare_time` ascending, then `p_reach` descending.
+4. **Cross-check overrides the clock.** A hotspot that two independent feeds see within `CROSSCHECK_MATCH_KM` and `CROSSCHECK_MATCH_HOURS` is corroborated. Sites within `CROSSCHECK_SITE_KM` of one are pinned above the rest, most agreeing feeds first; inside a level the spare-time order is unchanged.
+5. A hotspot sitting on a known static heat source — a quarry, a kiln, a glasshouse — is drawn dashed and **never** corroborates a site. Two satellites agreeing about a chimney is still a chimney.
 
 Ensemble language only: “in 7 of 10 runs, fire reaches within 3 h”.
 

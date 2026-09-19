@@ -1,7 +1,9 @@
 import evacConfig from "../config/evac-times.json";
 import { applyReportedConfirmations } from "./confirmations";
 import { demoPolygons, demoSites } from "./demo-data";
-import { fetchDeepfireHotspots } from "./deepfire";
+import { checkHotspots, corroborateSites, sortByCorroboration } from "./crosscheck";
+import { fetchDeepfireHotspots, fetchStaticHeatSources } from "./deepfire";
+import { fetchEffisDetections, fetchFirmsDetections } from "./fire-feeds";
 import { ensureArcaSchema, listLatestConfirmations, listProtectiveActions, listRememberedSimulations } from "./db";
 import { rankSites } from "./ranking";
 import { fetchRegistryFarms } from "./registry";
@@ -39,10 +41,19 @@ export async function getCommandState(): Promise<CommandState> {
     alerts.push(`ARCA LibSQL could not open (${message}). Rankings still run in memory.`);
   }
 
-  const [deepfire, registry] = await Promise.all([
+  const [deepfire, registry, heat, firms, effis] = await Promise.all([
     fetchDeepfireHotspots(),
     fetchRegistryFarms(),
+    fetchStaticHeatSources(),
+    fetchFirmsDetections(),
+    fetchEffisDetections(),
   ]);
+
+  // Cross-check: a hotspot two independent feeds agree on outranks the clock.
+  const detections = [...firms.detections, ...effis.detections];
+  const hotspots = checkHotspots(deepfire.hotspots, detections, heat.heatSources);
+  const agreed = hotspots.filter((spot) => spot.confirmedBy.length > 1 && !spot.staticHeat);
+  const onChimney = hotspots.filter((spot) => spot.staticHeat !== null);
 
   const seeded = demoSites();
   const extra = registry.sites.filter(
@@ -99,6 +110,19 @@ export async function getCommandState(): Promise<CommandState> {
 
   if (!deepfire.ok) alerts.push(deepfire.detail);
   if (!registry.ok) alerts.push(registry.detail);
+  if (!heat.ok) alerts.push(heat.detail);
+  if (!firms.ok) alerts.push(firms.detail);
+  if (!effis.ok && process.env.EFFIS_GEOJSON_URL) alerts.push(effis.detail);
+  if (agreed.length > 0) {
+    banners.push(
+      `Cross-check: ${agreed.length} hotspot${agreed.length === 1 ? "" : "s"} seen by two feeds. Sites near one are pinned to the top of the list.`,
+    );
+  }
+  if (onChimney.length > 0) {
+    banners.push(
+      `${onChimney.length} hotspot${onChimney.length === 1 ? " sits" : "s sit"} on a known static heat source. Drawn, never promoted.`,
+    );
+  }
 
   return {
     generatedAt,
@@ -113,8 +137,8 @@ export async function getCommandState(): Promise<CommandState> {
       polygons,
       displayMember: 4,
     },
-    sites: withChoice(ranked),
-    watch: withChoice(watch),
+    sites: rerank(sortByCorroboration(corroborateSites(withChoice(ranked), hotspots))),
+    watch: sortByCorroboration(corroborateSites(withChoice(watch), hotspots)),
     watchIfFewerThanRuns: loadRankingPolicy().watchIfFewerThanRuns,
     sources: [
       {
@@ -124,6 +148,24 @@ export async function getCommandState(): Promise<CommandState> {
         detail: deepfire.detail,
         fetchedAt: deepfire.fetchedAt,
         ok: deepfire.ok,
+      },
+      {
+        id: "firms",
+        label: "NASA FIRMS cross-check",
+        kind: firms.ok ? "live" : "maybe_old",
+        detail: firms.detail,
+        fetchedAt: firms.fetchedAt,
+        ok: firms.ok,
+      },
+      {
+        id: "static-heat",
+        label: "Static heat sources",
+        kind: heat.ok ? "maybe_old" : "demo",
+        detail: heat.ok
+          ? `${heat.detail} Mask is a 2016 survey, not a live layer.`
+          : heat.detail,
+        fetchedAt: heat.fetchedAt,
+        ok: heat.ok,
       },
       {
         id: "spread",
@@ -173,13 +215,20 @@ export async function getCommandState(): Promise<CommandState> {
     ],
     banners,
     alerts,
-    hotspots: deepfire.hotspots,
+    hotspots,
+    heatSources: heat.heatSources,
+    detections,
     shelters: shelterConfig.shelters,
     shelterLabel: shelterConfig.label,
     voice,
     voiceCalls: await listVoiceSummaries(),
     contactPolicy: contactPolicyPublic(),
   };
+}
+
+/** Renumbers a list after the cross-check re-sort so rank 1 is the top row again. */
+function rerank<T extends { rank: number }>(rows: T[]): T[] {
+  return rows.map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
 function codesOverlap(a: SiteInput, b: SiteInput) {
