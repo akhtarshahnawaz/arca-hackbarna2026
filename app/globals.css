@@ -129,9 +129,17 @@
   }
 }
 
-.arca-map {
+/* Leaflet's own `.leaflet-container` sets `background: #ddd` and loads after this
+   sheet, so the basemap ground needs the extra class to win. */
+.arca-map.leaflet-container {
   background: oklch(0.96 0.004 85);
   font: inherit;
+}
+
+/* Imagery tiles are dark. A light ground flashes white in the gaps while tiles
+   load or during a fast pan. */
+[data-basemap="satellite"] .arca-map.leaflet-container {
+  background: oklch(0.24 0.012 145);
 }
 
 .arca-map .leaflet-pane,
