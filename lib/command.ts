@@ -1,7 +1,8 @@
 import evacConfig from "@/config/evac-times.json";
+import { applyReportedConfirmations } from "@/lib/confirmations";
 import { demoPolygons, demoSites } from "@/lib/demo-data";
 import { fetchDeepfireHotspots } from "@/lib/deepfire";
-import { ensureArcaSchema, listRememberedSimulations } from "@/lib/db";
+import { ensureArcaSchema, listLatestConfirmations, listRememberedSimulations } from "@/lib/db";
 import { rankSites } from "@/lib/ranking";
 import { fetchRegistryFarms } from "@/lib/registry";
 import type { CommandState, EvacConfig, SiteInput } from "@/lib/types";
@@ -12,7 +13,8 @@ export async function getCommandState(): Promise<CommandState> {
   const generatedAt = new Date().toISOString();
   const demoClusterId = process.env.DEMO_CLUSTER_ID?.trim() || "";
   const banners: string[] = [
-    "Hour polygons are DEMO — an ensemble built for the Bages briefing, not a live Deepfire spread.",
+    "Hour polygons are DEMO — an ensemble built for the Bages / Font-rubí briefing, not a live Deepfire spread.",
+    "ARCA does not place calls. The coordinator phones the site, then logs counts as reported — not verified.",
   ];
 
   try {
@@ -31,7 +33,13 @@ export async function getCommandState(): Promise<CommandState> {
   const extra = registry.sites.filter(
     (farm) => !seeded.some((site) => codesOverlap(site, farm)),
   );
-  const sites: SiteInput[] = [...seeded, ...extra];
+  let confirmations: Awaited<ReturnType<typeof listLatestConfirmations>> = [];
+  try {
+    confirmations = await listLatestConfirmations();
+  } catch {
+    // Schema already reported if the file could not open.
+  }
+  const sites: SiteInput[] = applyReportedConfirmations([...seeded, ...extra], confirmations);
   const polygons = demoPolygons();
   const { ranked, watch } = rankSites(sites, polygons, {
     ensembleMembers: config.ensembleMembers,
@@ -114,7 +122,7 @@ export async function getCommandState(): Promise<CommandState> {
         id: "residents",
         label: "Residents",
         kind: "live",
-        detail: "Opt-in household codes only. No names or phones stored in this briefing.",
+        detail: "Opt-in household codes only. Telegram alerts wait for coordinator Approve. No names or phones in this briefing.",
         fetchedAt: generatedAt,
         ok: true,
       },

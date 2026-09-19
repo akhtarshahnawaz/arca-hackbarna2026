@@ -10,11 +10,11 @@ Workspace `/Users/demianneo/Downloads/hackbarna` was empty. Handoff files live i
 | Livestock `7bpt-5azk` | **PUBLIC** | SODA counts only. Parse DMS + `coor_x`/`coor_y`. Do **not** geocode 27k farms. Capacity ≠ headcount. |
 | OSM Overpass | **PUBLIC** | Query hospitals / schools / care homes / animal shelters. No key. |
 | Nebius | **MISSING KEY** | Booth/console: OpenAI-compatible key + free credits. |
-| Telegram | **MISSING KEY** | `@BotFather` → `/newbot` → token. |
-| Mastra | **BLOCKED** (process) | Gitignore `.env.local` **first**, then make the app repo public. |
-| Vonage | **MISSING KEY** | Redeem credits code `26BHCK20` at the booth. |
-| SLNG | **SKIP** (stretch later today) | Voice API booth if we still have time. |
-| Galtea / Norma | **SKIP** (Sunday) | Code-governance check, not a P0 data source. |
+| Telegram | **WIRED** (polling) | Token in ignored `.env.local` as `TELEGRAM_BOT_TOKEN` only. No webhook required for `mastra:dev`. |
+| Mastra | **IN REPO** | `nvm use 22 && npm run mastra:dev` → Studio :4111. |
+| Vonage / video | **SKIP** | Product decision: coordinator places the call. Do not chase Video API. |
+| SLNG | **SKIP** | No voice pipeline. |
+| Galtea / Norma | **SUNDAY** | CLI / MCP documented in README. Do not fake a scan today. |
 | WeatherNext / local ELMFIRE / MTG raw / Pyro-SDIS | **SKIP** | Pyro-SDIS is a public HF **training image** set, not live cameras. |
 
 ## Registry completeness (`7bpt-5azk`, queried 2026-09-19)

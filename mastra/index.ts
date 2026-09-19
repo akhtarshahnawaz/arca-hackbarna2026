@@ -5,14 +5,26 @@ import { LibSQLStore } from '@mastra/libsql';
 import { DuckDBStore } from "@mastra/duckdb";
 import { MastraCompositeStore } from '@mastra/core/storage';
 import { Observability, MastraStorageExporter, MastraPlatformExporter, SensitiveDataFilter } from '@mastra/observability';
+import { TelegramProvider } from '@mastra/telegram';
 import { weatherWorkflow } from './workflows/weather-workflow';
 import { arcaAgent } from './agents/arca-agent';
 import { weatherAgent } from './agents/weather-agent';
+import { connectTelegramIfConfigured } from './telegram';
 
+export const telegram = new TelegramProvider({
+  mode: 'polling',
+  toolDisplay: 'cards',
+  commands: [
+    { command: 'start', description: 'Who ARCA is and who you are talking to' },
+    { command: 'briefing', description: 'Demo fire, simulation, ranked call list' },
+    { command: 'help', description: 'Coordinator vs resident commands' },
+  ],
+});
 
 export const mastra = new Mastra({
   workflows: { weatherWorkflow },
   agents: { arcaAgent, weatherAgent },
+  channels: { telegram },
   storage: new MastraCompositeStore({
     id: 'composite-storage',
     default: new LibSQLStore({
@@ -45,3 +57,5 @@ export const mastra = new Mastra({
     },
   }),
 });
+
+await connectTelegramIfConfigured(telegram);

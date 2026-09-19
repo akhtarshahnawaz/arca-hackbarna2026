@@ -6,6 +6,8 @@ export type ReachLabel = "likely" | "possible" | "watch";
 
 export type FreshnessKind = "live" | "maybe_old" | "demo";
 
+export type ConfirmationStatus = "reported" | "verified";
+
 export type SpeciesCount = {
   species: string;
   registeredCapacity: number | null;
@@ -22,6 +24,7 @@ export type SiteInput = {
   animals: SpeciesCount[];
   hasOwnTransport: boolean | null;
   confirmedAt: string | null;
+  confirmationStatus?: ConfirmationStatus | null;
   capacityUpdatedAt: string | null;
   source: "registry" | "resident" | "osm" | "demo";
   shelterHint: string;
