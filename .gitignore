@@ -42,6 +42,9 @@ mastra.db-*
 # ARCA LibSQL / SQLite
 arca.db
 arca.db-*
+
+# Generated SLNG / Vonage audio (not secrets, but binary noise)
+.arca-audio/
 mastra/public/*.db
 mastra/public/*.db-*
 mastra/public/*.duckdb

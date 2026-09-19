@@ -5,17 +5,24 @@ import { fetchDeepfireHotspots } from "@/lib/deepfire";
 import { ensureArcaSchema, listLatestConfirmations, listRememberedSimulations } from "@/lib/db";
 import { rankSites } from "@/lib/ranking";
 import { fetchRegistryFarms } from "@/lib/registry";
+import { applyConfiguredShelters, loadShelterConfig, shelterSourceDetail } from "@/lib/shelters";
 import type { CommandState, EvacConfig, SiteInput } from "@/lib/types";
+import { listVoiceSummaries } from "@/lib/voice-calls";
+import { getVoiceStatus } from "@/lib/voice-status";
 
 const config = evacConfig as EvacConfig;
 
 export async function getCommandState(): Promise<CommandState> {
   const generatedAt = new Date().toISOString();
   const demoClusterId = process.env.DEMO_CLUSTER_ID?.trim() || "";
+  const voice = getVoiceStatus();
+  const shelterConfig = loadShelterConfig();
   const banners: string[] = [
     "Hour polygons are DEMO — an ensemble built for the Bages / Font-rubí briefing, not a live Deepfire spread.",
-    "ARCA does not place calls. The coordinator phones the site, then logs counts as reported — not verified.",
+    "Formula ranks automatically. LLM explains. Human Approves any outbound contact — Telegram or Voice.",
+    "Coordinator can still call themselves. ARCA may place a Vonage Voice call only after Approve.",
   ];
+  if (voice.banner) banners.push(voice.banner);
 
   try {
     await ensureArcaSchema();
@@ -39,7 +46,10 @@ export async function getCommandState(): Promise<CommandState> {
   } catch {
     // Schema already reported if the file could not open.
   }
-  const sites: SiteInput[] = applyReportedConfirmations([...seeded, ...extra], confirmations);
+  const sites: SiteInput[] = applyConfiguredShelters(
+    applyReportedConfirmations([...seeded, ...extra], confirmations),
+    shelterConfig,
+  );
   const polygons = demoPolygons();
   const { ranked, watch } = rankSites(sites, polygons, {
     ensembleMembers: config.ensembleMembers,
@@ -112,10 +122,18 @@ export async function getCommandState(): Promise<CommandState> {
       },
       {
         id: "osm",
-        label: "OSM / facilities",
+        label: "OSM / care homes",
         kind: "maybe_old",
-        detail: "Care home and shelter hints are curated for the demo. Overpass wiring comes later.",
+        detail: "Care home seed only. OSM protectoras are not the pet-evac list.",
         fetchedAt: null,
+        ok: true,
+      },
+      {
+        id: "shelters",
+        label: "Pet shelters",
+        kind: "demo",
+        detail: shelterSourceDetail(shelterConfig),
+        fetchedAt: generatedAt,
         ok: true,
       },
       {
@@ -129,6 +147,10 @@ export async function getCommandState(): Promise<CommandState> {
     ],
     banners,
     hotspots: deepfire.hotspots,
+    shelters: shelterConfig.shelters,
+    shelterLabel: shelterConfig.label,
+    voice,
+    voiceCalls: await listVoiceSummaries(),
   };
 }
 

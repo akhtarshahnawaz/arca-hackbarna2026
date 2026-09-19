@@ -9,12 +9,16 @@ import {
   saveReportedConfirmation,
   upsertResident,
 } from "../../lib/db";
+import { structurePhoneReport } from "../../lib/nebius-parse";
 import { ensembleReachCopy } from "../../lib/ranking";
+import { transcribeAudio } from "../../lib/slng";
 import {
   backupChatId,
   coordinatorChatId,
+  downloadTelegramFile,
   sendTelegramMessage,
 } from "../../lib/telegram";
+import { approveSiteCall, requestSiteCall, sendApprovedTelegramVoice } from "../../lib/voice-calls";
 
 export const getBriefingTool = createTool({
   id: "get-briefing",
@@ -186,6 +190,11 @@ export const alertResidentsTool = createTool({
     const deliveries = [];
     for (const resident of residents) {
       deliveries.push(await sendTelegramMessage(resident.telegramId, body));
+      await sendApprovedTelegramVoice({
+        chatId: resident.telegramId,
+        town: state.fire.municipality,
+        extra: fireWindow,
+      });
     }
 
     return {
@@ -242,6 +251,77 @@ export const escalateCoordinatorTool = createTool({
         targets.length === 0
           ? "No COORDINATOR_TELEGRAM_CHAT_ID / TELEGRAM_BACKUP_CHAT_ID. Post this nudge in the current chat. Still do not alert residents."
           : "Nudge sent. Residents were not messaged.",
+    };
+  },
+});
+
+export const callSiteTool = createTool({
+  id: "call-site",
+  description:
+    "Place a Vonage Voice call to a site. requireApproval is on: execute only after the coordinator Approves. First sentence always names ARCA. Never auto-retry an empty hangup. One retry only if they Approve again.",
+  requireApproval: true,
+  inputSchema: z.object({
+    siteId: z.string().describe("Site code such as REGA-B-1842"),
+    toNumber: z
+      .string()
+      .describe("E.164 number the coordinator typed. Not stored in seed data."),
+    town: z.string().optional().describe("Town name spoken in the ARCA transparency line"),
+    retryEmpty: z
+      .boolean()
+      .optional()
+      .describe("True only when this is the single re-Approve after an empty hangup"),
+  }),
+  execute: async (input) => {
+    const requested = await requestSiteCall({
+      siteId: input.siteId,
+      toNumber: input.toNumber,
+    });
+    const placed = await approveSiteCall({
+      callId: requested.call.id,
+      town: input.town,
+      retry: input.retryEmpty === true,
+    });
+    return {
+      requireApproval: true,
+      call: placed.call,
+      stub: placed.stub,
+      detail: placed.detail,
+      policy:
+        "ARCA may place this Voice call only because a human Approved. Coordinator can still dial themselves. Empty 3s hangup is flagged, not looped.",
+    };
+  },
+});
+
+export const transcribeVoiceNoteTool = createTool({
+  id: "transcribe-voice-note",
+  description:
+    "Telegram voice-note path when there is no phone. STT via SLNG, then Nebius structures the last-corrected count. Optional siteId saves it as reported, not verified.",
+  inputSchema: z.object({
+    fileId: z.string().describe("Telegram file_id of the voice note"),
+    siteId: z.string().optional(),
+  }),
+  execute: async (input) => {
+    const bytes = await downloadTelegramFile(input.fileId);
+    if (!bytes) {
+      return { ok: false, detail: "Could not download the Telegram voice note." };
+    }
+    const stt = await transcribeAudio({ bytes, mimeType: "audio/ogg" });
+    const report = await structurePhoneReport(stt.transcript);
+    if (input.siteId && report.species && report.count !== null) {
+      await saveReportedConfirmation({
+        siteId: input.siteId,
+        species: report.species,
+        count: report.count,
+        hasTransport: report.truck,
+        channel: "telegram",
+      });
+    }
+    return {
+      ok: true,
+      transcript: stt.transcript,
+      report,
+      fallback: stt.fallback,
+      note: "Reported, not verified, if a siteId was given.",
     };
   },
 });

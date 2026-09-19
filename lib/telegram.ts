@@ -87,3 +87,53 @@ export function coordinatorChatId(): string | null {
 export function backupChatId(): string | null {
   return process.env.TELEGRAM_BACKUP_CHAT_ID?.trim() || null;
 }
+
+export async function sendTelegramVoice(
+  chatId: string,
+  bytes: Buffer,
+  caption: string,
+): Promise<TelegramSendResult> {
+  const url = botApiUrl("sendVoice");
+  if (!url) {
+    return { ok: false, chatId, detail: "TELEGRAM_BOT_TOKEN is unset" };
+  }
+
+  const form = new FormData();
+  form.append("chat_id", chatId);
+  form.append("caption", caption.slice(0, 1024));
+  form.append("voice", new Blob([new Uint8Array(bytes)], { type: "audio/mpeg" }), "arca.mp3");
+
+  const response = await fetch(url, { method: "POST", body: form });
+  const json = (await response.json().catch(() => null)) as
+    | { ok?: boolean; description?: string }
+    | null;
+
+  if (!response.ok || !json?.ok) {
+    return {
+      ok: false,
+      chatId,
+      detail: json?.description || `Telegram sendVoice failed (${response.status})`,
+    };
+  }
+  return { ok: true, chatId, detail: "voice sent" };
+}
+
+export async function downloadTelegramFile(fileId: string): Promise<Buffer | null> {
+  const getUrl = botApiUrl("getFile");
+  if (!getUrl) return null;
+  const meta = await fetch(getUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ file_id: fileId }),
+  });
+  const json = (await meta.json().catch(() => null)) as {
+    ok?: boolean;
+    result?: { file_path?: string };
+  } | null;
+  const filePath = json?.result?.file_path;
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  if (!json?.ok || !filePath || !token) return null;
+  const file = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
+  if (!file.ok) return null;
+  return Buffer.from(await file.arrayBuffer());
+}

@@ -59,7 +59,7 @@ export function CommandConsole({ initial }: Props) {
             </p>
             <h1 className="font-heading text-3xl tracking-tight">ARCA</h1>
             <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Deepfire tells us where the fire may go. ARCA tells us who may be in danger and who needs help first.
+              Deepfire tells us where the fire may go. ARCA tells us who needs help first.
             </p>
           </div>
           <div className="flex flex-col items-start gap-1 md:items-end">
@@ -100,7 +100,7 @@ export function CommandConsole({ initial }: Props) {
                 Ranked sites
               </p>
               <p className="text-sm text-muted-foreground">
-                Likely and possible only. Spare time, then reach. Formula, not a model.
+                Formula ranks this list. LLM explains. You Approve contact. Not tap-rank.
               </p>
             </div>
             <span className="font-mono text-xs text-muted-foreground">{state.sites.length}</span>

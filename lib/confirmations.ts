@@ -1,4 +1,4 @@
-import type { ConfirmationStatus, SiteInput } from "./types";
+import type { ConfirmationChannel, ConfirmationStatus, SiteInput } from "./types";
 
 export type ReportedConfirmation = {
   siteId: string;
@@ -7,6 +7,7 @@ export type ReportedConfirmation = {
   hasTransport: boolean | null;
   reportedAt: string;
   source: ConfirmationStatus;
+  channel?: ConfirmationChannel | null;
 };
 
 export function speciesMatch(a: string, b: string): boolean {
@@ -66,6 +67,7 @@ export function applyReportedConfirmations(
       hasOwnTransport: transportRow ? transportRow.hasTransport : site.hasOwnTransport,
       confirmedAt: latestRow.reportedAt,
       confirmationStatus: status,
+      confirmationChannel: latestRow.channel ?? site.confirmationChannel ?? null,
     };
   });
 }

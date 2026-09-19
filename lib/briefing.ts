@@ -25,7 +25,7 @@ function siteLine(site: RankedSite): string {
     `   ${ensembleReachCopy(site.runsReach, site.ensembleMembers, site.tArrival)}`,
     `   Spare ${site.spareTime === null ? "—" : formatHours(site.spareTime)} · ${spareTimeCopy(site.spareTime)}`,
     `   ${animals || "no animals on file"} · ${truck}`,
-    `   Call this site yourself. Shelter: ${site.shelterHint}`,
+    `   Call yourself, or Approve so ARCA places the Voice call. Shelter (coordinator config, not OSM): ${site.shelterHint}`,
   ].join("\n");
 }
 
@@ -43,7 +43,8 @@ export function formatCoordinatorBriefing(state: CommandState): string {
     "Alert: Font-rubí / demo fire",
     `${state.fire.name} · ${state.fire.municipality}`,
     `Simulation: ${state.fire.mode.toUpperCase()} ensemble, ${state.fire.ensembleMembers} members, ${state.fire.horizonHours} h horizon. Hour polygons on the map are DEMO — not a live Deepfire perimeter.`,
-    "ARCA does not place calls. You call first, in this order, and say why.",
+    "Formula ranks this list. You do not tap-rank it. LLM explains. Approve any outbound contact.",
+    "Call the farm yourself, or tap Call then Approve so ARCA places a Vonage Voice call.",
     "",
     "Ranked (likely + possible only; filter then spare time):",
     ranked || "No likely or possible sites.",
@@ -65,8 +66,8 @@ export function formatResidentAlert(site: {
     "ARCA wildfire notice (coordinator approved).",
     site.municipality ? `Area: ${site.municipality}.` : null,
     site.fireWindow,
-    `Shelter that takes pets / livestock: ${site.shelterHint}`,
-    "This is not a phone call. If you need transport, tell the coordinator.",
+    `Shelter that takes pets (coordinator config, not live OSM): ${site.shelterHint}`,
+    "Residents are warned only after a human Approves.",
   ]
     .filter(Boolean)
     .join("\n");
