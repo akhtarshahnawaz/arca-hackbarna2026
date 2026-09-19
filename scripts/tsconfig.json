@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    // These scripts run under `node --experimental-strip-types`, which does no
+    // extension resolution, so their relative imports must keep the `.ts`
+    // suffix. The flag stays scoped here: app code bundled by Next must never
+    // import a `.ts` path, because that passes `tsc` and then fails the bundle.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["node_modules"]
+}

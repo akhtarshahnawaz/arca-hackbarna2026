@@ -137,6 +137,7 @@ export async function approveSiteCall(input: {
   callId: string;
   town?: string;
   coordinatorNumber?: string | null;
+  retry?: boolean;
 }): Promise<{ call: VoiceCallSummary; detail: string; stub: boolean }> {
   const existing = await getVoiceCall(input.callId);
   if (!existing) throw new Error("Unknown call request.");
@@ -148,7 +149,11 @@ export async function approveSiteCall(input: {
   if (input.coordinatorNumber) {
     await updateVoiceCall(existing.id, { coordinatorNumber: input.coordinatorNumber });
   }
-  await updateVoiceCall(existing.id, { status: "approved", attempt: Math.max(existing.attempt, 1) });
+  const attempt = input.retry ? existing.attempt + 1 : Math.max(existing.attempt, 1);
+  if (attempt > policy.maxAttempts) {
+    throw new Error(`Call already used ${existing.attempt} of ${policy.maxAttempts} attempts.`);
+  }
+  await updateVoiceCall(existing.id, { status: "approved", attempt });
   const fresh = (await getVoiceCall(existing.id)) ?? existing;
   const dialed = await dial(fresh, input.town ?? "Font-rubí");
   return {
