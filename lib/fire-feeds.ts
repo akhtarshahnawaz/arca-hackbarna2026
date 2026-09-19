@@ -22,26 +22,53 @@ export type FeedStatus = {
   fetchedAt: string | null;
 };
 
-async function fetchWithTimeout(url: string, ms = 10000) {
+/**
+ * The timeout has to cover the body, not just the headers. `clearTimeout` in a
+ * `finally` around the bare `fetch` fires the moment headers land, which leaves
+ * a stalled body with no abort behind it — and one stalled feed hangs the
+ * `Promise.all` in `getCommandState` forever, so the console never renders.
+ */
+async function fetchWithTimeout<T>(
+  url: string,
+  ms: number,
+  read: (res: Response) => Promise<T>,
+): Promise<{ res: Response; body: T }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), ms);
   try {
-    return await fetch(url, { signal: controller.signal, cache: "no-store" });
+    const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    return { res, body: await read(res) };
   } finally {
     clearTimeout(timer);
   }
 }
 
-/** FIRMS returns `acq_date` (2026-09-19) and `acq_time` (0413) in UTC. */
+/**
+ * FIRMS returns `acq_date` (2026-09-19) and `acq_time` (0413) in UTC. A blank
+ * `acq_time` gives no observation time at all: padding it to "0000" would
+ * invent a midnight overpass and hand the age test a number nobody measured.
+ */
 function firmsObservedAt(date: string, time: string): string | null {
-  if (!date) return null;
+  if (!date || !time) return null;
   const padded = time.padStart(4, "0");
   const iso = `${date}T${padded.slice(0, 2)}:${padded.slice(2, 4)}:00Z`;
   return Number.isNaN(new Date(iso).getTime()) ? null : iso;
 }
 
+/**
+ * True when the response body is the CSV we asked for. FIRMS answers a bad key,
+ * a spent quota or a throttle with 200 and a prose body, so `res.ok` and an
+ * "Invalid" prefix are both too narrow: anything else parsed to zero rows and
+ * was then reported as a healthy feed with no detections.
+ */
+export function looksLikeFirmsCsv(body: string): boolean {
+  const header = body.replace(/^\uFEFF/, "").trim().split("\n")[0] ?? "";
+  const columns = header.split(",").map((name) => name.trim().toLowerCase());
+  return columns.includes("latitude") && columns.includes("longitude");
+}
+
 export function parseFirmsCsv(csv: string, sensor: string): FeedDetection[] {
-  const lines = csv.trim().split("\n");
+  const lines = csv.replace(/^\uFEFF/, "").trim().split("\n");
   if (lines.length < 2) return [];
 
   const header = lines[0].split(",").map((name) => name.trim());
@@ -103,9 +130,8 @@ export async function fetchFirmsDetections(): Promise<FeedStatus> {
     sensors.map(async (sensor) => {
       const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/${sensor}/${CATALONIA_BBOX}/${days}`;
       try {
-        const res = await fetchWithTimeout(url);
-        const body = await res.text();
-        if (!res.ok || body.startsWith("Invalid")) {
+        const { res, body } = await fetchWithTimeout(url, 10000, (r) => r.text());
+        if (!res.ok || !looksLikeFirmsCsv(body)) {
           return { sensor, error: body.trim().slice(0, 80) || `HTTP ${res.status}`, rows: [] };
         }
         return { sensor, error: null, rows: parseFirmsCsv(body, sensor) };
@@ -156,6 +182,43 @@ function readString(properties: Record<string, unknown> | undefined, keys: strin
 }
 
 /**
+ * A timestamp normalised to ISO, or null when the layer carries nothing we can
+ * read. GeoJSON services publish observation times as epoch seconds, epoch
+ * milliseconds or an ISO string, and `String(1758278400000)` is not a date:
+ * stringifying a number here handed the cross-check an `Invalid Date`, which
+ * the age test then skipped, so a months-old polygon corroborated today's fire.
+ */
+export function readInstant(
+  properties: Record<string, unknown> | undefined,
+  keys: string[],
+): string | null {
+  for (const key of keys) {
+    const value = properties?.[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      // Epoch seconds until ~2286; anything larger is already milliseconds.
+      const ms = Math.abs(value) < 1e11 ? value * 1000 : value;
+      const date = new Date(ms);
+      if (!Number.isNaN(date.getTime())) return date.toISOString();
+      continue;
+    }
+    if (typeof value !== "string" || !value) continue;
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && /^-?\d+$/.test(value.trim())) {
+      const ms = Math.abs(numeric) < 1e11 ? numeric * 1000 : numeric;
+      const date = new Date(ms);
+      if (!Number.isNaN(date.getTime())) return date.toISOString();
+      continue;
+    }
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return date.toISOString();
+    // A value we cannot parse is reported as such, not quietly passed on: the
+    // cross-check refuses to corroborate on an unreadable timestamp.
+    return null;
+  }
+  return null;
+}
+
+/**
  * Optional third feed: any GeoJSON point service of active fires, set through
  * EFFIS_GEOJSON_URL. Copernicus EFFIS serves its current-situation layer from
  * maps.effis.emergency.copernicus.eu, which is not reachable from every
@@ -175,7 +238,11 @@ export async function fetchEffisDetections(): Promise<FeedStatus> {
   }
 
   try {
-    const res = await fetchWithTimeout(url, 12000);
+    const { res, body: geo } = await fetchWithTimeout(
+      url,
+      12000,
+      (r) => r.json().catch(() => ({})) as Promise<{ features?: GeoJsonPointFeature[] }>,
+    );
     if (!res.ok) {
       return {
         id: "effis",
@@ -185,17 +252,24 @@ export async function fetchEffisDetections(): Promise<FeedStatus> {
         fetchedAt: null,
       };
     }
-    const geo = (await res.json()) as { features?: GeoJsonPointFeature[] };
     const detections: FeedDetection[] = (geo.features ?? []).flatMap((feature, index) => {
+      // Only a Point is one detection. A MultiPoint or a LineString also has a
+      // `coordinates` array of length >= 2, but its first two entries are
+      // arrays, not numbers — which made `lat` an array, `haversineKm` NaN, and
+      // `NaN > matchKm` false, so one bad geometry corroborated every hotspot.
+      if (feature.geometry?.type !== "Point") return [];
       const coords = feature.geometry?.coordinates;
-      if (!coords || coords.length < 2) return [];
+      if (!Array.isArray(coords) || coords.length < 2) return [];
+      const lon = coords[0];
+      const lat = coords[1];
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return [];
       return [
         {
           id: String(feature.id ?? `effis-${index}`),
           feed: "effis" as const,
-          lat: coords[1],
-          lon: coords[0],
-          observedAt: readString(feature.properties, [
+          lat,
+          lon,
+          observedAt: readInstant(feature.properties, [
             "lastupdate",
             "last_update",
             "observed_at",

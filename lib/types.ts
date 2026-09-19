@@ -115,7 +115,14 @@ export type HourPolygon = {
 };
 
 export type RankedSite = SiteInput & {
+  /** Display rank: position in the list the coordinator is looking at. */
   rank: number;
+  /**
+   * Rank by the clock alone — least spare time first — before the cross-check
+   * re-sort. Broadcast copy has to speak for the site that is actually running
+   * out of time, not for whichever site two satellites happen to agree about.
+   */
+  timeRank?: number;
   pReach: number;
   runsReach: number;
   ensembleMembers: number;
@@ -166,8 +173,14 @@ export type CheckedHotspot = Hotspot & {
   confirmedBy: FireFeedId[];
   /** Distance to the nearest cross-feed detection, km. Null when nothing matched. */
   matchKm: number | null;
-  /** Remarks of the static heat source this hotspot sits on, when it does. */
+  /** Label of the static heat source this hotspot sits on, when it does. */
   staticHeat: string | null;
+  /**
+   * True when the chimney mask was read in full. False means "no chimney found"
+   * could not be told apart from "the mask never loaded", so this hotspot is
+   * never promoted: an empty mask must not corroborate every flare in Catalonia.
+   */
+  maskReady: boolean;
 };
 
 /** A known persistent thermal anomaly — a chimney, a quarry, a glasshouse. */
@@ -180,7 +193,11 @@ export type HeatSource = {
   year: number | null;
   lat: number;
   lon: number;
-  ring: LonLat[];
+  /**
+   * Outer ring per part: one for a Polygon, one each for a MultiPolygon. Every
+   * part masks, and every part is drawn.
+   */
+  rings: LonLat[][];
 };
 
 /** How many independent feeds see fire near one site. */
@@ -189,8 +206,6 @@ export type SiteCorroboration = {
   feeds: FireFeedId[];
   /** Distance from the site to that hotspot, km. */
   km: number;
-  /** Set when the corroborating hotspot sits on a known static heat source. */
-  staticHeat: string | null;
 };
 
 export type DataSourceStatus = {
@@ -221,7 +236,12 @@ export type CommandState = {
   watchIfFewerThanRuns: number;
   hotspots: CheckedHotspot[];
   heatSources: HeatSource[];
-  /** Cross-feed detections that are not Deepfire hotspots. Drawn, never ranked on their own. */
+  /**
+   * Cross-feed detections near a hotspot or a listed site. Drawn, never ranked
+   * on their own. Clipped before it leaves the server: the raw Catalonia box
+   * runs to thousands of pixels in fire season, and all of them were being
+   * serialised into the page and drawn as individual markers.
+   */
   detections: FeedDetection[];
   sources: DataSourceStatus[];
   /** Notes that explain the demo. Safe to collapse. */

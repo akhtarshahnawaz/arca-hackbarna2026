@@ -4,10 +4,12 @@ import {
   corroborateSites,
   corroborationCopy,
   isCorroborated,
+  isWeakDetection,
+  mostUrgent,
   sortByCorroboration,
   staticHeatAt,
 } from "@/lib/crosscheck";
-import { parseFirmsCsv } from "@/lib/fire-feeds";
+import { looksLikeFirmsCsv, parseFirmsCsv, readInstant } from "@/lib/fire-feeds";
 import type { FeedDetection, HeatSource, Hotspot, RankedSite } from "@/lib/types";
 
 function hotspot(partial: Partial<Hotspot> & Pick<Hotspot, "id">): Hotspot {
@@ -70,14 +72,21 @@ function squareAround(lat: number, lon: number, half = 0.01): HeatSource {
     year: 2016,
     lat,
     lon,
-    ring: [
-      [lon - half, lat - half],
-      [lon + half, lat - half],
-      [lon + half, lat + half],
-      [lon - half, lat + half],
-      [lon - half, lat - half],
+    rings: [
+      [
+        [lon - half, lat - half],
+        [lon + half, lat - half],
+        [lon + half, lat + half],
+        [lon - half, lat + half],
+        [lon - half, lat - half],
+      ],
     ],
   };
+}
+
+/** A mapped source with no usable ring — the only case the centroid covers. */
+function unmapped(lat: number, lon: number): HeatSource {
+  return { ...squareAround(lat, lon), id: "heat-unmapped", rings: [] };
 }
 
 describe("checkHotspots", () => {
@@ -137,6 +146,97 @@ describe("checkHotspots", () => {
   });
 });
 
+describe("checkHotspots fails closed", () => {
+  it("refuses a match on an unreadable timestamp instead of skipping the age test", () => {
+    const [checked] = checkHotspots(
+      [hotspot({ id: "df-1", observedAt: "2026-09-19T10:00:00Z" })],
+      // What an epoch-millis or DD/MM/YYYY field used to become.
+      [detection({ id: "effis-bad", feed: "effis", observedAt: "1758278400000" })],
+    );
+
+    expect(checked.confirmedBy).toEqual(["deepfire"]);
+    expect(isCorroborated(checked)).toBe(false);
+  });
+
+  it("still allows a match when a feed publishes no timestamp at all", () => {
+    const [checked] = checkHotspots(
+      [hotspot({ id: "df-1" })],
+      [detection({ id: "effis-undated", feed: "effis", observedAt: null })],
+    );
+
+    expect(checked.confirmedBy).toEqual(["deepfire", "effis"]);
+  });
+
+  it("ignores a low-confidence pixel", () => {
+    const [checked] = checkHotspots(
+      [hotspot({ id: "df-1" })],
+      [detection({ id: "firms-glint", confidence: "l" })],
+    );
+
+    expect(checked.confirmedBy).toEqual(["deepfire"]);
+  });
+
+  it("ignores a MODIS detection below the confidence floor", () => {
+    const [checked] = checkHotspots(
+      [hotspot({ id: "df-1" })],
+      [detection({ id: "firms-modis", confidence: "12" })],
+    );
+
+    expect(checked.confirmedBy).toEqual(["deepfire"]);
+  });
+
+  it("never promotes a hotspot while the chimney mask is unavailable", () => {
+    const [checked] = checkHotspots(
+      [hotspot({ id: "df-1" })],
+      [detection({ id: "firms-1" })],
+      [],
+      false,
+    );
+
+    expect(checked.confirmedBy).toEqual(["deepfire", "firms"]);
+    expect(checked.staticHeat).toBeNull();
+    // Two feeds agree, but nobody can say whether they agree about a chimney.
+    expect(isCorroborated(checked)).toBe(false);
+    expect(corroborateSites([ranked({ id: "s1", code: "R-1" })], [checked])[0].corroboration).toBeNull();
+  });
+
+  it("drops a detection whose coordinates are not finite", () => {
+    const [checked] = checkHotspots(
+      [hotspot({ id: "df-1" })],
+      [detection({ id: "effis-nan", feed: "effis", lat: Number.NaN, lon: Number.NaN })],
+    );
+
+    expect(checked.confirmedBy).toEqual(["deepfire"]);
+  });
+});
+
+describe("isWeakDetection", () => {
+  it("rejects low and keeps nominal, high and ungraded", () => {
+    expect(isWeakDetection("l")).toBe(true);
+    expect(isWeakDetection("LOW")).toBe(true);
+    expect(isWeakDetection("n")).toBe(false);
+    expect(isWeakDetection("h")).toBe(false);
+    expect(isWeakDetection(null)).toBe(false);
+    expect(isWeakDetection("80")).toBe(false);
+  });
+});
+
+describe("mostUrgent", () => {
+  it("finds the site soonest out of time after the cross-check re-sort", () => {
+    const rows = [
+      ranked({ id: "s1", code: "CALM", rank: 1, timeRank: 3, spareTime: 4 }),
+      ranked({ id: "s2", code: "LATE", rank: 2, timeRank: 1, spareTime: -2 }),
+    ];
+
+    expect(rows[0].code).toBe("CALM");
+    expect(mostUrgent(rows)?.code).toBe("LATE");
+  });
+
+  it("falls back to the display rank when nothing stamped a clock rank", () => {
+    expect(mostUrgent([ranked({ id: "s1", code: "A", rank: 2 }), ranked({ id: "s2", code: "B", rank: 1 })])?.code).toBe("B");
+  });
+});
+
 describe("staticHeatAt", () => {
   it("matches a point inside the mask polygon", () => {
     expect(staticHeatAt({ lat: 41.73, lon: 1.83 }, [squareAround(41.73, 1.83)])).not.toBeNull();
@@ -144,6 +244,25 @@ describe("staticHeatAt", () => {
 
   it("returns null for a point well outside it", () => {
     expect(staticHeatAt({ lat: 41.9, lon: 2.4 }, [squareAround(41.73, 1.83)])).toBeNull();
+  });
+
+  it("does not throw a centroid circle around a source the polygon already cleared", () => {
+    // ~870 m east of the centroid: outside the mapped ring, inside the 1 km
+    // centroid tolerance. A real fire here, not a quarry.
+    expect(staticHeatAt({ lat: 41.73, lon: 1.8405 }, [squareAround(41.73, 1.83)])).toBeNull();
+  });
+
+  it("still falls back to the centroid for a source with no usable ring", () => {
+    expect(staticHeatAt({ lat: 41.7331, lon: 1.83 }, [unmapped(41.73, 1.83)])).not.toBeNull();
+  });
+
+  it("matches a point in any part of a multi-part source", () => {
+    const twoKilns: HeatSource = {
+      ...squareAround(41.73, 1.83),
+      rings: [...squareAround(41.73, 1.83).rings, ...squareAround(41.9, 2.4).rings],
+    };
+
+    expect(staticHeatAt({ lat: 41.9, lon: 2.4 }, [twoKilns])).not.toBeNull();
   });
 });
 
@@ -222,5 +341,43 @@ describe("parseFirmsCsv", () => {
   it("returns nothing for an empty or header-only response", () => {
     expect(parseFirmsCsv("", "VIIRS_SNPP_NRT")).toEqual([]);
     expect(parseFirmsCsv("latitude,longitude,acq_date,acq_time\n", "VIIRS_SNPP_NRT")).toEqual([]);
+  });
+});
+
+describe("looksLikeFirmsCsv", () => {
+  it("accepts the real CSV, with or without a byte-order mark", () => {
+    expect(looksLikeFirmsCsv("latitude,longitude,acq_date\n41.7,1.8,2026-09-19")).toBe(true);
+    expect(looksLikeFirmsCsv("\uFEFFlatitude,longitude\n41.7,1.8")).toBe(true);
+  });
+
+  it("rejects the prose FIRMS answers a bad key or a spent quota with", () => {
+    expect(looksLikeFirmsCsv("Invalid MAP_KEY.")).toBe(false);
+    expect(looksLikeFirmsCsv("You have exceeded your transaction limit.")).toBe(false);
+    expect(looksLikeFirmsCsv("")).toBe(false);
+  });
+});
+
+describe("firms acq_time", () => {
+  it("returns no observation time rather than inventing midnight", () => {
+    const csv = [
+      "latitude,longitude,acq_date,acq_time,confidence",
+      "41.7312,1.8329,2026-09-19,,n",
+    ].join("\n");
+
+    expect(parseFirmsCsv(csv, "VIIRS_SNPP_NRT")[0].observedAt).toBeNull();
+  });
+});
+
+describe("readInstant", () => {
+  it("reads ISO, epoch seconds and epoch milliseconds", () => {
+    expect(readInstant({ t: "2026-09-19T10:00:00Z" }, ["t"])).toBe("2026-09-19T10:00:00.000Z");
+    expect(readInstant({ t: 1789768800 }, ["t"])).toBe(new Date(1789768800000).toISOString());
+    expect(readInstant({ t: 1789768800000 }, ["t"])).toBe(new Date(1789768800000).toISOString());
+    expect(readInstant({ t: "1789768800000" }, ["t"])).toBe(new Date(1789768800000).toISOString());
+  });
+
+  it("returns null for a value it cannot read", () => {
+    expect(readInstant({ t: "not a date" }, ["t"])).toBeNull();
+    expect(readInstant({}, ["t"])).toBeNull();
   });
 });

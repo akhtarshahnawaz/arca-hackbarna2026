@@ -24,28 +24,67 @@ export const matchKm = () => numberFromEnv("CROSSCHECK_MATCH_KM", 3);
 export const matchHours = () => numberFromEnv("CROSSCHECK_MATCH_HOURS", 24);
 /** A site is "near" a corroborated hotspot within this distance. */
 export const siteRadiusKm = () => numberFromEnv("CROSSCHECK_SITE_KM", 12);
+/** A point this close to a mapped heat source counts as on it when it has no ring. */
+export const heatCentroidKm = () => numberFromEnv("CROSSCHECK_HEAT_CENTROID_KM", 1);
+/** MODIS confidence below this percent is too weak to corroborate. */
+export const minConfidence = () => numberFromEnv("CROSSCHECK_MIN_CONFIDENCE", 30);
 
-function hoursApart(a: string | null, b: string | null): number | null {
-  if (!a || !b) return null;
-  const left = new Date(a).getTime();
-  const right = new Date(b).getTime();
-  if (Number.isNaN(left) || Number.isNaN(right)) return null;
-  return Math.abs(left - right) / 3_600_000;
+/**
+ * When a detection was seen, in epoch ms.
+ *
+ * Three answers, not two. `undefined` is "the feed carries no time", which
+ * skips the age test as documented. `null` is "the feed carries a time we
+ * cannot read", which must fail closed: treating it like "absent" let an
+ * `Invalid Date` from an epoch-millis or DD/MM/YYYY field skip the age test
+ * entirely, so a months-old polygon corroborated today's hotspot.
+ */
+function instantMs(value: string | null): number | null | undefined {
+  if (!value) return undefined;
+  const ms = new Date(value).getTime();
+  return Number.isNaN(ms) ? null : ms;
 }
 
-/** The static heat source a point sits on, by polygon first and centroid second. */
+/**
+ * True when a detection is too weak to count as a second opinion. VIIRS grades
+ * confidence l/n/h, MODIS as a percent. A single low-confidence pixel is sun
+ * glint or a gas flare as often as it is fire, and one of those was enough to
+ * earn a "2 FEEDS AGREE" badge and pin a calm site above a burning one.
+ */
+export function isWeakDetection(confidence: string | null): boolean {
+  if (!confidence) return false; // No grade published: judged on distance and age alone.
+  const value = confidence.trim().toLowerCase();
+  if (value === "l" || value === "low") return true;
+  const percent = Number(value);
+  return Number.isFinite(percent) && percent < minConfidence();
+}
+
+/**
+ * The static heat source a point sits on.
+ *
+ * Polygon first, and for a source that has a polygon the polygon is the whole
+ * answer: a centroid fallback that also ran on mapped sources threw a second,
+ * blunt 1 km circle around every quarry, so a real fire 800 m outside a quarry
+ * `pointInRing` had already cleared was labelled a chimney and never corroborated.
+ * The centroid is only for sources that arrive without a usable ring.
+ */
 export function staticHeatAt(
   point: { lat: number; lon: number },
   heatSources: HeatSource[],
-  toleranceKm = 1,
+  toleranceKm = heatCentroidKm(),
 ): HeatSource | null {
+  const mapped = (source: HeatSource) => source.rings.some((ring) => ring.length > 2);
+
   for (const source of heatSources) {
-    if (source.ring.length > 2 && pointInRing([point.lon, point.lat], source.ring)) {
-      return source;
+    if (!mapped(source)) continue;
+    for (const ring of source.rings) {
+      if (ring.length > 2 && pointInRing([point.lon, point.lat], ring)) return source;
     }
   }
+
   return (
-    heatSources.find((source) => haversineKm(point, source) <= toleranceKm) ?? null
+    heatSources.find(
+      (source) => !mapped(source) && haversineKm(point, source) <= toleranceKm,
+    ) ?? null
   );
 }
 
@@ -58,6 +97,13 @@ export function checkHotspots(
   hotspots: Hotspot[],
   detections: FeedDetection[],
   heatSources: HeatSource[] = [],
+  /**
+   * Whether the chimney mask above is the complete one. Pass `false` when the
+   * Deepfire heat query failed, its credentials are missing, or paging stopped
+   * early — `heatSources` is then `[]` for a reason that is not "no chimneys
+   * here", and promoting on it would corroborate every flare in Catalonia.
+   */
+  maskReady = true,
 ): CheckedHotspot[] {
   const km = matchKm();
   const hours = matchHours();
@@ -65,13 +111,26 @@ export function checkHotspots(
   return hotspots.map((spot) => {
     const feeds = new Set<FireFeedId>(["deepfire"]);
     let nearest: number | null = null;
+    const spotMs = instantMs(spot.observedAt);
 
     for (const detection of detections) {
       if (detection.feed === "deepfire") continue;
+      if (isWeakDetection(detection.confidence)) continue;
       const distance = haversineKm(spot, detection);
-      if (distance > km) continue;
-      const apart = hoursApart(spot.observedAt, detection.observedAt);
-      if (apart !== null && apart > hours) continue;
+      if (!Number.isFinite(distance) || distance > km) continue;
+
+      const detectionMs = instantMs(detection.observedAt);
+      // An unreadable timestamp on either side is not an excuse to skip the
+      // age test — it is a reason to decline the match.
+      if (spotMs === null || detectionMs === null) continue;
+      if (
+        spotMs !== undefined &&
+        detectionMs !== undefined &&
+        Math.abs(spotMs - detectionMs) / 3_600_000 > hours
+      ) {
+        continue;
+      }
+
       feeds.add(detection.feed);
       if (nearest === null || distance < nearest) nearest = distance;
     }
@@ -83,13 +142,24 @@ export function checkHotspots(
       confirmedBy: [...feeds],
       matchKm: nearest === null ? null : Math.round(nearest * 100) / 100,
       staticHeat: heat ? heat.label : null,
+      maskReady,
     };
   });
 }
 
-/** A hotspot counts as corroborated when a second feed saw it and it is not a chimney. */
+/**
+ * A hotspot counts as corroborated when a second feed saw it, it is not on a
+ * chimney, and we actually know whether it is on a chimney. This is the single
+ * predicate: every banner, badge and marker asks it rather than re-deriving
+ * "two feeds and no static heat" with its own slightly different truthiness.
+ */
 export function isCorroborated(spot: CheckedHotspot): boolean {
-  return spot.confirmedBy.length > 1 && spot.staticHeat === null;
+  return spot.confirmedBy.length > 1 && spot.staticHeat === null && spot.maskReady;
+}
+
+/** A hotspot the mask says is a chimney. Drawn, never promoted. */
+export function isOnStaticHeat(spot: CheckedHotspot): boolean {
+  return spot.staticHeat !== null;
 }
 
 /**
@@ -119,7 +189,6 @@ export function corroborateSites<T extends RankedSite>(
       corroboration: {
         feeds: best.spot.confirmedBy,
         km: Math.round(best.km * 10) / 10,
-        staticHeat: best.spot.staticHeat,
       },
     };
   });
@@ -141,6 +210,22 @@ export function sortByCorroboration<T extends RankedSite>(sites: T[]): T[] {
       return a.index - b.index;
     })
     .map(({ site }) => site);
+}
+
+/**
+ * The site that is soonest out of time, whichever way the list is sorted.
+ *
+ * `sites[0]` is the top *row*, and after the cross-check re-sort that means
+ * "most corroborated", not "least spare time". Resident broadcast copy has to
+ * speak for the site actually running out of time, or a mass alert carries the
+ * arrival window and shelter of a calm farm two satellites happened to agree on.
+ */
+export function mostUrgent<T extends RankedSite>(sites: T[]): T | undefined {
+  return [...sites].sort((a, b) => {
+    const aRank = a.timeRank ?? a.rank;
+    const bRank = b.timeRank ?? b.rank;
+    return aRank - bRank;
+  })[0];
 }
 
 /** "NASA FIRMS", "EU Copernicus" — what a coordinator calls each feed. */

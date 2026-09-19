@@ -14,6 +14,7 @@ import {
   modelMustEchoCallStatus,
   SAY_THIS_EXACTLY_AWAITING_APPROVE,
 } from "../../lib/call-status";
+import { mostUrgent } from "../../lib/crosscheck";
 import { getCommandState } from "../../lib/command";
 import { retryPolicyCopy } from "../../lib/contact-policy";
 import { demoSites } from "../../lib/demo-data";
@@ -316,7 +317,10 @@ export const alertResidentsTool = createTool({
 
     const state = await getCommandState();
     const residents = await listOptedInResidents();
-    const top = state.sites[0];
+    // Not `state.sites[0]`: that is the top *row*, which the cross-check
+    // re-sort redefines as "most corroborated". A mass alert has to carry the
+    // arrival window of the site soonest out of time.
+    const top = mostUrgent(state.sites);
     const fireWindow = top
       ? ensembleReachCopy(top.runsReach, top.ensembleMembers, top.tArrival)
       : `In this ${state.fire.ensembleMembers}-run DEMO ensemble, treat arrival as uncertain.`;

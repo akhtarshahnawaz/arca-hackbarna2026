@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { LatLngBoundsExpression, LatLngTuple } from "leaflet";
 import { CircleMarker, MapContainer, Polygon, TileLayer, Tooltip, useMap } from "react-leaflet";
-import { feedLabel } from "@/lib/crosscheck";
+import { feedLabel, isCorroborated, isOnStaticHeat } from "@/lib/crosscheck";
 import { siteKindMarkerColor } from "@/lib/site-kind";
 import type { CommandState, RankedSite, SiteKind } from "@/lib/types";
 import "leaflet/dist/leaflet.css";
@@ -247,24 +247,27 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
             </Tooltip>
           </Polygon>
         ))}
-        {(state.heatSources ?? []).map((heat) => (
-          <Polygon
-            key={heat.id}
-            positions={heat.ring.map(([lon, lat]) => [lat, lon])}
-            pathOptions={{
-              color: palette.heatStroke,
-              weight: 1,
-              dashArray: "3 3",
-              fillColor: palette.heatFill,
-              fillOpacity: 1,
-            }}
-          >
-            <Tooltip sticky>
-              Static heat source · {heat.label}
-              {heat.year ? ` · mapped ${heat.year}` : ""}
-            </Tooltip>
-          </Polygon>
-        ))}
+        {/* One polygon per part: a two-kiln site masks and draws both. */}
+        {(state.heatSources ?? []).flatMap((heat) =>
+          heat.rings.map((ring, part) => (
+            <Polygon
+              key={`${heat.id}-${part}`}
+              positions={ring.map(([lon, lat]): LatLngTuple => [lat, lon])}
+              pathOptions={{
+                color: palette.heatStroke,
+                weight: 1,
+                dashArray: "3 3",
+                fillColor: palette.heatFill,
+                fillOpacity: 1,
+              }}
+            >
+              <Tooltip sticky>
+                Static heat source · {heat.label}
+                {heat.year ? ` · mapped ${heat.year}` : ""}
+              </Tooltip>
+            </Polygon>
+          )),
+        )}
         {(state.detections ?? []).map((detection) => (
           <CircleMarker
             key={detection.id}
@@ -284,8 +287,10 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
           </CircleMarker>
         ))}
         {state.hotspots.map((spot) => {
-          const agreed = spot.confirmedBy.length > 1 && !spot.staticHeat;
-          const chimney = spot.staticHeat !== null;
+          // Same predicate the ranking uses, so the badge on the map and the
+          // pin in the list can never disagree.
+          const agreed = isCorroborated(spot);
+          const chimney = isOnStaticHeat(spot);
           return (
             <CircleMarker
               key={spot.id}
