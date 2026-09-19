@@ -25,3 +25,12 @@ export const siteKindMarkerColor: Record<SiteKind, string> = {
   farm: "#047857",
   household: "#d97706",
 };
+
+/** Same hues, lighter — forest and burned ground swallow the map fills. */
+export const siteKindSatelliteColor: Record<SiteKind, string> = {
+  care_home: "#c4b5fd",
+  hospital: "#fb7185",
+  school: "#7dd3fc",
+  farm: "#6ee7b7",
+  household: "#fcd34d",
+};

@@ -129,9 +129,15 @@
   }
 }
 
-.arca-map {
+/* Leaflet's `.leaflet-container` sets `background: #ddd` after this sheet. */
+.arca-map.leaflet-container {
   background: oklch(0.96 0.004 85);
   font: inherit;
+}
+
+/* Imagery is dark. A light ground flashes white in the gaps while tiles load. */
+[data-basemap="satellite"] .arca-map.leaflet-container {
+  background: oklch(0.24 0.012 145);
 }
 
 .arca-map .leaflet-pane,

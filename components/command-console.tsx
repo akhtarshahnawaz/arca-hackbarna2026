@@ -59,6 +59,7 @@ type Props = {
 export function CommandConsole({ initial }: Props) {
   const [state, setState] = useState(initial);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [basemap, setBasemap] = useState<"map" | "satellite">("satellite");
 
   const watchSites = state.watch ?? [];
 
@@ -104,8 +105,8 @@ export function CommandConsole({ initial }: Props) {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background">
-      <header className="flex flex-col gap-3 border-b px-5 py-4 md:px-8">
+    <div className="flex min-h-[100dvh] flex-col bg-background lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden">
+      <header className="flex shrink-0 flex-col gap-3 border-b px-5 py-4 md:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-1">
             <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
@@ -144,12 +145,41 @@ export function CommandConsole({ initial }: Props) {
 
       <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_380px] lg:grid-rows-1">
         <section className="relative min-h-[52dvh] lg:min-h-0 lg:h-full">
-          <CommandMap state={state} selectedId={openId} onSelect={openSiteById} />
-          <div className="pointer-events-none absolute top-4 left-4 rounded-md border bg-background/90 px-3 py-2">
+          <CommandMap
+            state={state}
+            selectedId={openId}
+            onSelect={openSiteById}
+            basemap={basemap}
+          />
+          <div className="pointer-events-none absolute top-4 left-4 z-30 rounded-md border bg-background/90 px-3 py-2">
             <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
               Demo polygons
             </p>
             <p className="text-xs text-foreground">Hour rings from member 5 of 10</p>
+          </div>
+          <div className="absolute top-4 right-4 z-30 flex overflow-hidden rounded-md border bg-background shadow-sm">
+            <button
+              type="button"
+              aria-pressed={basemap === "map"}
+              onClick={() => setBasemap("map")}
+              className={cn(
+                "px-3 py-1.5 font-mono text-[10px] tracking-[0.18em] uppercase",
+                basemap === "map" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Map
+            </button>
+            <button
+              type="button"
+              aria-pressed={basemap === "satellite"}
+              onClick={() => setBasemap("satellite")}
+              className={cn(
+                "px-3 py-1.5 font-mono text-[10px] tracking-[0.18em] uppercase",
+                basemap === "satellite" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Satellite
+            </button>
           </div>
         </section>
 

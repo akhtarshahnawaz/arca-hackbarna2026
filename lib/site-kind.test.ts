@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { siteKindBadgeClass, siteKindLabel, siteKindMarkerColor } from "@/lib/site-kind";
+import {
+  siteKindBadgeClass,
+  siteKindLabel,
+  siteKindMarkerColor,
+  siteKindSatelliteColor,
+} from "@/lib/site-kind";
 import type { SiteKind } from "@/lib/types";
 
 const kinds: SiteKind[] = ["care_home", "hospital", "school", "farm", "household"];
@@ -25,5 +30,13 @@ describe("site kind colors", () => {
   it("gives each kind a distinct map color", () => {
     const colors = kinds.map((kind) => siteKindMarkerColor[kind]);
     expect(new Set(colors).size).toBe(kinds.length);
+  });
+
+  it("gives each kind a distinct satellite color", () => {
+    const colors = kinds.map((kind) => siteKindSatelliteColor[kind]);
+    expect(new Set(colors).size).toBe(kinds.length);
+    for (const kind of kinds) {
+      expect(siteKindSatelliteColor[kind]).not.toBe(siteKindMarkerColor[kind]);
+    }
   });
 });
