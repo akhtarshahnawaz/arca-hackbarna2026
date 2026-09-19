@@ -104,6 +104,8 @@ export type SiteInput = {
   source: "registry" | "resident" | "osm" | "demo";
   shelterHint: string;
   notes: string;
+  /** Server seed only. Stripped from the command API. */
+  phone?: string | null;
 };
 
 export type HourPolygon = {
@@ -124,6 +126,8 @@ export type RankedSite = SiteInput & {
   arrivalHours: number[];
   /** Coordinator's protective action. Null means not chosen yet. */
   protectiveAction: ProtectiveAction | null;
+  /** True when a number is on file from env. The digits are never sent to the browser. */
+  phoneOnFile?: boolean;
 };
 
 export type RankedPartition = {

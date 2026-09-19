@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { resolveCallPermission, demoSiteAliases } from "./call-gate";
+import { coordinatorPhone, phoneForSite } from "./demo-cast";
 import { formatCoordinatorCallStatus } from "./call-status";
 import {
   canScheduleRetry,
@@ -93,9 +94,9 @@ export async function requestSiteCall(input: {
   coordinatorNumber?: string | null;
   spareTime?: number | null;
 }): Promise<{ call: VoiceCallSummary; detail: string }> {
-  const toNumber = input.toNumber.trim();
+  const toNumber = input.toNumber.trim() || phoneForSite(input.siteId) || "";
   if (!toNumber) {
-    throw new Error("Coordinator must enter a number. Seed data has no phones.");
+    throw new Error("Coordinator must enter a number. No phone on file for this site.");
   }
   const permission = await resolveCallPermission(input.siteId);
   if (!permission.ok) {
@@ -107,7 +108,7 @@ export async function requestSiteCall(input: {
     toNumber,
     status: "awaiting_approval",
     attempt: 0,
-    coordinatorNumber: input.coordinatorNumber ?? null,
+    coordinatorNumber: input.coordinatorNumber?.trim() || coordinatorPhone(),
     spareTime: input.spareTime ?? null,
   });
   return {

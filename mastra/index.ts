@@ -9,11 +9,12 @@ import { TelegramProvider } from '@mastra/telegram';
 import { weatherWorkflow } from './workflows/weather-workflow';
 import { arcaAgent } from './agents/arca-agent';
 import { weatherAgent } from './agents/weather-agent';
-import { connectTelegramIfConfigured } from './telegram';
+import { connectTelegramIfConfigured, telegramChannelHandlers } from './telegram';
 
 export const telegram = new TelegramProvider({
   mode: 'polling',
   toolDisplay: 'cards',
+  handlers: telegramChannelHandlers,
   commands: [
     { command: 'start', description: 'Who ARCA is and who you are talking to' },
     { command: 'briefing', description: 'Demo fire, simulation, ranked call list' },

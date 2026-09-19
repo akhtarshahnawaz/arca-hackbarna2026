@@ -67,11 +67,15 @@ export async function getCommandState(): Promise<CommandState> {
   } catch {
     // Schema already reported if the file could not open.
   }
-  const withChoice = <T extends { id: string; code: string }>(rows: T[]) =>
-    rows.map((site) => ({
-      ...site,
-      protectiveAction: chosen.get(site.code) ?? chosen.get(site.id) ?? null,
-    }));
+  const withChoice = <T extends { id: string; code: string; phone?: string | null }>(rows: T[]) =>
+    rows.map((site) => {
+      const { phone, ...rest } = site;
+      return {
+        ...rest,
+        protectiveAction: chosen.get(site.code) ?? chosen.get(site.id) ?? null,
+        phoneOnFile: Boolean(phone),
+      };
+    });
 
   if (demoClusterId) {
     banners.push(
@@ -158,7 +162,8 @@ export async function getCommandState(): Promise<CommandState> {
         id: "residents",
         label: "Residents",
         kind: "live",
-        detail: "Opt-in household codes only. Telegram alerts wait for coordinator Approve. No names or phones in this briefing.",
+        detail:
+          "Opt-in household codes only. Telegram alerts wait for coordinator Approve. Phones stay on the server from env; they are not shown on this briefing.",
         fetchedAt: generatedAt,
         ok: true,
       },

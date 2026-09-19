@@ -35,6 +35,13 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Vonage private key (PEM). Never commit.
+.vonage/
+
+# Archived demo evidence (may include last4 / transcripts)
+data/demo-keeps/*
+!data/demo-keeps/.gitkeep
+
 # mastra local storage
 mastra.db
 mastra.db-*

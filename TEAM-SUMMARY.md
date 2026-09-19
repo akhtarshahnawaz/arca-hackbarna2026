@@ -38,7 +38,7 @@ Storage is two LibSQL files:
 - **Primary:** municipal / civil protection coordinator. Console at `:3000`. Telegram `/briefing` if Mastra is running.
 - **Secondary:** residents in wildland areas. They opt in on Telegram (address, animals, transport). They get a fire-window + pet-shelter message only after coordinator Approve.
 
-No real names or phones in seed data. Site codes and animal counts only.
+Phones and Telegram chat ids come from `.env.local` only. Seed data has no hardcoded digits.
 
 ## Data sources
 
@@ -68,6 +68,7 @@ npm install
 npm test
 npm run dev                          # coordinator UI :3000
 nvm use 22 && npm run mastra:dev     # agent + Studio + Telegram :4111
+npm run demo:reset                   # clean Sunday fixture
 ```
 
 - `:3000` alone is enough to look at the console.
@@ -86,7 +87,8 @@ Copy from `.env.example`. Do not put values in git.
 - `DEEPFIRE_CLIENT_ID`, `DEEPFIRE_CLIENT_SECRET`, `DEEPFIRE_API_BASE_URL`
 - `NEBIUS_API_KEY`, `NEBIUS_BASE_URL`, `NEBIUS_MODEL`
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`
-- `COORDINATOR_TELEGRAM_CHAT_ID`, `TELEGRAM_BACKUP_CHAT_ID`
+- `COORDINATOR_TELEGRAM_CHAT_ID`, `TELEGRAM_BACKUP_CHAT_ID` — chat ids after `/start`, not phones
+- `DEMO_PHONE`, `DEMO_RESIDENT_PHONE`, `COORDINATOR_PHONE`, `DEMO_RESIDENT_TELEGRAM_CHAT_ID`
 - `DEMO_CLUSTER_ID` — Catalan wildfire cluster, not Tarragona industry
 - `DATABASE_URL`
 

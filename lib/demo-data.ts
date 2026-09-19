@@ -1,4 +1,10 @@
 import evacConfig from "../config/evac-times.json";
+import {
+  demoFarmerName,
+  demoPhone,
+  demoResidentName,
+  demoResidentPhone,
+} from "./demo-cast";
 import { ellipseRing } from "./geo";
 import type { EvacConfig, HourPolygon, SiteInput } from "./types";
 
@@ -65,7 +71,10 @@ export function demoSites(): SiteInput[] {
       capacityUpdatedAt: "2026-07-12T00:00:00.000Z",
       source: "registry",
       shelterHint: "POL-REC-08 Recinte Firal Manresa — livestock pens reported this morning.",
-      notes: "The flock is the rent. Registry still lists 400; 312 is reported, not verified.",
+      notes: demoFarmerName()
+        ? `The flock is the rent. Registry still lists 400; 312 is reported, not verified. Demo farmer: ${demoFarmerName()}.`
+        : "The flock is the rent. Registry still lists 400; 312 is reported, not verified.",
+      phone: demoPhone(),
     },
     {
       id: "hh-pet-07",
@@ -81,7 +90,10 @@ export function demoSites(): SiteInput[] {
       capacityUpdatedAt: null,
       source: "resident",
       shelterHint: "PAV-ESP-03 Pavelló Nou — accepts dogs if crated or leashed.",
-      notes: "Two dogs, no car. People do not leave if the dogs cannot come.",
+      notes: demoResidentName()
+        ? `Two dogs, no car. People do not leave if the dogs cannot come. Demo resident: ${demoResidentName()}.`
+        : "Two dogs, no car. People do not leave if the dogs cannot come.",
+      phone: demoResidentPhone(),
     },
     {
       id: "rega-b-0911",

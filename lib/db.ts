@@ -1,5 +1,5 @@
 import { createClient, type Client } from "@libsql/client";
-import { isProtectiveAction, type ProtectiveAction } from "./protective-action";
+import { isProtectiveAction, type ProtectiveAction } from "./protective-action.ts";
 
 /**
  * ARCA app data on LibSQL / SQLite — same engine Mastra uses for memory.
@@ -82,6 +82,16 @@ const SCHEMA = [
     site_id TEXT PRIMARY KEY,
     action TEXT NOT NULL,
     decided_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS voice_call_keeps (
+    id TEXT PRIMARY KEY,
+    site_id TEXT NOT NULL,
+    to_last4 TEXT NOT NULL,
+    status TEXT NOT NULL,
+    transcript TEXT,
+    outcome TEXT,
+    created_at TEXT NOT NULL,
+    archived_at TEXT NOT NULL
   )`,
 ] as const;
 
@@ -541,4 +551,68 @@ export async function listProtectiveActions(): Promise<Map<string, ProtectiveAct
     if (siteId && isProtectiveAction(action)) actions.set(siteId, action);
   }
   return actions;
+}
+
+export async function resetArcaConnection(): Promise<void> {
+  if (client) {
+    try {
+      client.close();
+    } catch {
+      // Test helper — ignore a close on a client that is already gone.
+    }
+  }
+  client = null;
+  schemaReady = false;
+}
+
+export async function archiveVoiceEvidence(rows: VoiceCallRow[]): Promise<number> {
+  if (rows.length === 0) return 0;
+  const db = await ensureArcaSchema();
+  const archivedAt = new Date().toISOString();
+  for (const row of rows) {
+    const digits = row.toNumber.replace(/\D/g, "");
+    const last4 = digits.slice(-4) || "????";
+    await db.execute({
+      sql: `INSERT INTO voice_call_keeps (id, site_id, to_last4, status, transcript, outcome, created_at, archived_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              transcript = excluded.transcript,
+              status = excluded.status,
+              outcome = excluded.outcome,
+              archived_at = excluded.archived_at`,
+      args: [
+        row.id,
+        row.siteId,
+        last4,
+        row.status,
+        row.transcript,
+        row.outcome,
+        row.createdAt,
+        archivedAt,
+      ],
+    });
+  }
+  return rows.length;
+}
+
+export async function wipeDemoRuntimeTables(): Promise<void> {
+  const db = await ensureArcaSchema();
+  await db.batch(
+    [
+      "DELETE FROM protective_actions",
+      "DELETE FROM confirmations",
+      "DELETE FROM alert_requests",
+      "DELETE FROM residents",
+      "DELETE FROM voice_calls",
+    ],
+    "write",
+  );
+}
+
+export async function countTable(
+  table: "slng_logs" | "simulations" | "protective_actions" | "voice_calls" | "residents" | "confirmations",
+): Promise<number> {
+  const db = await ensureArcaSchema();
+  const result = await db.execute(`SELECT COUNT(*) AS n FROM ${table}`);
+  return Number(result.rows[0]?.n ?? 0);
 }

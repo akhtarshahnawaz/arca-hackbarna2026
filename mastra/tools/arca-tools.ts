@@ -16,6 +16,9 @@ import {
 } from "../../lib/call-status";
 import { getCommandState } from "../../lib/command";
 import { retryPolicyCopy } from "../../lib/contact-policy";
+import { demoSites } from "../../lib/demo-data";
+import { phoneOnFileFor } from "../../lib/demo-cast";
+import { coordinatorToolRefusal } from "../../lib/telegram-access";
 import {
   afterLookupChoices,
   afterRequestChoices,
@@ -53,6 +56,14 @@ import {
   sendApprovedTelegramVoice,
 } from "../../lib/voice-calls";
 
+function locked<I, O>(fn: (input: I) => Promise<O>) {
+  return async (input: I, context: { requestContext?: { get?: (key: string) => unknown } }) => {
+    const refused = coordinatorToolRefusal(context?.requestContext);
+    if (refused) return refused;
+    return fn(input);
+  };
+}
+
 export const getBriefingTool = createTool({
   id: "get-briefing",
   description:
@@ -60,7 +71,7 @@ export const getBriefingTool = createTool({
   inputSchema: z.object({
     zone: z.string().optional().describe("Optional zone label. Demo uses Bages / Font-rubí."),
   }),
-  execute: async () => {
+  execute: locked(async () => {
     const state = await getCommandState();
     const cta = formatCta(briefingChoices());
     return {
@@ -70,12 +81,12 @@ export const getBriefingTool = createTool({
       simulation: "DEMO ensemble — not a live Deepfire perimeter",
       rankedCount: state.sites.length,
       watchCount: state.watch.length,
-      phoneOnFile: null,
+      phoneOnFile: false,
       cta,
       instruction:
         "Present the numbered choices from cta.choiceList. Do not ask a free-text yes/no about calling.",
     };
-  },
+  }),
 });
 
 export const getActiveFiresTool = createTool({
@@ -84,7 +95,7 @@ export const getActiveFiresTool = createTool({
   inputSchema: z.object({
     zone: z.string().optional(),
   }),
-  execute: async () => {
+  execute: locked(async () => {
     const state = await getCommandState();
     const deepfire = state.sources.find((source) => source.id === "deepfire");
     return {
@@ -95,7 +106,7 @@ export const getActiveFiresTool = createTool({
       deepfire: deepfire?.detail ?? "no Deepfire status",
       note: "Hotspot points are not fire boundaries. Do not infer arrival from distance rings.",
     };
-  },
+  }),
 });
 
 export const rankSitesTool = createTool({
@@ -103,7 +114,7 @@ export const rankSitesTool = createTool({
   description:
     "Return the current ranked list. You never invent a new order. Filter likely/possible first; watch is separate.",
   inputSchema: z.object({}),
-  execute: async () => {
+  execute: locked(async () => {
     const state = await getCommandState();
     return {
       ranked: state.sites.map((site) => ({
@@ -113,48 +124,53 @@ export const rankSitesTool = createTool({
         ensemble: ensembleReachCopy(site.runsReach, site.ensembleMembers, site.tArrival),
         spareTime: site.spareTime,
         protectiveAction: site.protectiveAction,
-        phoneOnFile: null,
+        phoneOnFile: phoneOnFileFor(site.code),
         confirmationStatus: site.confirmationStatus ?? (site.confirmedAt ? "reported" : null),
       })),
       watch: state.watch.map((site) => ({
         code: site.code,
         ensemble: ensembleReachCopy(site.runsReach, site.ensembleMembers, site.tArrival),
         protectiveAction: site.protectiveAction,
-        phoneOnFile: null,
+        phoneOnFile: phoneOnFileFor(site.code),
       })),
-      note: "No phones in seed data. A phone number is not a site id.",
+      note: "A phone is a site only when it matches an env-backed seed number. Do not invent a mapping.",
     };
-  },
+  }),
 });
 
 export const lookupSiteTool = createTool({
   id: "lookup-site",
   description:
-    "Look up one site from the shared command list by code or id only. Never invent a phone. Seed data has no phones. A number such as 633209158 is not a site.",
+    "Look up one site from the shared command list by code, id, or an env-backed phone on file. Never invent a phone↔site mapping.",
   inputSchema: z.object({
     siteId: z.string().describe("Site code or id from the ranked list, e.g. REGA-B-1842"),
   }),
-  execute: async (input) => {
-    if (looksLikePhoneId(input.siteId)) {
+  execute: locked(async (input) => {
+    const seeded = matchKnownSite(demoSites(), input.siteId);
+    if (looksLikePhoneId(input.siteId) && !seeded) {
       return {
         found: false,
-        phoneOnFile: null,
+        phoneOnFile: false,
         reason: PHONE_IS_NOT_A_SITE_REFUSAL,
         cta: formatCta(briefingChoices()),
       };
     }
     const state = await getCommandState();
-    const site = matchKnownSite([...state.sites, ...state.watch], input.siteId);
+    const site = matchKnownSite(
+      [...state.sites, ...state.watch],
+      seeded?.code ?? input.siteId,
+    );
     if (!site) {
       return {
         found: false,
-        phoneOnFile: null,
+        phoneOnFile: false,
         reason: UNKNOWN_SITE_REFUSAL,
         cta: formatCta(briefingChoices()),
       };
     }
     const mayCall = arcaMayCall(site.protectiveAction);
     const cta = formatCta(afterLookupChoices(mayCall));
+    const onFile = phoneOnFileFor(site.code);
     return {
       found: true,
       id: site.id,
@@ -164,16 +180,18 @@ export const lookupSiteTool = createTool({
       protectiveAction: site.protectiveAction,
       decisionLabel: site.protectiveAction ? actionLabel[site.protectiveAction] : "none — call locked",
       mayCall,
-      phoneOnFile: null,
+      phoneOnFile: onFile,
       ensemble: ensembleReachCopy(site.runsReach, site.ensembleMembers, site.tArrival),
       spareTime: site.spareTime,
       shelterHint: site.shelterHint,
-      note: "No phone on file. Coordinator must type the number. Do not invent a mapping.",
+      note: onFile
+        ? "A number is on file from env. The coordinator can leave the call field blank. Do not read the digits aloud."
+        : "No phone on file. Coordinator must type the number. Do not invent a mapping.",
       cta,
       instruction:
         "Present the numbered choices. If mayCall is false, do not offer a free-text call.",
     };
-  },
+  }),
 });
 
 export const setProtectiveActionTool = createTool({
@@ -184,11 +202,11 @@ export const setProtectiveActionTool = createTool({
     siteId: z.string().describe("Site code from the ranked list"),
     action: z.enum(["monitor", "latent", "confine", "evacuate"]),
   }),
-  execute: async (input) => {
+  execute: locked(async (input) => {
     const state = await getCommandState();
     const site = matchKnownSite([...state.sites, ...state.watch], input.siteId);
     if (!site) {
-      return { saved: false, reason: UNKNOWN_SITE_REFUSAL, phoneOnFile: null };
+      return { saved: false, reason: UNKNOWN_SITE_REFUSAL, phoneOnFile: false };
     }
     if (!isProtectiveAction(input.action)) {
       return { saved: false, reason: "Action must be monitor, latent, confine, or evacuate." };
@@ -202,10 +220,10 @@ export const setProtectiveActionTool = createTool({
       decisionLabel: actionLabel[input.action],
       mayCall,
       effect: actionEffectCopy(input.action),
-      phoneOnFile: null,
+      phoneOnFile: phoneOnFileFor(site.code),
       cta: formatCta(afterLookupChoices(mayCall)),
     };
-  },
+  }),
 });
 
 export const recordConfirmationTool = createTool({
@@ -221,7 +239,7 @@ export const recordConfirmationTool = createTool({
       .nullable()
       .describe("true if they have a truck/trailer/car, false if not, null if unknown"),
   }),
-  execute: async (input) => {
+  execute: locked(async (input) => {
     const saved = await saveReportedConfirmation({
       siteId: input.siteId,
       species: input.species,
@@ -245,7 +263,7 @@ export const recordConfirmationTool = createTool({
         : null,
       spareTime: site?.spareTime ?? null,
     };
-  },
+  }),
 });
 
 export const registerResidentTool = createTool({
@@ -289,7 +307,7 @@ export const alertResidentsTool = createTool({
       .optional()
       .describe("Optional extra sentence. Ensemble fire window is attached automatically."),
   }),
-  execute: async (input) => {
+  execute: locked(async (input) => {
     await saveAlertRequest({
       zone: input.zone,
       message: input.message ?? "",
@@ -333,7 +351,7 @@ export const alertResidentsTool = createTool({
           ? "No opted-in Telegram residents yet. Preview only. Demo household codes are not messaged."
           : "Sent only to opted-in residents who already started the bot.",
     };
-  },
+  }),
 });
 
 export const escalateCoordinatorTool = createTool({
@@ -344,7 +362,7 @@ export const escalateCoordinatorTool = createTool({
     pendingMinutes: z.number().nonnegative(),
     reason: z.string().optional(),
   }),
-  execute: async (input) => {
+  execute: locked(async (input) => {
     const text = [
       "ARCA escalate — resident alert still waiting for Approve.",
       `Pending about ${input.pendingMinutes} minutes.`,
@@ -376,20 +394,21 @@ export const escalateCoordinatorTool = createTool({
           ? "No COORDINATOR_TELEGRAM_CHAT_ID / TELEGRAM_BACKUP_CHAT_ID. Post this nudge in the current chat. Still do not alert residents."
           : "Nudge sent. Residents were not messaged.",
     };
-  },
+  }),
 });
 
 export const requestSiteCallTool = createTool({
   id: "request-site-call",
   description:
-    "Queue a Voice call as awaiting_approval. Does not place or approve the call. Typing Call is not approval. Requires Confine or Evacuate already saved. Coordinator must type the number — seed data has no phones.",
+    "Queue a Voice call as awaiting_approval. Does not place or approve the call. Typing Call is not approval. Requires Confine or Evacuate already saved. Uses the env-backed site phone if toNumber is omitted.",
   inputSchema: z.object({
     siteId: z.string().describe("Site code from the ranked list, e.g. REGA-B-1842"),
     toNumber: z
       .string()
-      .describe("E.164 number the coordinator typed in this turn. Never invent a number."),
+      .optional()
+      .describe("Number typed this turn, or omit to use the env-backed phone on file. Never invent a number."),
   }),
-  execute: async (input) => {
+  execute: locked(async (input) => {
     const permission = await resolveCallPermission(input.siteId);
     if (!permission.ok) {
       return {
@@ -398,7 +417,7 @@ export const requestSiteCallTool = createTool({
         status: "refused",
         reason: permission.reason,
         action: permission.action,
-        phoneOnFile: null,
+        phoneOnFile: phoneOnFileFor(permission.siteId),
         cta: formatCta(afterLookupChoices(false)),
         coordinatorMustRepeatVerbatim: `SAY_THIS_EXACTLY: ${permission.reason}`,
       };
@@ -406,7 +425,7 @@ export const requestSiteCallTool = createTool({
     try {
       const requested = await requestSiteCall({
         siteId: permission.siteId,
-        toNumber: input.toNumber,
+        toNumber: input.toNumber ?? "",
       });
       const spoken = formatCoordinatorCallStatus({ status: requested.call.status });
       return {
@@ -421,7 +440,7 @@ export const requestSiteCallTool = createTool({
         approval:
           "TYPING IS NOT APPROVAL. Next: invoke call-site so Mastra can show Approve/Deny. Do not treat the coordinator’s last message as approval.",
         cta: formatCta(afterRequestChoices()),
-        phoneOnFile: null,
+        phoneOnFile: phoneOnFileFor(permission.siteId),
       };
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Call request refused.";
@@ -429,12 +448,12 @@ export const requestSiteCallTool = createTool({
         refused: true,
         placed: false,
         reason,
-        phoneOnFile: null,
+        phoneOnFile: phoneOnFileFor(permission.siteId),
         coordinatorMustRepeatVerbatim: `SAY_THIS_EXACTLY: ${reason}`,
         cta: formatCta(afterLookupChoices(false)),
       };
     }
-  },
+  }),
 });
 
 export const callSiteTool = createTool({
@@ -446,7 +465,7 @@ export const callSiteTool = createTool({
     callId: z.string().optional().describe("Pending call id from request-site-call"),
     siteId: z.string().optional().describe("Site code of an existing awaiting_approval request"),
   }),
-  execute: async (input) => {
+  execute: locked(async (input) => {
     const pending = input.callId
       ? await getVoiceCall(input.callId)
       : input.siteId
@@ -493,7 +512,7 @@ export const callSiteTool = createTool({
         call: placed.call,
         detail: placed.detail,
         retryPolicy: retryPolicyCopy(),
-        phoneOnFile: null,
+        phoneOnFile: phoneOnFileFor(permission.siteId),
         ...spoken,
         stub: placed.stub,
         modelMustSay: modelMustEchoCallStatus(spoken),
@@ -516,7 +535,7 @@ export const callSiteTool = createTool({
         }),
       };
     }
-  },
+  }),
   toModelOutput: (output) => {
     const record = output as { modelMustSay?: string; coordinatorMustRepeatVerbatim?: string };
     const line =
@@ -534,7 +553,7 @@ export const denySiteCallTool = createTool({
     callId: z.string().optional(),
     siteId: z.string().optional(),
   }),
-  execute: async (input) => {
+  execute: locked(async (input) => {
     const pending = input.callId
       ? await getVoiceCall(input.callId)
       : input.siteId
@@ -546,7 +565,7 @@ export const denySiteCallTool = createTool({
     const call = await denySiteCall(pending.id);
     const spoken = formatCoordinatorCallStatus({ status: call.status });
     return { denied: true, call, ...spoken, modelMustSay: modelMustEchoCallStatus(spoken) };
-  },
+  }),
 });
 
 export const transcribeVoiceNoteTool = createTool({

@@ -72,6 +72,7 @@ export function formatResidentAlert(site: {
     "ARCA wildfire notice (coordinator approved).",
     site.municipality ? `Area: ${site.municipality}.` : null,
     site.fireWindow,
+    "Stay inside. Bring dogs and other animals in. Close doors and windows.",
     `Shelter that takes pets (coordinator config, not live OSM): ${site.shelterHint}`,
     "Residents are warned only after a human Approves.",
   ]

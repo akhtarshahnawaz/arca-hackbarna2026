@@ -504,7 +504,7 @@ function CallApprove({
       ) : null}
       <input
         className="rounded-md border bg-background px-3 py-2 text-sm"
-        placeholder="E.164 number"
+        placeholder={site.phoneOnFile ? "Number on file — leave blank to use it" : "E.164 number"}
         value={number}
         onChange={(event) => setNumber(event.target.value)}
       />

@@ -107,12 +107,20 @@ Needed for a full local demo:
 - `DEEPFIRE_CLIENT_ID` / `DEEPFIRE_CLIENT_SECRET` — live hotspots; UI stays on demo polygons if this fails
 - `NEBIUS_API_KEY` — Mastra explainer
 - `TELEGRAM_BOT_TOKEN` — BotFather token. Local delivery is **polling**, not a webhook
-- `COORDINATOR_TELEGRAM_CHAT_ID` / `TELEGRAM_BACKUP_CHAT_ID` — escalate nudges
+- `COORDINATOR_TELEGRAM_CHAT_ID` / `TELEGRAM_BACKUP_CHAT_ID` — escalate nudges. Chat id after `/start`, not a mobile number
+- `DEMO_PHONE` — farmer number on the demo farm (server-only). `DEMO_RESIDENT_PHONE` / `COORDINATOR_PHONE` same rule
+- `DEMO_RESIDENT_TELEGRAM_CHAT_ID` — resident Telegram chat id after `/start`
 - `DEMO_CLUSTER_ID` — Catalan wildfire cluster label, not Tarragona industry
 - `DATABASE_URL=file:./arca.db`
-- Voice (optional; UI still shows Call if missing): `VONAGE_API_KEY`, `VONAGE_API_SECRET`, `VONAGE_APPLICATION_ID`, `VONAGE_PRIVATE_KEY_PATH`, `VONAGE_FROM_NUMBER`, `VONAGE_VOICE_WEBHOOK_URL`, `SLNG_API_KEY`
+- Voice (optional; UI still shows Call if missing): `VONAGE_API_KEY`, `VONAGE_API_SECRET`, `VONAGE_APPLICATION_ID`, `VONAGE_PRIVATE_KEY_PATH` (file path), `VONAGE_FROM_NUMBER`, `VONAGE_VOICE_WEBHOOK_URL`, `SLNG_API_KEY`
 
-Vonage cannot hit localhost. Set `VONAGE_VOICE_WEBHOOK_URL` to an ngrok or deploy URL. Without keys, Call/Approve stay visible and the routes are stubs.
+Vonage cannot hit localhost. Set `VONAGE_VOICE_WEBHOOK_URL` to an ngrok or deploy URL. Without a public webhook + SLNG, Call/Approve stay visible and the routes say test mode — no live ring.
+
+```bash
+npm run demo:reset   # wipe leftover Confine/Evacuate and pending calls; keep Galtea traces and archived transcripts
+```
+
+Sunday setup: (1) `COORDINATOR_TELEGRAM_CHAT_ID` after the coordinator messages the bot, (2) a public HTTPS URL for Vonage, (3) a mobile hotspot backup.
 
 ## Architecture
 
