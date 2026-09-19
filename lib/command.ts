@@ -1,3 +1,4 @@
+import { loadOfficialFacilities } from "./official-facilities";
 import evacConfig from "../config/evac-times.json";
 import { applyReportedConfirmations } from "./confirmations";
 import { demoPolygons, demoSites } from "./demo-data";
@@ -49,12 +50,13 @@ export async function getCommandState(): Promise<CommandState> {
     alerts.push(`ARCA LibSQL could not open (${message}). Rankings still run in memory.`);
   }
 
-  const [deepfire, registry, heat, firms, effis] = await Promise.all([
+  const [deepfire, registry, heat, firms, effis, official] = await Promise.all([
     fetchDeepfireHotspots(),
     fetchRegistryFarms(),
     fetchStaticHeatSources(),
     fetchFirmsDetections(),
     fetchEffisDetections(),
+    loadOfficialFacilities(),
   ]);
 
   // Cross-check: a hotspot two independent feeds agree on outranks the clock.
@@ -78,7 +80,7 @@ export async function getCommandState(): Promise<CommandState> {
     // Schema already reported if the file could not open.
   }
   const sites: SiteInput[] = applyConfiguredShelters(
-    applyReportedConfirmations([...seeded, ...extra], confirmations),
+    applyReportedConfirmations([...seeded, ...extra, ...official.sites], confirmations),
     shelterConfig,
   );
   const polygons = demoPolygons();
@@ -143,6 +145,7 @@ export async function getCommandState(): Promise<CommandState> {
       `${onChimney.length} hotspot${onChimney.length === 1 ? " sits" : "s sit"} on a known static heat source. Drawn, never promoted.`,
     );
   }
+  if (!official.status.ok) alerts.push(official.status.detail);
 
   return {
     generatedAt,
@@ -164,6 +167,7 @@ export async function getCommandState(): Promise<CommandState> {
     watch: sortByCorroboration(corroborateSites(keepTimeRank(withChoice(watch)), hotspots)),
     watchIfFewerThanRuns: loadRankingPolicy().watchIfFewerThanRuns,
     sources: [
+      official.status,
       {
         id: "deepfire",
         label: "Deepfire hotspots",

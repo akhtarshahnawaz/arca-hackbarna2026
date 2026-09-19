@@ -3,6 +3,7 @@
   "ensembleMembers": 10,
   "note": "Assumptions for the hackathon ranking engine. Not operational doctrine. Validate with mentors.",
   "byTypeHours": {
+    "cap": 1,
     "care_home": 4,
     "hospital": 3.5,
     "school": 1.5,

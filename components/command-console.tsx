@@ -1,29 +1,23 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { corroborationCopy } from "@/lib/crosscheck";
 import { confirmedCopy, freshnessLabel, formatClock, registeredCopy } from "@/lib/freshness";
 import {
+  actionUi,
   arcaMayCall,
-  actionLabel,
-  PROTECTIVE_ACTIONS,
   type ProtectiveAction,
 } from "@/lib/protective-action";
-import { siteKindBadgeClass, siteKindLabel } from "@/lib/site-kind";
+import { siteKindLabel } from "@/lib/site-kind";
 import {
-  plainDuration,
+  focusClockCopy,
   timeLeftCopy,
-  urgencyBadgeLabel,
-  urgencyRowCopy,
   urgencyTier,
   type UrgencyTier,
 } from "@/lib/urgency";
-import { callStatusLabel } from "@/lib/call-status";
 import type { CommandState, RankedSite, VoiceCallSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -32,25 +26,28 @@ const CommandMap = dynamic(() => import("@/components/command-map"), {
   loading: () => <Skeleton className="size-full rounded-none" />,
 });
 
+const PRIMARY_ACTIONS: ProtectiveAction[] = ["confine", "evacuate"];
+const SECONDARY_ACTIONS: ProtectiveAction[] = ["monitor", "latent"];
+
 const tierRowClass: Record<UrgencyTier, string> = {
-  late: "border-l-4 border-l-red-600 bg-red-50 hover:bg-red-100/70",
-  now: "border-l-4 border-l-orange-500 bg-orange-50 hover:bg-orange-100/70",
-  prepare: "border-l-4 border-l-yellow-400 hover:bg-yellow-50",
-  none: "border-l-4 border-l-transparent opacity-75 hover:bg-muted/60",
+  late: "hover:bg-red-50",
+  now: "hover:bg-orange-50",
+  prepare: "hover:bg-green-50",
+  none: "hover:bg-muted/60",
 };
 
-const tierBadgeClass: Record<UrgencyTier, string> = {
-  late: "bg-red-600 text-white",
-  now: "bg-orange-500 text-white",
-  prepare: "bg-yellow-400 text-yellow-950",
-  none: "bg-muted text-muted-foreground",
+const tierDotClass: Record<UrgencyTier, string> = {
+  late: "bg-red-600",
+  now: "bg-orange-500",
+  prepare: "bg-green-700",
+  none: "bg-stone-300",
 };
 
-const tierPanelClass: Record<UrgencyTier, string> = {
-  late: "bg-red-50/90",
-  now: "bg-orange-50/90",
-  prepare: "bg-yellow-50/80",
-  none: "bg-muted/40",
+const tierClockClass: Record<UrgencyTier, string> = {
+  late: "font-medium text-red-700",
+  now: "font-medium text-orange-700",
+  prepare: "font-medium text-green-800",
+  none: "text-foreground/55",
 };
 
 type Props = {
@@ -60,40 +57,51 @@ type Props = {
 export function CommandConsole({ initial }: Props) {
   const [state, setState] = useState(initial);
   const [openId, setOpenId] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [basemap, setBasemap] = useState<"map" | "satellite">("satellite");
 
+  const ranked = state.sites ?? [];
   const watchSites = state.watch ?? [];
+  const alerts = state.alerts ?? [];
+  const banners = state.banners ?? [];
+  const sources = state.sources ?? [];
 
   const openSite = useMemo(() => {
     if (!openId) return null;
-    return (
-      state.sites.find((site) => site.id === openId) ??
-      watchSites.find((site) => site.id === openId) ??
-      null
-    );
-  }, [openId, state.sites, watchSites]);
+    return ranked.find((site) => site.id === openId) ?? watchSites.find((site) => site.id === openId) ?? null;
+  }, [openId, ranked, watchSites]);
+
+  const undecided = ranked.filter((site) => !site.protectiveAction);
+  const decidedCount = ranked.length - undecided.length;
 
   useEffect(() => {
-    if (!openId) return;
-    document.getElementById(`site-item-${openId}`)?.scrollIntoView({
-      block: "nearest",
-      behavior: "smooth",
-    });
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (openId) {
+      if (!dialog.open) dialog.showModal();
+    } else if (dialog.open) {
+      dialog.close();
+    }
   }, [openId]);
-
-  function toggleSite(id: string) {
-    setOpenId((current) => (current === id ? null : id));
-  }
 
   function openSiteById(id: string) {
     setOpenId(id);
+  }
+
+  function openNextUndecided(afterId?: string) {
+    const from = afterId ? ranked.findIndex((site) => site.id === afterId) : -1;
+    const next =
+      ranked.slice(from + 1).find((site) => !site.protectiveAction) ??
+      ranked.find((site) => !site.protectiveAction);
+    if (next) setOpenId(next.id);
+    else dialogRef.current?.close();
   }
 
   function patchSite(siteKey: string, patch: Partial<RankedSite>) {
     const match = (site: RankedSite) => site.id === siteKey || site.code === siteKey;
     setState((prev) => ({
       ...prev,
-      sites: prev.sites.map((site) => (match(site) ? { ...site, ...patch } : site)),
+      sites: (prev.sites ?? []).map((site) => (match(site) ? { ...site, ...patch } : site)),
       watch: (prev.watch ?? []).map((site) => (match(site) ? { ...site, ...patch } : site)),
     }));
   }
@@ -101,49 +109,39 @@ export function CommandConsole({ initial }: Props) {
   function upsertCall(call: VoiceCallSummary) {
     setState((prev) => ({
       ...prev,
-      voiceCalls: [call, ...prev.voiceCalls.filter((item) => item.id !== call.id)],
+      voiceCalls: [call, ...(prev.voiceCalls ?? []).filter((item) => item.id !== call.id)],
     }));
   }
 
+  const firePlace = state.fire?.municipality?.split("/")[0]?.trim() || "Bages";
+
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background lg:h-[100dvh] lg:min-h-0 lg:overflow-hidden">
-      <header className="flex shrink-0 flex-col gap-3 border-b px-5 py-4 md:px-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
-              Coordinator console
-            </p>
-            <h1 className="font-heading text-3xl tracking-tight">ARCA</h1>
-            <p className="max-w-xl text-sm">
-              <span className="font-medium">Red = most urgent.</span>{" "}
-              <span className="text-muted-foreground">
-                You choose: monitor, latent, confine, or evacuate.
-              </span>
-            </p>
-          </div>
-          <div className="flex flex-col items-start gap-1 md:items-end">
-            <Badge variant="outline">INC-DEMO Bages</Badge>
-            <Badge>{state.contactPolicy?.dashboardLabel ?? "Approval required"}</Badge>
-            <p className="font-mono text-xs text-muted-foreground">
-              {state.fire.municipality} · {state.fire.ensembleMembers} runs · {state.fire.horizonHours} h
-            </p>
-          </div>
+      <header className="flex shrink-0 flex-col gap-1.5 border-b px-5 py-3 md:px-7">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <h1 className="min-w-0 text-base font-medium leading-snug">
+            {undecided.length === 0
+              ? "Every urgent place has a decision"
+              : undecided.length === 1
+                ? "1 place still needs your decision"
+                : `${undecided.length} places still need your decision`}
+          </h1>
+          {ranked.length > 0 ? (
+            <span className="text-sm text-foreground/55 tabular-nums">
+              ARCA · {decidedCount} of {ranked.length} · {firePlace}
+            </span>
+          ) : (
+            <span className="text-sm text-foreground/55">{firePlace}</span>
+          )}
         </div>
-        {/*
-          `details` holds the notes only. A degraded feed never goes in here: it
-          is collapsed by default, so a failure would read as one more line of
-          demo copy. Capped and scrollable because at `lg` the page itself does
-          not scroll, and an unbounded strip squeezes the map and the ranked
-          list with no way to get them back.
-        */}
         <details>
-          <summary className="cursor-pointer text-xs text-muted-foreground select-none">
-            Data status
+          <summary className="cursor-pointer text-sm text-foreground/55 select-none">
+            Data sources and notes
           </summary>
           <div className="mt-3 flex max-h-[38dvh] flex-col gap-2 overflow-y-auto">
-            <FreshnessStrip state={state} />
-            {state.banners.map((banner) => (
-              <p key={banner} className="text-xs text-muted-foreground">
+            <FreshnessStrip sources={sources} />
+            {banners.map((banner) => (
+              <p key={banner} className="text-sm text-foreground/70">
                 {banner}
               </p>
             ))}
@@ -151,41 +149,66 @@ export function CommandConsole({ initial }: Props) {
         </details>
       </header>
 
-      {state.alerts.length > 0 ? (
+      {alerts.length > 0 ? (
         <div
           role="alert"
-          className="flex max-h-[24dvh] shrink-0 flex-col gap-1 overflow-y-auto border-b border-destructive/40 bg-destructive/10 px-5 py-2 md:px-8"
+          className="flex max-h-[24dvh] shrink-0 flex-col gap-1 overflow-y-auto border-b border-red-300 bg-red-50 px-5 py-3 md:px-7"
         >
-          {state.alerts.map((alert) => (
-            <p key={alert} className="text-xs font-medium text-destructive">
+          {alerts.map((alert) => (
+            <p key={alert} className="text-sm font-medium text-red-900">
               {alert}
             </p>
           ))}
         </div>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_380px] lg:grid-rows-1">
-        <section className="relative min-h-[52dvh] lg:min-h-0 lg:h-full">
+      <div className="grid flex-1 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_440px] lg:grid-rows-1">
+        <aside className="order-1 flex min-w-0 flex-col border-b lg:order-2 lg:h-full lg:min-h-0 lg:overflow-hidden lg:border-b-0 lg:border-l">
+          <p className="px-5 py-3 text-sm text-foreground/55">Tap a place. Most urgent first.</p>
+          <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+            <ol className="flex flex-col">
+              {ranked.length === 0 ? (
+                <li className="px-5 py-6 text-sm text-foreground/55">
+                  No places in range yet. Check the map, or open data sources.
+                </li>
+              ) : (
+                ranked.map((site) => (
+                  <SiteRow
+                    key={site.id}
+                    site={site}
+                    active={openSite?.id === site.id}
+                    onSelect={openSiteById}
+                    showRank
+                  />
+                ))
+              )}
+            </ol>
+            <WatchList
+              sites={watchSites}
+              activeId={openSite?.id ?? null}
+              onSelect={openSiteById}
+            />
+          </div>
+        </aside>
+
+        <section className="relative order-2 min-h-[40dvh] lg:order-1 lg:min-h-0 lg:h-full">
           <CommandMap
             state={state}
             selectedId={openId}
             onSelect={openSiteById}
             basemap={basemap}
           />
-          <div className="pointer-events-none absolute top-4 left-4 z-30 rounded-md border bg-background/90 px-3 py-2">
-            <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
-              Demo polygons
-            </p>
-            <p className="text-xs text-foreground">Hour rings from member 5 of 10</p>
-          </div>
-          <div className="absolute top-4 right-4 z-30 flex overflow-hidden rounded-md border bg-background shadow-sm">
+          <p className="pointer-events-none absolute bottom-3 left-4 z-30 max-w-[18rem] text-sm leading-snug text-foreground/50">
+            Orange rings: possible fire in the next hours
+          </p>
+          <div className="absolute top-3 right-4 z-30 flex gap-2.5">
             <button
               type="button"
               aria-pressed={basemap === "map"}
               onClick={() => setBasemap("map")}
               className={cn(
-                "px-3 py-1.5 font-mono text-[10px] tracking-[0.18em] uppercase",
-                basemap === "map" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+                "text-sm",
+                basemap === "map" ? "text-foreground underline underline-offset-4" : "text-foreground/50 hover:text-foreground/80",
               )}
             >
               Map
@@ -195,104 +218,103 @@ export function CommandConsole({ initial }: Props) {
               aria-pressed={basemap === "satellite"}
               onClick={() => setBasemap("satellite")}
               className={cn(
-                "px-3 py-1.5 font-mono text-[10px] tracking-[0.18em] uppercase",
-                basemap === "satellite" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+                "text-sm",
+                basemap === "satellite"
+                  ? "text-foreground underline underline-offset-4"
+                  : "text-foreground/50 hover:text-foreground/80",
               )}
             >
               Satellite
             </button>
           </div>
         </section>
-
-        <aside className="flex min-h-0 flex-col border-t lg:h-full lg:overflow-hidden lg:border-t-0 lg:border-l">
-          <div className="flex flex-col gap-2 px-5 py-3">
-            <div className="flex items-center justify-between">
-              <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-                Most urgent first
-              </p>
-              <span className="font-mono text-xs text-muted-foreground">{state.sites.length}</span>
-            </div>
-            <UrgencyLegend />
-          </div>
-          <Separator />
-          <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-            <ol className="flex flex-col">
-              {state.sites.length === 0 ? (
-                <li className="px-5 py-4 text-sm text-muted-foreground">No ranked sites.</li>
-              ) : (
-                state.sites.map((site) => (
-                  <SiteRow
-                    key={site.id}
-                    site={site}
-                    open={openSite?.id === site.id}
-                    onToggle={toggleSite}
-                    showRank
-                  >
-                    <SitePanel
-                      site={site}
-                      calls={state.voiceCalls}
-                      onPatchSite={patchSite}
-                      onUpsertCall={upsertCall}
-                    />
-                  </SiteRow>
-                ))
-              )}
-            </ol>
-            <div className="border-t px-5 pt-3 pb-1">
-              <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-                Not close
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Fewer than {state.watchIfFewerThanRuns} of {state.fire.ensembleMembers} runs
-              </p>
-            </div>
-            <ol className="flex flex-col pb-2">
-              {watchSites.length === 0 ? (
-                <li className="px-5 py-3 text-sm text-muted-foreground">No watch sites.</li>
-              ) : (
-                watchSites.map((site) => (
-                  <SiteRow
-                    key={site.id}
-                    site={site}
-                    open={openSite?.id === site.id}
-                    onToggle={toggleSite}
-                    showRank={false}
-                  >
-                    <SitePanel
-                      site={site}
-                      calls={state.voiceCalls}
-                      onPatchSite={patchSite}
-                      onUpsertCall={upsertCall}
-                    />
-                  </SiteRow>
-                ))
-              )}
-            </ol>
-          </div>
-        </aside>
       </div>
+
+      <dialog
+        ref={dialogRef}
+        className="arca-dialog"
+        onClose={() => setOpenId(null)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) event.currentTarget.close();
+        }}
+      >
+        {openSite ? (
+          <FocusCard
+            key={openSite.id}
+            site={openSite}
+            rankedCount={ranked.length}
+            calls={state.voiceCalls ?? []}
+            onPatchSite={patchSite}
+            onUpsertCall={upsertCall}
+            nextCount={undecided.filter((item) => item.id !== openSite.id).length}
+            onOpenNext={() => openNextUndecided(openSite.id)}
+            onClose={() => dialogRef.current?.close()}
+          />
+        ) : null}
+      </dialog>
     </div>
   );
 }
 
-function FreshnessStrip({ state }: { state: CommandState }) {
+function WatchList({
+  sites,
+  activeId,
+  onSelect,
+}: {
+  sites: RankedSite[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-t">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex min-h-11 w-full items-center px-5 py-3 text-left text-sm text-foreground/55"
+      >
+        Far from the fire — {sites.length} {sites.length === 1 ? "place" : "places"}
+      </button>
+      {open ? (
+        <div>
+          <p className="px-5 pb-2 text-sm text-foreground/45">
+            Fire is not expected here soon. Open only if you still want to mark a decision.
+          </p>
+          <ol className="flex flex-col pb-2">
+            {sites.length === 0 ? (
+              <li className="px-5 py-3 text-sm text-foreground/55">No far places on this list.</li>
+            ) : (
+              sites.map((site) => (
+                <SiteRow
+                  key={site.id}
+                  site={site}
+                  active={activeId === site.id}
+                  onSelect={onSelect}
+                  showRank={false}
+                />
+              ))
+            )}
+          </ol>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FreshnessStrip({ sources }: { sources: CommandState["sources"] }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {state.sources.map((source) => (
-          <div
-            key={source.id}
-            className="flex min-w-[190px] flex-col gap-1 rounded-lg border bg-card px-3 py-2"
-          >
+        {sources.map((source) => (
+          <div key={source.id} className="flex min-w-[200px] flex-col gap-1 rounded-lg border bg-card px-3 py-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium">{source.label}</span>
-              <Badge variant={source.kind === "live" ? "default" : "outline"}>
-                {freshnessLabel(source.kind)}
-              </Badge>
+              <span className="text-sm font-medium">{source.label}</span>
+              <Badge variant={source.kind === "live" ? "default" : "outline"}>{freshnessLabel(source.kind)}</Badge>
             </div>
-            <p className="text-[11px] leading-snug text-muted-foreground">{source.detail}</p>
-            <p className="font-mono text-[10px] text-muted-foreground">
-              {source.fetchedAt ? `Fetched ${formatClock(source.fetchedAt)}` : "No fetch time"}
+            <p className="text-sm leading-snug text-foreground/70">{source.detail}</p>
+            <p className="text-sm text-foreground/60">
+              {source.fetchedAt ? `Updated ${formatClock(source.fetchedAt)}` : "No update time"}
             </p>
           </div>
         ))}
@@ -301,62 +323,43 @@ function FreshnessStrip({ state }: { state: CommandState }) {
   );
 }
 
-function UrgencyLegend() {
-  const tiers: UrgencyTier[] = ["late", "now", "prepare", "none"];
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {tiers.map((tier) => (
-        <span
-          key={tier}
-          className={cn(
-            "rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
-            tierBadgeClass[tier],
-          )}
-        >
-          {urgencyBadgeLabel[tier]}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function SiteRow({
   site,
-  open,
-  onToggle,
+  active,
+  onSelect,
   showRank,
-  children,
 }: {
   site: RankedSite;
-  open: boolean;
-  onToggle: (id: string) => void;
+  active: boolean;
+  onSelect: (id: string) => void;
   showRank: boolean;
-  children: ReactNode;
 }) {
   const tier = urgencyTier(site);
+  const decided = Boolean(site.protectiveAction);
+  const clock =
+    site.locationQuality === "municipality_centroid" ? "Timing unknown" : timeLeftCopy(site);
+
   return (
     <li id={`site-item-${site.id}`}>
       <button
         type="button"
-        aria-expanded={open}
-        aria-controls={`site-panel-${site.id}`}
-        onClick={() => onToggle(site.id)}
+        aria-haspopup="dialog"
+        onClick={() => onSelect(site.id)}
         className={cn(
-          "flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors",
+          "flex w-full min-w-0 cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors active:bg-muted",
           tierRowClass[tier],
-          open && "ring-2 ring-foreground/50 ring-inset",
+          decided && "opacity-55",
+          active && "bg-muted",
         )}
       >
-        <span className="w-7 pt-0.5 text-center font-mono text-lg font-semibold">
+        <span className={cn("size-2 shrink-0 rounded-full", tierDotClass[tier])} aria-hidden />
+        <span className="w-6 shrink-0 text-center text-sm tabular-nums text-foreground/45">
           {showRank ? site.rank : "·"}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <span className="truncate font-medium">{site.code}</span>
-            <Badge className={siteKindBadgeClass[site.kind]}>{siteKindLabel(site.kind)}</Badge>
-          </span>
-          <span className="mt-1 block text-xs text-muted-foreground">
-            {site.municipality} · {urgencyRowCopy(site)}
+          <span className="block truncate text-sm">{site.name ?? site.code}</span>
+          <span className="mt-0.5 block truncate text-sm text-foreground/50">
+            {siteKindLabel(site.kind)} · {site.municipality}
           </span>
           {site.corroboration ? (
             <span className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -367,29 +370,19 @@ function SiteRow({
             </span>
           ) : null}
         </span>
-        <span className="flex shrink-0 flex-col items-end gap-1">
+        <span className="flex shrink-0 flex-col items-end gap-0.5">
           <span
-            className={cn(
-              "rounded px-2 py-1 text-[11px] font-bold tracking-wide whitespace-nowrap",
-              tierBadgeClass[tier],
-            )}
+            className={cn("text-sm tabular-nums", decided ? "text-foreground/55" : tierClockClass[tier])}
           >
-            {urgencyBadgeLabel[tier]}
+            {clock}
           </span>
-          <span
-            className={cn(
-              "text-[11px] font-medium whitespace-nowrap",
-              tier === "late" ? "text-red-700" : "text-muted-foreground",
-            )}
-          >
-            {timeLeftCopy(site)}
-          </span>
-          <span className="text-[10px] text-muted-foreground">
-            {site.protectiveAction ? actionLabel[site.protectiveAction] : "No decision"}
-          </span>
+          {decided && site.protectiveAction ? (
+            <span className="text-sm text-foreground/70">
+              {actionUi[site.protectiveAction].title} ✓
+            </span>
+          ) : null}
         </span>
       </button>
-      {open ? children : null}
     </li>
   );
 }
@@ -403,76 +396,126 @@ function siteFactsLine(site: RankedSite): string | null {
     .join(", ");
   const transport =
     site.hasOwnTransport === null ? null : site.hasOwnTransport ? "own transport" : "no transport";
-  const bits = [animals || null, transport].filter(Boolean);
+  const capacity = site.datasetId
+    ? site.facilityCapacity == null ? "Capacity unknown" : `${site.facilityCapacity} ${site.capacityUnit ?? "places"}${site.capacityPeriod ? ` (${site.capacityPeriod})` : ""} · not current occupancy`
+    : null;
+  const bits = [animals || null, transport, capacity].filter(Boolean);
   return bits.length ? bits.join(" · ") : null;
 }
 
-function SitePanel({
+function focusPlaceMeta(site: RankedSite, rankedCount: number): string {
+  const kindTown = `${siteKindLabel(site.kind)} · ${site.municipality}`;
+  if (site.label === "watch" || site.rank === 0) {
+    return `Far from the fire · ${kindTown}`;
+  }
+  return `Place ${site.rank} of ${rankedCount} · ${kindTown}`;
+}
+
+function FocusCard({
   site,
+  rankedCount,
   calls,
   onPatchSite,
   onUpsertCall,
+  nextCount,
+  onOpenNext,
+  onClose,
 }: {
   site: RankedSite;
+  rankedCount: number;
   calls: VoiceCallSummary[];
   onPatchSite: (siteKey: string, patch: Partial<RankedSite>) => void;
   onUpsertCall: (call: VoiceCallSummary) => void;
+  nextCount: number;
+  onOpenNext: () => void;
+  onClose: () => void;
 }) {
-  const tier = urgencyTier(site);
   const facts = siteFactsLine(site);
   const mayCall = arcaMayCall(site.protectiveAction);
 
   return (
-    <div
-      id={`site-panel-${site.id}`}
-      className={cn("flex flex-col gap-3 border-t px-4 py-3", tierPanelClass[tier])}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className={cn(
-            "rounded px-2 py-1 text-[11px] font-bold tracking-wide",
-            tierBadgeClass[tier],
-          )}
-        >
-          {urgencyBadgeLabel[tier]}
-        </span>
-        <Badge className={siteKindBadgeClass[site.kind]}>{siteKindLabel(site.kind)}</Badge>
+    <div className="flex max-h-[min(32rem,calc(100dvh-2rem))] flex-col">
+      <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5">
+        <p className="text-sm text-foreground/55">{focusPlaceMeta(site, rankedCount)}</p>
+        <button type="button" className="h-8 shrink-0 px-2 text-sm text-foreground/70" onClick={onClose}>
+          Close
+        </button>
       </div>
+      <div className="flex flex-col gap-3 overflow-y-auto px-4 py-3">
+        <p className={cn("text-base leading-snug", tierClockClass[urgencyTier(site)])}>
+          {(site.name ?? site.code).trim()}. {focusClockCopy(site)}
+        </p>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Metric
-          label="Fire arrives"
-          value={site.tArrival === null ? "not soon" : `~${plainDuration(site.tArrival)}`}
-        />
-        <Metric label="They need" value={plainDuration(site.tEvac)} />
+        <ProtectiveChoice site={site} onPatchSite={onPatchSite} nextCount={nextCount} onOpenNext={onOpenNext} />
+
+        {mayCall ? <CallApprove site={site} calls={calls} onUpsertCall={onUpsertCall} /> : null}
+
+        {facts ? <p className="text-sm text-foreground/50">{facts}</p> : null}
+
+        <details className="text-sm text-foreground/55">
+          <summary className="cursor-pointer select-none">More about this place</summary>
+          <div className="mt-2 flex flex-col gap-1">
+            {site.sourceUrl ? (
+              <p>
+                <a className="underline" href={site.sourceUrl} target="_blank" rel="noreferrer">
+                  {site.attribution} · {site.sourceRecordId}
+                </a>
+                {site.capacitySourceUrl ? (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <a className="underline" href={site.capacitySourceUrl} target="_blank" rel="noreferrer">
+                      Capacity source
+                    </a>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+            {site.animals.map((animal) => (
+              <p key={animal.species}>
+                {animal.species}: {animal.confirmedCount ?? "—"} / {animal.registeredCapacity ?? "—"}
+                {site.confirmedAt
+                  ? ` · ${confirmedCopy(site.confirmedAt, site.confirmationStatus, site.confirmationChannel)}`
+                  : site.capacityUpdatedAt
+                    ? ` · ${registeredCopy(site.capacityUpdatedAt)}`
+                    : ""}
+              </p>
+            ))}
+            {site.shelterHint ? <p>{site.shelterHint}</p> : null}
+          </div>
+        </details>
       </div>
-
-      {facts ? <p className="text-xs text-muted-foreground">{facts}</p> : null}
-
-      <ProtectiveChoice site={site} onPatchSite={onPatchSite} />
-
-      {mayCall ? (
-        <CallApprove site={site} calls={calls} onUpsertCall={onUpsertCall} />
-      ) : null}
-
-      <details className="text-xs text-muted-foreground">
-        <summary className="cursor-pointer select-none">More</summary>
-        <div className="mt-2 flex flex-col gap-1">
-          {site.animals.map((animal) => (
-            <p key={animal.species}>
-              {animal.species}: {animal.confirmedCount ?? "—"} / {animal.registeredCapacity ?? "—"}
-              {site.confirmedAt
-                ? ` · ${confirmedCopy(site.confirmedAt, site.confirmationStatus, site.confirmationChannel)}`
-                : site.capacityUpdatedAt
-                  ? ` · ${registeredCopy(site.capacityUpdatedAt)}`
-                  : ""}
-            </p>
-          ))}
-          {site.shelterHint ? <p>{site.shelterHint}</p> : null}
-        </div>
-      </details>
     </div>
   );
+}
+
+function humanCallError(message: string, phoneOnFile: boolean): string {
+  const text = message.toLowerCase();
+  if (text.includes("must enter a number") || text.includes("no phone")) {
+    return phoneOnFile
+      ? "We could not use the number on file. Please type the phone number."
+      : "Please type the phone number for this place. Spaces are fine.";
+  }
+  if (text.includes("confine") || text.includes("evacuate") || text.includes("refused")) {
+    return "Choose Stay inside or Leave first. Then you can prepare a call.";
+  }
+  return message || "The call did not go through. Try again.";
+}
+
+function callStatusForCoordinator(call: VoiceCallSummary): string {
+  if (call.status === "stubbed") return "Test mode — no real call was placed.";
+  if (call.status === "awaiting_approval") return "Ready. Press Approve and dial when you want the phone to ring.";
+  if (call.status === "approved" || call.status === "dialing" || call.status === "recording") {
+    return "Calling now.";
+  }
+  if (call.status === "confirmed") return "They answered and confirmed.";
+  if (call.status === "unanswered") return "No answer. We can try again later.";
+  if (call.status === "busy") return "The line was busy.";
+  if (call.status === "voicemail") return "Went to voicemail.";
+  if (call.status === "hung_up") return "The call ended before we finished.";
+  if (call.status === "unreachable") return "We could not reach them.";
+  if (call.status === "denied") return "This call was cancelled.";
+  return call.uiStatus ?? call.status.replaceAll("_", " ");
 }
 
 function CallApprove({
@@ -485,11 +528,19 @@ function CallApprove({
   onUpsertCall: (call: VoiceCallSummary) => void;
 }) {
   const latest = calls.find((call) => call.siteId === site.code || call.siteId === site.id);
+  const waiting = latest?.status === "awaiting_approval";
   const [number, setNumber] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const phoneRequired = !site.phoneOnFile;
+  const fieldId = `phone-${site.id}`;
+  const errorId = `phone-error-${site.id}`;
 
   async function post(action: "request" | "approve") {
+    if (action === "request" && phoneRequired && !number.trim()) {
+      setError("Please type the phone number for this place. Spaces are fine.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -510,53 +561,88 @@ function CallApprove({
         call?: VoiceCallSummary;
       };
       if (!response.ok || !json.ok) {
-        setError(json.error ?? "Call failed.");
+        setError(humanCallError(json.error ?? "The call did not go through. Try again.", Boolean(site.phoneOnFile)));
         setBusy(false);
         return;
       }
       if (json.call) onUpsertCall(json.call);
       setBusy(false);
     } catch {
-      setError("Call failed.");
+      setError("We could not reach the phone service. Check your connection and try again.");
       setBusy(false);
     }
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      {latest ? (
-        <p className="text-xs">
-          {latest.status === "stubbed"
-            ? callStatusLabel(latest.status)
-            : (latest.uiStatus ?? callStatusLabel(latest.status))}
+    <div className="flex flex-col gap-2 border-t pt-3">
+      <p className="text-sm">{latest ? callStatusForCoordinator(latest) : "Call this place"}</p>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor={fieldId} className="text-sm">
+          Phone number
+          {phoneRequired ? (
+            <span className="text-red-700"> · required</span>
+          ) : (
+            <span className="text-foreground/55"> · optional</span>
+          )}
+        </label>
+        <input
+          id={fieldId}
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          className="h-8 rounded-md border bg-background px-2.5 text-sm"
+          placeholder="600 111 222"
+          value={number}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : `${fieldId}-hint`}
+          onChange={(event) => {
+            setNumber(event.target.value);
+            if (error) setError(null);
+          }}
+        />
+        <p id={`${fieldId}-hint`} className="text-sm text-foreground/50">
+          {site.phoneOnFile
+            ? "A number is already on file. Leave this blank to use it, or type another."
+            : "Spaces are fine."}
+        </p>
+      </div>
+
+      {error ? (
+        <p id={errorId} className="text-sm text-red-700" role="alert">
+          {error}
         </p>
       ) : null}
-      <input
-        className="rounded-md border bg-background px-3 py-2 text-sm"
-        placeholder={site.phoneOnFile ? "Number on file — leave blank to use it" : "E.164 number"}
-        value={number}
-        onChange={(event) => setNumber(event.target.value)}
-      />
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <div className="flex gap-2">
-        <Button
+
+      {waiting ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            className="h-8 rounded-md bg-foreground px-3 text-sm text-background disabled:opacity-50"
+            disabled={busy}
+            onClick={() => post("approve")}
+          >
+            {busy ? "Starting…" : "Approve and dial"}
+          </button>
+          <button
+            type="button"
+            className="h-8 text-sm text-foreground/55 underline underline-offset-4 disabled:opacity-50"
+            disabled={busy}
+            onClick={() => post("request")}
+          >
+            Prepare again
+          </button>
+        </div>
+      ) : (
+        <button
           type="button"
-          variant="outline"
-          className="flex-1"
+          className="h-8 w-fit rounded-md border px-3 text-sm disabled:opacity-50"
           disabled={busy}
           onClick={() => post("request")}
         >
-          Call
-        </Button>
-        <Button
-          type="button"
-          className="flex-1"
-          disabled={busy || !latest || latest.status !== "awaiting_approval"}
-          onClick={() => post("approve")}
-        >
-          Approve
-        </Button>
-      </div>
+          {busy ? "Preparing…" : "Prepare this call"}
+        </button>
+      )}
     </div>
   );
 }
@@ -564,16 +650,27 @@ function CallApprove({
 function ProtectiveChoice({
   site,
   onPatchSite,
+  nextCount,
+  onOpenNext,
 }: {
   site: RankedSite;
   onPatchSite: (siteKey: string, patch: Partial<RankedSite>) => void;
+  nextCount: number;
+  onOpenNext: () => void;
 }) {
   const [busy, setBusy] = useState<ProtectiveAction | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState<ProtectiveAction | null>(site.protectiveAction);
+  const saved = justSaved ?? site.protectiveAction;
+  const [moreOpen, setMoreOpen] = useState(saved === "monitor" || saved === "latent");
 
   async function choose(action: ProtectiveAction) {
+    const previous = site.protectiveAction;
     setBusy(action);
     setError(null);
+    onPatchSite(site.id, { protectiveAction: action });
+    setJustSaved(action);
+    if (action === "monitor" || action === "latent") setMoreOpen(true);
     try {
       const response = await fetch("/api/protective-action", {
         method: "POST",
@@ -581,47 +678,107 @@ function ProtectiveChoice({
         body: JSON.stringify({ siteId: site.code, action }),
       });
       if (!response.ok) {
-        setError("Could not save.");
+        onPatchSite(site.id, { protectiveAction: previous });
+        setJustSaved(previous);
+        setError("Could not save your decision for this place. Try again.");
         setBusy(null);
         return;
       }
-      onPatchSite(site.id, { protectiveAction: action });
       setBusy(null);
     } catch {
-      setError("Could not save.");
+      onPatchSite(site.id, { protectiveAction: previous });
+      setJustSaved(previous);
+      setError("Could not save your decision for this place. Check your connection and try again.");
       setBusy(null);
     }
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-2 gap-2">
-        {PROTECTIVE_ACTIONS.map((action) => {
+    <section className="flex flex-col gap-2">
+      <h2 className="text-base">What should they do?</h2>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {PRIMARY_ACTIONS.map((action) => {
           const selected = site.protectiveAction === action;
+          const leave = action === "evacuate";
           return (
-            <Button
+            <button
               key={action}
               type="button"
-              size="sm"
-              variant={selected ? "default" : "outline"}
               disabled={busy !== null}
+              aria-pressed={selected}
               onClick={() => choose(action)}
+              className={cn(
+                "h-8 rounded-md px-3 text-sm transition-colors disabled:opacity-50",
+                leave
+                  ? "bg-foreground text-background hover:bg-foreground/85"
+                  : selected
+                    ? "border border-foreground/40 bg-muted"
+                    : "border border-foreground/15 bg-background hover:bg-muted/60",
+              )}
             >
-              {busy === action ? "…" : actionLabel[action]}
-            </Button>
+              {busy === action ? "Saving…" : actionUi[action].title}
+              {selected && busy !== action ? " ✓" : ""}
+            </button>
           );
         })}
+        <button
+          type="button"
+          aria-expanded={moreOpen}
+          onClick={() => setMoreOpen((open) => !open)}
+          className="h-8 px-1 text-sm text-foreground/50 hover:text-foreground/80"
+        >
+          More options
+        </button>
       </div>
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-    </div>
-  );
-}
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <p className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">{label}</p>
-      <p className="font-mono text-lg tracking-tight">{value}</p>
-    </div>
+      {moreOpen ? (
+        <div className="flex flex-wrap gap-2">
+          {SECONDARY_ACTIONS.map((action) => {
+            const selected = site.protectiveAction === action;
+            return (
+              <button
+                key={action}
+                type="button"
+                disabled={busy !== null}
+                aria-pressed={selected}
+                onClick={() => choose(action)}
+                className={cn(
+                  "h-8 rounded-md border px-3 text-sm disabled:opacity-50",
+                  selected
+                    ? "border-foreground/40 bg-muted"
+                    : "border-transparent text-foreground/60 hover:bg-muted/50",
+                )}
+              >
+                {busy === action ? "Saving…" : actionUi[action].title}
+                {selected && busy !== action ? " ✓" : ""}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {error ? (
+        <p className="text-sm text-red-700" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {saved && !error ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-sm text-foreground/70">
+            Saved: {actionUi[saved].title}.{" "}
+            {actionUi[saved].unlocksCall ? "Prepare the call below." : "We will not call."}
+          </p>
+          {nextCount > 0 ? (
+            <button type="button" className="h-8 text-sm underline underline-offset-4" onClick={onOpenNext}>
+              Next place
+            </button>
+          ) : (
+            <p className="text-sm text-foreground/50">Nothing else is waiting.</p>
+          )}
+        </div>
+      ) : null}
+    </section>
   );
 }

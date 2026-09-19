@@ -21,6 +21,33 @@ export const actionLabel: Record<ProtectiveAction, string> = {
   evacuate: "Evacuate",
 };
 
+/** Console copy. Agent tools keep `actionLabel` (Monitor / Confine / …). */
+export const actionUi: Record<
+  ProtectiveAction,
+  { title: string; hint: string; unlocksCall: boolean }
+> = {
+  monitor: {
+    title: "Watch only",
+    hint: "We will not call. You keep an eye on the clocks.",
+    unlocksCall: false,
+  },
+  latent: {
+    title: "Hold",
+    hint: "Wait. No call until you change this.",
+    unlocksCall: false,
+  },
+  confine: {
+    title: "Stay inside",
+    hint: "We can call and tell them to stay put.",
+    unlocksCall: true,
+  },
+  evacuate: {
+    title: "Leave",
+    hint: "We can call and tell them to go to the shelter.",
+    unlocksCall: true,
+  },
+};
+
 export function actionEffectCopy(action: ProtectiveAction | null): string {
   if (action === "monitor") {
     return "You chose monitor. ARCA will not contact them. Keep an eye on the clocks.";

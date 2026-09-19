@@ -2,7 +2,7 @@ import type { ProtectiveAction } from "./protective-action";
 
 export type LonLat = [number, number];
 
-export type SiteKind = "care_home" | "hospital" | "school" | "farm" | "household";
+export type SiteKind = "care_home" | "hospital" | "cap" | "school" | "farm" | "household";
 
 export type ReachLabel = "likely" | "possible" | "watch";
 
@@ -85,6 +85,20 @@ export type SpeciesCount = {
 };
 
 export type SiteInput = {
+  name?: string;
+  facilityCapacity?: number | null;
+  capacityUnit?: "students" | "places" | "beds" | null;
+  capacityPeriod?: string | null;
+  locationQuality?: "official_point" | "address_geocoded" | "municipality_centroid";
+  datasetId?: string;
+  sourceRecordId?: string;
+  sourceUrl?: string;
+  attribution?: string;
+  capacitySourceUrl?: string;
+  capacityAttribution?: string;
+  locationAttribution?: string;
+  ccn?: string;
+  address?: string;
   id: string;
   code: string;
   kind: SiteKind;

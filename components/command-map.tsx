@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef } from "react";
 import type { LatLngBoundsExpression, LatLngTuple } from "leaflet";
 import { CircleMarker, MapContainer, Polygon, TileLayer, Tooltip, useMap } from "react-leaflet";
 import { feedLabel, isCorroborated, isOnStaticHeat } from "@/lib/crosscheck";
-import { siteKindMarkerColor } from "@/lib/site-kind";
-import type { CommandState, RankedSite, SiteKind } from "@/lib/types";
+import { urgencyTier } from "@/lib/urgency";
+import type { CommandState, RankedSite } from "@/lib/types";
 import "leaflet/dist/leaflet.css";
 
 export type BasemapKey = "map" | "satellite";
@@ -123,12 +123,11 @@ const BASEMAPS = {
   },
 } as const;
 
-const SATELLITE_KIND_FILL: Record<SiteKind, string> = {
-  care_home: "#c4b5fd",
-  hospital: "#fb7185",
-  school: "#7dd3fc",
-  farm: "#6ee7b7",
-  household: "#fcd34d",
+const TIER_MARKER: Record<"late" | "now" | "prepare" | "none", string> = {
+  late: "#b91c1c",
+  now: "#c2410c",
+  prepare: "#15803d",
+  none: "#a8a29e",
 };
 
 const PALETTES = {
@@ -212,7 +211,6 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
   const selected = allSites.find((site) => site.id === selectedId);
   const rings = state.fire.polygons.filter((polygon) => polygon.member === state.fire.displayMember);
   const palette = PALETTES[basemap];
-  const kindFill = basemap === "satellite" ? SATELLITE_KIND_FILL : siteKindMarkerColor;
   const bounds = useMemo(() => featureBounds(state), [state]);
 
   return (
@@ -221,7 +219,7 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
         center={FALLBACK_CENTER}
         zoom={11}
         className="arca-map size-full"
-        zoomControl={false}
+        zoomControl
         attributionControl
         scrollWheelZoom
       >
@@ -242,9 +240,7 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
               fillOpacity: 1,
             }}
           >
-            <Tooltip sticky>
-              DEMO · hour {polygon.hour} · member {polygon.member + 1}/10
-            </Tooltip>
+            <Tooltip sticky>Fire in about {polygon.hour} hours</Tooltip>
           </Polygon>
         ))}
         {/* One polygon per part: a two-kiln site masks and draws both. */}
@@ -335,22 +331,32 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
         {allSites.map((site) => {
           const active = site.id === selectedId;
           const watch = site.label === "watch";
-          const fill = kindFill[site.kind];
+          const fill = TIER_MARKER[urgencyTier(site)];
           return (
             <CircleMarker
               key={site.id}
               center={[site.lat, site.lon]}
-              radius={active ? 11 : watch ? 7 : 8}
+              radius={active ? 11 : watch ? 4.5 : 8}
               eventHandlers={{ click: () => onSelect(site.id) }}
               pathOptions={{
                 color: active ? (basemap === "satellite" ? "#ffffff" : "#1c1917") : fill,
                 weight: active ? 2.5 : 1,
                 fillColor: fill,
-                fillOpacity: active ? 1 : watch ? 0.55 : 0.9,
+                fillOpacity: active ? 1 : watch ? 0.32 : 0.9,
               }}
             >
-              <Tooltip permanent direction="top" offset={[0, -8]} className="arca-site-tip">
-                {watch ? `Watch · ${site.code}` : `${site.rank} · ${site.code}`}
+              <Tooltip
+                key={`${site.id}-tip-${active ? "on" : "off"}`}
+                permanent={active}
+                direction="top"
+                offset={[0, -8]}
+                className="arca-site-tip"
+              >
+                {site.locationQuality === "municipality_centroid"
+                  ? `Approximate · ${site.name ?? site.code}`
+                  : watch
+                    ? `Watch · ${site.name ?? site.code}`
+                    : `${site.rank} · ${site.name ?? site.code}`}
               </Tooltip>
             </CircleMarker>
           );

@@ -89,7 +89,7 @@ export function mockMp3Bytes(): Buffer {
 }
 
 export const ARCA_DISCLOSURE_LINE =
-  "This is ARCA, the automatic alert assistant for Sant Fruitós de Bages.";
+  "This is ARCA, the evacuation-planning assistant for civil-protection coordinators in Sant Fruitós de Bages.";
 
 export function arcaTransparencyLine(_town?: string): string {
   return ARCA_DISCLOSURE_LINE;

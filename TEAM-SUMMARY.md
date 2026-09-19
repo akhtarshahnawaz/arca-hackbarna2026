@@ -4,7 +4,7 @@ HackBarna AI Summit 2026, Norrsken House Barcelona. Read this in about five minu
 
 ## What it is
 
-ARCA is a wildfire coordinator tool. Deepfire says where the fire may go. ARCA ranks who needs help first by `spare_time = t_arrival − t_evac`. The formula ranks. The LLM explains. A human Approves any outbound contact.
+ARCA is an evacuation-planning assistant for civil-protection coordinators. It helps decide who to contact first during a confirmed wildfire. Deepfire says where the fire may go. ARCA ranks who needs help first by `spare_time = t_arrival − t_evac`. The formula ranks. The LLM explains. A human Approves any outbound contact.
 
 People stay for the dog and the sheep. Emergency teams already have fire data. Nobody hands them the list: who is inside the ensemble shape, how long each site needs, who is already late. Ensemble language only — “in 7 of 10 runs”, not a flat three hours.
 
@@ -45,8 +45,9 @@ Phones and Telegram chat ids come from `.env.local` only. Seed data has no hardc
 | Source | What the demo actually uses |
 |---|---|
 | Deepfire | Live Catalonia **hotspots** if `DEEPFIRE_*` works. Hour rings on the map are a labelled **DEMO ensemble**, not a live spread perimeter. |
+| Official facilities | Public APIs, **no API key**. Downloaded into `data/official/facilities.json` by `npm run data:refresh`. The app reads that snapshot; it does not fetch schools, care homes, CAPs or the hospital on each page load. Checked-in scope is Bages. Hospital beds come from the Ministry’s public Excel, only on a unique name match. Capacity ≠ occupancy. See `data/official/README.md`. |
 | Livestock registry | Public SODA `7bpt-5azk`. Extra Bages farms when the pull succeeds. Capacity ≠ animals present. |
-| OSM | Care-home **seed** on the list. Not a live Overpass query. Not the pet-evac list. |
+| OSM | Leftover care-home **seed**. Not the official snapshot, not a live Overpass query, not the pet-evac list. |
 | Pet shelters | `config/shelters.json` — coordinator-configured. Not live OSM protectoras. |
 | Residents | Telegram opt-in → `arca.db`. Demo household codes are not messaged. |
 
@@ -108,6 +109,7 @@ Vonage cannot hit localhost. `VONAGE_VOICE_WEBHOOK_URL` needs ngrok or a deploy.
 - `OPENAI_API_KEY` — unused; agents go through Nebius Token Factory
 - `GOOGLE_CLOUD_PROJECT` — unused placeholder
 - Public dataset URLs (`CATALUNYA_FARMS_*`, `PYRO_SDIS_*`, `HF_SMOKE_DATASET`, `MTG_DATA_DIRECTORY`) — documentation, not secrets. Pyro-SDIS is a training-image set, not live cameras.
+- `ARCA_OFFICIAL_DATA_PATH` — optional path to the facilities snapshot. Not a key. Default `data/official/facilities.json`.
 
 ## Built vs stubbed vs Sunday
 
@@ -116,6 +118,7 @@ Vonage cannot hit localhost. `VONAGE_VOICE_WEBHOOK_URL` needs ngrok or a deploy.
 - Coordinator console (`app/page.tsx` → `CommandConsole`): map, ranked + watch lists, freshness strip, Approve / Call / log outcome
 - Ranking engine + tests
 - Deepfire hotspot client; registry loader (Bages slice)
+- Official facilities snapshot (`data/official/facilities.json`) from public APIs — no key; refresh with `npm run data:refresh`
 - Mastra `arca-agent` + ARCA tools; Telegram long-poll if token set
 - Nebius explainer / last-corrected count parse (“doscientas… no, trescientas” → 300)
 - LibSQL persistence; contact-policy and shelter config
@@ -139,7 +142,8 @@ Vonage cannot hit localhost. `VONAGE_VOICE_WEBHOOK_URL` needs ngrok or a deploy.
 
 ## Docs
 
-- `README.md` — run, env, architecture, Galtea / Norma
+- `README.md` — run, env, facilities snapshot, architecture, Galtea / Norma
+- `data/official/README.md` — public APIs, no key, how `npm run data:refresh` writes the snapshot
 - `PITCH.md` — 60-second + six beats
 - `ARCA-PLAN.md` — rules, ranking, tools, phases
 - `TEAM-SUMMARY.md` — this file

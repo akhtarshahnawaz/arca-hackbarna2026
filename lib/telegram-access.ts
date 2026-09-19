@@ -5,14 +5,14 @@ import {
 } from "./demo-cast";
 
 export const STRANGER_REPLY = [
-  "ARCA is an automatic wildfire alert assistant for civil-protection coordinators.",
+  "ARCA is an evacuation-planning assistant for civil-protection coordinators. It helps decide who to contact first during a confirmed wildfire.",
   "This chat is not on the coordinator list, so I will not share the ranked site list or follow call commands.",
   "If you are a resident in the demo zone, ask the coordinator to register your Telegram chat id after you send /start to this bot.",
   "If you are the coordinator, set COORDINATOR_TELEGRAM_CHAT_ID to your Telegram chat id (not your phone number) and try again.",
 ].join(" ");
 
 export const RESIDENT_REPLY = [
-  "ARCA is the wildfire assistant. You are on the demo resident list.",
+  "ARCA is an evacuation-planning assistant for civil-protection coordinators. It helps decide who to contact first during a confirmed wildfire. You are on the demo resident list.",
   "You will get a stay-inside notice only after the coordinator Approves.",
   "You will not see the ranked call list. Reply with your address and animals if you need to update your registration.",
 ].join(" ");

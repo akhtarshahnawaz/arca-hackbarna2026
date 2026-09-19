@@ -8,7 +8,7 @@ Workspace `/Users/demianneo/Downloads/hackbarna` was empty. Handoff files live i
 |---|---|---|
 | Deepfire | **READY** (live token 200; not saved here) | Paste `DEEPFIRE_CLIENT_ID` / `DEEPFIRE_CLIENT_SECRET` into ignored `.env.local`. First product sim: Catalunya cluster `5b03169d-8daa-4531-b05b-ba7231973da4`, `ensembleMembers: 10`, `durationHours: 6`. |
 | Livestock `7bpt-5azk` | **PUBLIC** | SODA counts only. Parse DMS + `coor_x`/`coor_y`. Do **not** geocode 27k farms. Capacity ≠ headcount. |
-| OSM Overpass | **PUBLIC** | Query hospitals / schools / care homes / animal shelters. No key. |
+| OSM Overpass | **SUPERSEDED** | Saturday sketch. Schools, care homes, CAPs and the hospital now come from public APIs (no key) into `data/official/facilities.json`. See `data/official/README.md`. |
 | Nebius | **MISSING KEY** | Booth/console: OpenAI-compatible key + free credits. |
 | Telegram | **WIRED** (polling) | Token in ignored `.env.local` as `TELEGRAM_BOT_TOKEN` only. No webhook required for `mastra:dev`. |
 | Mastra | **IN REPO** | `nvm use 22 && npm run mastra:dev` → Studio :4111. |

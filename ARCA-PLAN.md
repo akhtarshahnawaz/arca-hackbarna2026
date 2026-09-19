@@ -40,7 +40,7 @@ Name: **ARCA** (ark in ES/CAT). Animals, evacuation, two by two.
 
 Voice only. No video prize chase.
 
-**Use:** Deepfire, Catalan livestock registry, OSM Overpass, residents via Telegram.
+**Use:** Deepfire, Catalan livestock registry, official facilities snapshot (public SODA + Ministry Excel, no API key), residents via Telegram. OSM Overpass was the original sketch for schools and care homes; the running app reads `data/official/facilities.json` instead.
 **Skip for product scope:** WeatherNext, local ELMFIRE, MTG raw files, Pyro-SDIS (public Hugging Face smoke-detection dataset only — not a live camera feed, not Values-at-risk).
 
 Not used: fal.ai, TitanOS, Preply, Cognition (Devin may be used as a coding helper only).
@@ -60,17 +60,18 @@ Not used: fal.ai, TitanOS, Preply, Cognition (Devin may be used as a coding help
    - Check coordinate completeness first. Geocode only if needed.
    - Registered capacity ≠ animals present. Show both.
    - Catalog metadata is not a reliable two-month refresh promise. Preserve source and per-record dates.
-3. **OpenStreetMap (Overpass API)** — hospitals, schools, care homes (`social_facility=nursing_home`), animal shelters
-4. **Residents** — self-registration via Telegram bot (address, animals, has transport yes/no)
+3. **Official facilities snapshot** — schools, residential care, CAPs, hospital. Public APIs, no key. `npm run data:refresh` writes `data/official/facilities.json`; the app reads that file and does not call the APIs on each page load. Hospital beds: Ministry CNH 2025 Excel, unique name match only. See `data/official/README.md`.
+4. **OpenStreetMap** — leftover care-home seed only. Not the official snapshot and not a live Overpass query. Pet shelters are `config/shelters.json`, not OSM protectoras.
+5. **Residents** — self-registration via Telegram bot (address, animals, has transport yes/no)
 
 ## 4. Architecture
 
 ```
-Deepfire ─┐
-Registry ─┼─► ARCA core (Mastra agent + Nebius model)
-OSM ──────┤     ├─ Ranking engine (plain TypeScript, deterministic)
-Residents ┘     ├─ Memory + DB (LibSQL: coordinators, residents, reported counts, simulations)
-                └─ Telegram (Mastra TelegramProvider, local polling)
+Deepfire ──────────┐
+Official snapshot ─┼─► ARCA core (Mastra agent + Nebius model)
+Registry ──────────┤     ├─ Ranking engine (plain TypeScript, deterministic)
+Residents ─────────┘     ├─ Memory + DB (LibSQL: coordinators, residents, reported counts, simulations)
+                         └─ Telegram (Mastra TelegramProvider, local polling)
 
 Local file `arca.db` (`DATABASE_URL=file:./arca.db`) survives a laptop reboot. Many cloud hosts wipe disk on restart. For Sunday 17:30 uptime use **Turso** (hosted LibSQL) or a persistent volume so residents, confirmations, and Deepfire simulation ids survive 3 AM restarts. Do not open a Turso account unless credentials already exist. No Firebase.
                         │

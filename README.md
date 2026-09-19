@@ -2,6 +2,8 @@
 
 HackBarna AI Summit 2026, Norrsken House Barcelona.
 
+ARCA is an evacuation-planning assistant for civil-protection coordinators. It helps decide who to contact first during a confirmed wildfire.
+
 In a wildfire, people don't refuse to leave because they're stupid. They refuse because the dog is family, and the sheep are the rent.
 
 > Deepfire tells us where the fire may go. ARCA tells us who needs help first.
@@ -42,9 +44,10 @@ Studio / API: [http://localhost:4111](http://localhost:4111).
 ```bash
 npm run nebius:ping
 npm run telegram:ping
+npm run data:refresh
 ```
 
-`telegram:ping` prints the bot username, never the token.
+`telegram:ping` prints the bot username, never the token. `data:refresh` is optional for a first run: the repo already includes a Bages snapshot. See [Facilities data](#facilities-data).
 
 ## mastra:dev
 
@@ -119,6 +122,8 @@ Needed for a full local demo:
 
 Vonage cannot hit localhost. Set `VONAGE_VOICE_WEBHOOK_URL` to an ngrok or deploy URL. Without a public webhook + SLNG, Call/Approve stay visible and the routes say test mode — no live ring.
 
+Official facilities do **not** use an API key. Optional `ARCA_OFFICIAL_DATA_PATH` only points at a different snapshot file. Default is `data/official/facilities.json`.
+
 ```bash
 npm run demo:reset   # wipe leftover Confine/Evacuate and pending calls; keep Galtea traces and archived transcripts
 npm run firms:ping   # check the cross-check key and see today's detections in the Catalonia box
@@ -126,19 +131,28 @@ npm run firms:ping   # check the cross-check key and see today's detections in t
 
 Sunday setup: (1) `COORDINATOR_TELEGRAM_CHAT_ID` after the coordinator messages the bot, (2) a public HTTPS URL for Vonage, (3) a mobile hotspot backup.
 
+## Facilities data
+
+Schools, residential care, primary care (CAPs) and the hospital are **not** hardcoded in the UI, and the running app does **not** call those APIs on every page load.
+
+They come from public open-data APIs. **No API key is required.** `npm run data:refresh` (Python 3, internet) downloads them into `data/official/facilities.json`. The coordinator UI reads that local snapshot. The checked-in file covers Bages. Hospital bed counts come from the Ministry of Health public Excel (Catálogo Nacional de Hospitales 2025), attached only when the catalogue name match is unique.
+
+Approximate locations stay labelled and are excluded from fire-arrival calculations. Capacity is shown with its source; it is not current occupancy. Details, licences and flags: `data/official/README.md`.
+
 ## Architecture
 
 ```
-Deepfire ─┐
-Registry ─┼─► ranking engine (plain TypeScript) + coordinator UI
-OSM ──────┤     Mastra agent (Nebius) + Telegram
-Residents ┘     LibSQL: coordinators, residents, reported counts, simulation ids
+Deepfire ──────────┐
+Official snapshot ─┼─► ranking engine (plain TypeScript) + coordinator UI
+Livestock registry ┤     Mastra agent (Nebius) + Telegram
+Residents ─────────┘     LibSQL: coordinators, residents, reported counts, simulation ids
 ```
 
 - **Deepfire** — token + Catalonia hotspots + the static heat-source mask (`deepfire:static-heat-sources`). Hour rings on the map are a labelled DEMO ensemble.
 - **NASA FIRMS** — second opinion on every hotspot. Google Maps has no public fire-alerts API and MITECO publishes statistics (EGIF), not a live active-fire endpoint; FIRMS is the machine-readable feed both of those products rest on.
-- **Livestock registry** — `7bpt-5azk`. Capacity ≠ animals present.
-- **OSM** — care-home seed only. Not the pet-evac list.
+- **Official facilities** — public SODA APIs + Ministry Excel, saved by `npm run data:refresh`. No key. App reads `data/official/facilities.json`.
+- **Livestock registry** — public SODA `7bpt-5azk`. Capacity ≠ animals present.
+- **OSM** — leftover care-home seed, separate from the official snapshot. Not the pet-evac list. Not fetched live.
 - **Pet shelters** — `config/shelters.json`. Edit the file. Labelled in the UI as configured by the coordinator.
 - **Mastra** — ARCA agent, tools (`call-site` has `requireApproval: true`), Telegram polling. Voice notes: SLNG STT inbound; TTS outbound only after Approve.
 - **Nebius** — explains the list; parses phone transcripts. Last-corrected number wins (“doscientas… no, trescientas” → 300).
