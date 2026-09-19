@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { siteKindLabel } from "@/lib/demo-data";
 import { confirmedCopy, freshnessLabel, formatClock, registeredCopy } from "@/lib/freshness";
 import { ensembleReachCopy, formatHours, spareTimeCopy } from "@/lib/ranking";
-import type { CommandState, RankedSite } from "@/lib/types";
+import type { CommandState, RankedSite, Shelter, VoiceCallSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const CommandMap = dynamic(() => import("@/components/command-map"), {
@@ -29,7 +29,6 @@ export function CommandConsole({ initial }: Props) {
     initial.sites[0]?.id ?? initial.watch?.[0]?.id ?? null,
   );
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [callState, setCallState] = useState<"idle" | "pending">("idle");
 
   const watchSites = state.watch ?? [];
 
@@ -60,12 +59,12 @@ export function CommandConsole({ initial }: Props) {
             </p>
             <h1 className="font-heading text-3xl tracking-tight">ARCA</h1>
             <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-              People do not refuse to leave because they are careless. The dog is family.
-              The goats are the rent. Filter first, then spare time. AI only explains.
+              Deepfire tells us where the fire may go. ARCA tells us who needs help first.
             </p>
           </div>
           <div className="flex flex-col items-start gap-1 md:items-end">
             <Badge variant="outline">INC-DEMO Bages</Badge>
+            <Badge>{state.contactPolicy?.dashboardLabel ?? "Contact policy: human approval required."}</Badge>
             <p className="font-mono text-xs text-muted-foreground">
               {state.fire.municipality} · {state.fire.ensembleMembers} runs · {state.fire.horizonHours} h
             </p>
@@ -102,7 +101,7 @@ export function CommandConsole({ initial }: Props) {
                 Ranked sites
               </p>
               <p className="text-sm text-muted-foreground">
-                Likely and possible only. Spare time, then reach. Formula, not a model.
+                Formula ranks this list. LLM explains. You Approve contact. Not tap-rank.
               </p>
             </div>
             <span className="font-mono text-xs text-muted-foreground">{state.sites.length}</span>
@@ -153,9 +152,7 @@ export function CommandConsole({ initial }: Props) {
             </ol>
           </ScrollArea>
           <div className="hidden border-t lg:block">
-            {selected ? (
-              <SiteDetail site={selected} callState={callState} onCall={() => setCallState("pending")} />
-            ) : null}
+            {selected ? <SiteDetail site={selected} state={state} /> : null}
           </div>
         </aside>
       </div>
@@ -170,12 +167,7 @@ export function CommandConsole({ initial }: Props) {
                   {siteKindLabel(selected.kind)} · {selected.municipality}
                 </SheetDescription>
               </SheetHeader>
-              <SiteDetail
-                site={selected}
-                callState={callState}
-                onCall={() => setCallState("pending")}
-                showHeader={false}
-              />
+              <SiteDetail site={selected} state={state} showHeader={false} />
             </>
           ) : null}
         </SheetContent>
@@ -266,13 +258,11 @@ function SpareChip({ site }: { site: RankedSite }) {
 
 function SiteDetail({
   site,
-  callState,
-  onCall,
+  state,
   showHeader = true,
 }: {
   site: RankedSite;
-  callState: "idle" | "pending";
-  onCall: () => void;
+  state: CommandState;
   showHeader?: boolean;
 }) {
   return (
@@ -317,8 +307,12 @@ function SiteDetail({
                 Registered capacity {animal.registeredCapacity ?? "—"} · {registeredCopy(site.capacityUpdatedAt)}
               </p>
               <p className={animal.confirmedCount === null ? "text-destructive" : "text-foreground"}>
-                Confirmed today {animal.confirmedCount ?? "—"} · {confirmedCopy(site.confirmedAt)}
+                Headcount {animal.confirmedCount ?? "—"} ·{" "}
+                {confirmedCopy(site.confirmedAt, site.confirmationStatus, site.confirmationChannel)}
               </p>
+              {site.confirmationCorrectionCopy ? (
+                <p className="text-xs text-muted-foreground">{site.confirmationCorrectionCopy}</p>
+              ) : null}
             </div>
           ))
         )}
@@ -341,19 +335,213 @@ function SiteDetail({
         <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
           Shelter that takes animals
         </p>
+        <p className="text-xs font-medium">{state.shelterLabel}</p>
         <p>{site.shelterHint}</p>
       </div>
+
+      <ShelterList shelters={state.shelters} />
+
+      <CallApprove site={site} calls={state.voiceCalls} voice={state.voice} />
 
       <p className="text-[11px] text-muted-foreground">
         Minimal personal data. Site codes and counts only. No names or phones in this briefing.
       </p>
 
-      <Button disabled className="w-full" onClick={onCall}>
-        {callState === "pending" ? "Approve Call · pending" : "Approve Call"}
-      </Button>
-      <p className="text-center text-[11px] text-muted-foreground">
-        Disabled until Vonage is wired. Coordinator approval stays in the loop.
+      <LogOutcome key={site.id} site={site} />
+    </div>
+  );
+}
+
+function LogOutcome({ site }: { site: RankedSite }) {
+  const defaultSpecies = site.animals[0]?.species ?? "sheep";
+  const [species, setSpecies] = useState(defaultSpecies);
+  const [count, setCount] = useState(
+    site.animals[0]?.confirmedCount !== null && site.animals[0]?.confirmedCount !== undefined
+      ? String(site.animals[0].confirmedCount)
+      : "",
+  );
+  const [truck, setTruck] = useState(site.hasOwnTransport === true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const parsed = Number(count);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      setError("Enter a non-negative count from the call.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/confirmations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          siteId: site.code,
+          species,
+          count: parsed,
+          hasTransport: truck,
+        }),
+      });
+      if (!response.ok) {
+        setError("Could not save the report.");
+        setBusy(false);
+        return;
+      }
+      window.location.reload();
+    } catch {
+      setError("Could not save the report.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="flex flex-col gap-3" onSubmit={onSubmit}>
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        You can still call yourself and log here. Or Approve a Voice call above. Counts are
+        reported, not verified.
       </p>
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+          Species
+        </span>
+        <input
+          className="rounded-md border bg-background px-3 py-2"
+          value={species}
+          onChange={(event) => setSpecies(event.target.value)}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
+          Reported count
+        </span>
+        <input
+          className="rounded-md border bg-background px-3 py-2"
+          inputMode="numeric"
+          value={count}
+          onChange={(event) => setCount(event.target.value)}
+        />
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={truck}
+          onChange={(event) => setTruck(event.target.checked)}
+        />
+        Has a truck / own transport
+      </label>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <Button type="submit" className="w-full" disabled={busy}>
+        {busy ? "Saving report…" : "Log outcome"}
+      </Button>
+    </form>
+  );
+}
+
+function ShelterList({ shelters }: { shelters: Shelter[] }) {
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+        Configured pet shelters
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Configured by coordinator (not live data). Edit config/shelters.json.
+      </p>
+      <ul className="flex flex-col gap-1">
+        {shelters.map((shelter) => (
+          <li key={shelter.id} className="text-xs text-muted-foreground">
+            {shelter.name}
+            {shelter.municipality ? ` · ${shelter.municipality}` : ""}
+            {shelter.pets_allowed ? " · dogs yes" : " · no pets"}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function CallApprove({
+  site,
+  calls,
+  voice,
+}: {
+  site: RankedSite;
+  calls: VoiceCallSummary[];
+  voice: CommandState["voice"];
+}) {
+  const latest = calls.find((call) => call.siteId === site.code || call.siteId === site.id);
+  const [number, setNumber] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function post(action: "request" | "approve" | "deny") {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/voice/call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          siteId: site.code,
+          toNumber: number,
+          callId: latest?.id,
+          spareTime: site.spareTime,
+        }),
+      });
+      const json = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !json.ok) {
+        setError(json.error ?? "Voice request failed.");
+        setBusy(false);
+        return;
+      }
+      window.location.reload();
+    } catch {
+      setError("Voice request failed.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+        Voice call
+      </p>
+      {voice?.banner ? <p className="text-xs text-muted-foreground">{voice.banner}</p> : null}
+      <p className="text-xs text-muted-foreground">
+        Call then Approve. One Approve covers the retry plan (max 3). Hang-up is flag-only — no
+        Telegram to the farmer.
+      </p>
+      {latest ? (
+        <p className="text-sm">
+          Status{" "}
+          <span className="font-medium">
+            {latest.uiStatus ?? latest.status.replaceAll("_", " ")}
+          </span>
+          {latest.correctionCopy ? ` · ${latest.correctionCopy}` : ""}
+        </p>
+      ) : null}
+      <input
+        className="rounded-md border bg-background px-3 py-2 text-sm"
+        placeholder="E.164 — coordinator typed, not in seed"
+        value={number}
+        onChange={(event) => setNumber(event.target.value)}
+      />
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" className="flex-1" disabled={busy} onClick={() => post("request")}>
+          Call
+        </Button>
+        <Button
+          type="button"
+          className="flex-1"
+          disabled={busy || !latest || latest.status !== "awaiting_approval"}
+          onClick={() => post("approve")}
+        >
+          Approve
+        </Button>
+      </div>
     </div>
   );
 }

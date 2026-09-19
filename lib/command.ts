@@ -1,19 +1,31 @@
-import evacConfig from "@/config/evac-times.json";
-import { demoPolygons, demoSites } from "@/lib/demo-data";
-import { fetchDeepfireHotspots } from "@/lib/deepfire";
-import { ensureArcaSchema, listRememberedSimulations } from "@/lib/db";
-import { rankSites } from "@/lib/ranking";
-import { fetchRegistryFarms } from "@/lib/registry";
-import type { CommandState, EvacConfig, SiteInput } from "@/lib/types";
+import evacConfig from "../config/evac-times.json";
+import { applyReportedConfirmations } from "./confirmations";
+import { demoPolygons, demoSites } from "./demo-data";
+import { fetchDeepfireHotspots } from "./deepfire";
+import { ensureArcaSchema, listLatestConfirmations, listRememberedSimulations } from "./db";
+import { rankSites } from "./ranking";
+import { fetchRegistryFarms } from "./registry";
+import { applyConfiguredShelters, loadShelterConfig, shelterSourceDetail } from "./shelters";
+import type { CommandState, EvacConfig, SiteInput } from "./types";
+import { contactPolicyPublic, listVoiceSummaries, processDueVoiceRetries } from "./voice-calls";
+import { getVoiceStatus } from "./voice-status";
+import { loadContactPolicy } from "./contact-policy";
 
 const config = evacConfig as EvacConfig;
 
 export async function getCommandState(): Promise<CommandState> {
   const generatedAt = new Date().toISOString();
   const demoClusterId = process.env.DEMO_CLUSTER_ID?.trim() || "";
+  const voice = getVoiceStatus();
+  const shelterConfig = loadShelterConfig();
+  const contactPolicy = loadContactPolicy();
   const banners: string[] = [
-    "Hour polygons are DEMO — an ensemble built for the Bages briefing, not a live Deepfire spread.",
+    "Hour polygons are DEMO — an ensemble built for the Bages / Font-rubí briefing, not a live Deepfire spread.",
+    contactPolicy.dashboardLabel,
+    "Formula ranks automatically. LLM explains. One Approve covers the Voice retry plan (max 3).",
   ];
+  if (voice.banner) banners.push(voice.banner);
+  await processDueVoiceRetries().catch(() => 0);
 
   try {
     await ensureArcaSchema();
@@ -31,7 +43,16 @@ export async function getCommandState(): Promise<CommandState> {
   const extra = registry.sites.filter(
     (farm) => !seeded.some((site) => codesOverlap(site, farm)),
   );
-  const sites: SiteInput[] = [...seeded, ...extra];
+  let confirmations: Awaited<ReturnType<typeof listLatestConfirmations>> = [];
+  try {
+    confirmations = await listLatestConfirmations();
+  } catch {
+    // Schema already reported if the file could not open.
+  }
+  const sites: SiteInput[] = applyConfiguredShelters(
+    applyReportedConfirmations([...seeded, ...extra], confirmations),
+    shelterConfig,
+  );
   const polygons = demoPolygons();
   const { ranked, watch } = rankSites(sites, polygons, {
     ensembleMembers: config.ensembleMembers,
@@ -104,23 +125,36 @@ export async function getCommandState(): Promise<CommandState> {
       },
       {
         id: "osm",
-        label: "OSM / facilities",
+        label: "OSM / care homes",
         kind: "maybe_old",
-        detail: "Care home and shelter hints are curated for the demo. Overpass wiring comes later.",
+        detail: "Care home seed only. OSM protectoras are not the pet-evac list.",
         fetchedAt: null,
+        ok: true,
+      },
+      {
+        id: "shelters",
+        label: "Pet shelters",
+        kind: "demo",
+        detail: shelterSourceDetail(shelterConfig),
+        fetchedAt: generatedAt,
         ok: true,
       },
       {
         id: "residents",
         label: "Residents",
         kind: "live",
-        detail: "Opt-in household codes only. No names or phones stored in this briefing.",
+        detail: "Opt-in household codes only. Telegram alerts wait for coordinator Approve. No names or phones in this briefing.",
         fetchedAt: generatedAt,
         ok: true,
       },
     ],
     banners,
     hotspots: deepfire.hotspots,
+    shelters: shelterConfig.shelters,
+    shelterLabel: shelterConfig.label,
+    voice,
+    voiceCalls: await listVoiceSummaries(),
+    contactPolicy: contactPolicyPublic(),
   };
 }
 

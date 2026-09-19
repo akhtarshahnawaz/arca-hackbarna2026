@@ -1,6 +1,6 @@
-import evacConfig from "@/config/evac-times.json";
-import { ellipseRing } from "@/lib/geo";
-import type { EvacConfig, HourPolygon, SiteInput } from "@/lib/types";
+import evacConfig from "../config/evac-times.json";
+import { ellipseRing } from "./geo";
+import type { EvacConfig, HourPolygon, SiteInput } from "./types";
 
 const config = evacConfig as EvacConfig;
 
@@ -61,10 +61,11 @@ export function demoSites(): SiteInput[] {
       animals: [{ species: "sheep", registeredCapacity: 400, confirmedCount: 312 }],
       hasOwnTransport: false,
       confirmedAt: "2026-09-19T06:14:00.000Z",
+      confirmationStatus: "reported",
       capacityUpdatedAt: "2026-07-12T00:00:00.000Z",
       source: "registry",
-      shelterHint: "POL-REC-08 Recinte Firal Manresa — livestock pens confirmed this morning.",
-      notes: "The flock is the rent. Registry still lists 400; farmer confirmed 312 today.",
+      shelterHint: "POL-REC-08 Recinte Firal Manresa — livestock pens reported this morning.",
+      notes: "The flock is the rent. Registry still lists 400; 312 is reported, not verified.",
     },
     {
       id: "hh-pet-07",
@@ -76,6 +77,7 @@ export function demoSites(): SiteInput[] {
       animals: [{ species: "dogs", registeredCapacity: 2, confirmedCount: 2 }],
       hasOwnTransport: false,
       confirmedAt: "2026-09-19T07:02:00.000Z",
+      confirmationStatus: "reported",
       capacityUpdatedAt: null,
       source: "resident",
       shelterHint: "PAV-ESP-03 Pavelló Nou — accepts dogs if crated or leashed.",
@@ -109,6 +111,7 @@ export function demoSites(): SiteInput[] {
       ],
       hasOwnTransport: true,
       confirmedAt: "2026-09-19T05:40:00.000Z",
+      confirmationStatus: "reported",
       capacityUpdatedAt: null,
       source: "resident",
       shelterHint: "PAV-ESP-03 Pavelló Nou — dogs and cats accepted.",

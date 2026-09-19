@@ -6,6 +6,75 @@ export type ReachLabel = "likely" | "possible" | "watch";
 
 export type FreshnessKind = "live" | "maybe_old" | "demo";
 
+export type ConfirmationStatus = "reported" | "verified";
+
+export type ConfirmationChannel = "phone" | "telegram" | "console";
+
+export type Shelter = {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  pets_allowed: boolean;
+  municipality?: string;
+  notes?: string;
+};
+
+export type ShelterConfig = {
+  label: string;
+  note: string;
+  shelters: Shelter[];
+};
+
+export type VoiceCallStatus =
+  | "awaiting_approval"
+  | "approved"
+  | "dialing"
+  | "recording"
+  | "unanswered"
+  | "busy"
+  | "voicemail"
+  | "hung_up"
+  | "confirmed"
+  | "unreachable"
+  | "denied"
+  | "stubbed";
+
+export type VoiceCallSummary = {
+  id: string;
+  siteId: string;
+  toLast4: string;
+  status: VoiceCallStatus;
+  uiStatus: "unanswered" | "busy" | "voicemail" | "hung up" | "confirmed" | "unreachable" | null;
+  attempt: number;
+  emptyHangup: boolean;
+  flagged: boolean;
+  transcript: string | null;
+  selfCorrected: boolean;
+  discardedCount: number | null;
+  correctionCopy: string | null;
+  nextRetryAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ContactPolicyPublic = {
+  dashboardLabel: string;
+  approvalRequiredForAllContact: boolean;
+  oneApproveCoversRetryPlan: boolean;
+  maxAttempts: number;
+  hangupFollowUp: string;
+  autoVetoEnabled: boolean;
+};
+
+export type VoiceStatus = {
+  vonageConfigured: boolean;
+  slngConfigured: boolean;
+  webhookPublic: boolean;
+  canPlaceLiveCall: boolean;
+  banner: string | null;
+};
+
 export type SpeciesCount = {
   species: string;
   registeredCapacity: number | null;
@@ -22,6 +91,12 @@ export type SiteInput = {
   animals: SpeciesCount[];
   hasOwnTransport: boolean | null;
   confirmedAt: string | null;
+  confirmationStatus?: ConfirmationStatus | null;
+  confirmationChannel?: ConfirmationChannel | null;
+  confirmationTranscript?: string | null;
+  confirmationSelfCorrected?: boolean | null;
+  confirmationDiscardedCount?: number | null;
+  confirmationCorrectionCopy?: string | null;
   capacityUpdatedAt: string | null;
   source: "registry" | "resident" | "osm" | "demo";
   shelterHint: string;
@@ -88,6 +163,11 @@ export type CommandState = {
   hotspots: Hotspot[];
   sources: DataSourceStatus[];
   banners: string[];
+  shelters: Shelter[];
+  shelterLabel: string;
+  voice: VoiceStatus;
+  voiceCalls: VoiceCallSummary[];
+  contactPolicy: ContactPolicyPublic;
 };
 
 export type EvacConfig = {

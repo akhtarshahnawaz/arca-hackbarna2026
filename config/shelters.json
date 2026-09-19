@@ -1,0 +1,51 @@
+{
+  "label": "Configured by coordinator (not live data)",
+  "note": "Pet-accepting evacuation points the coordinator named. Edit this file or use the console. Not a live OSM protectora scrape — those are rescue NGOs, not this list.",
+  "shelters": [
+    {
+      "id": "cfg-font-rubi-pavello",
+      "name": "Pavelló Municipal Font-rubí",
+      "municipality": "Font-rubí",
+      "lat": 41.4502,
+      "lon": 1.5914,
+      "pets_allowed": true,
+      "notes": "Dogs if leashed or crated. Coordinator-designated overflow for the Font-rubí briefing."
+    },
+    {
+      "id": "cfg-sant-quinti-pavello",
+      "name": "Pavelló Municipal Sant Quintí de Mediona",
+      "municipality": "Sant Quintí de Mediona",
+      "lat": 41.4639,
+      "lon": 1.6638,
+      "pets_allowed": true,
+      "notes": "Dogs accepted. Next town east of Font-rubí."
+    },
+    {
+      "id": "cfg-sadurni-poli",
+      "name": "Poliesportiu Municipal Sant Sadurní",
+      "municipality": "Sant Sadurní d'Anoia",
+      "lat": 41.4261,
+      "lon": 1.7852,
+      "pets_allowed": true,
+      "notes": "Dogs if crated. Larger hall if Font-rubí fills."
+    },
+    {
+      "id": "cfg-vilafranca-firal",
+      "name": "Recinte Firal Vilafranca del Penedès",
+      "municipality": "Vilafranca del Penedès",
+      "lat": 41.3461,
+      "lon": 1.6991,
+      "pets_allowed": true,
+      "notes": "Dogs and small livestock if a pen is free. Confirm on the day."
+    },
+    {
+      "id": "cfg-torrelavit-camp",
+      "name": "Camp Municipal Torrelavit",
+      "municipality": "Torrelavit",
+      "lat": 41.4454,
+      "lon": 1.7298,
+      "pets_allowed": true,
+      "notes": "Outdoor overflow. Dogs yes. Shade and water only — not a kennel."
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import type { FreshnessKind } from "@/lib/types";
+import type { ConfirmationChannel, ConfirmationStatus, FreshnessKind } from "./types";
 
 export function formatClock(iso: string | null, timeZone = "Europe/Madrid"): string {
   if (!iso) return "—";
@@ -24,9 +24,22 @@ export function formatDay(iso: string | null, timeZone = "Europe/Madrid"): strin
   }).format(date);
 }
 
-export function confirmedCopy(confirmedAt: string | null): string {
-  if (!confirmedAt) return "Ask to confirm how many are there now";
-  return `Confirmed today ${formatClock(confirmedAt)}`;
+export function confirmedCopy(
+  confirmedAt: string | null,
+  status?: ConfirmationStatus | null,
+  channel?: ConfirmationChannel | null,
+): string {
+  if (!confirmedAt) return "Ask how many are there now — log as reported, not verified";
+  if (status === "verified") {
+    return `Verified today ${formatClock(confirmedAt)}`;
+  }
+  if (channel === "phone") {
+    return `Reported by phone (not verified) ${formatClock(confirmedAt)}`;
+  }
+  if (channel === "telegram") {
+    return `Reported by Telegram voice (not verified) ${formatClock(confirmedAt)}`;
+  }
+  return `Reported (not verified) ${formatClock(confirmedAt)}`;
 }
 
 export function registeredCopy(updatedAt: string | null): string {

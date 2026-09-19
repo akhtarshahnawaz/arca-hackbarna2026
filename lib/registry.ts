@@ -1,4 +1,4 @@
-import type { SiteInput } from "@/lib/types";
+import type { SiteInput } from "./types";
 
 type RegistryRow = {
   codi_rega?: string;

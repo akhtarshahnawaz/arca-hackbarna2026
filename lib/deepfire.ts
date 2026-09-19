@@ -1,4 +1,4 @@
-import type { Hotspot } from "@/lib/types";
+import type { Hotspot } from "./types";
 
 const CATALONIA_BBOX = "0.15,40.52,3.33,42.86";
 
