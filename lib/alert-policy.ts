@@ -1,4 +1,4 @@
-import { loadContactPolicy } from "@/lib/contact-policy";
+import { loadContactPolicy } from "./contact-policy";
 
 const policy = loadContactPolicy();
 

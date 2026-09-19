@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
-import { slngConfigured } from "@/lib/voice-status";
+import { slngConfigured } from "./voice-status";
 
 /**
  * SLNG Voice adapters (docs.slng.ai).

@@ -1,4 +1,4 @@
-import type { LonLat } from "@/lib/types";
+import type { LonLat } from "./types";
 
 export function pointInRing(point: LonLat, ring: LonLat[]): boolean {
   const [x, y] = point;

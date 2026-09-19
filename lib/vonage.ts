@@ -1,7 +1,7 @@
 import { createSign, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { getVoiceStatus, voiceWebhookBase } from "@/lib/voice-status";
-import { VOICE_CALL_POLICY } from "@/lib/voice-policy";
+import { getVoiceStatus, voiceWebhookBase } from "./voice-status";
+import { VOICE_CALL_POLICY } from "./voice-policy";
 
 export type NccoAction = Record<string, unknown>;
 

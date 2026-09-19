@@ -1,5 +1,5 @@
-import evacConfig from "@/config/evac-times.json";
-import { median, pointInRing } from "@/lib/geo";
+import evacConfig from "../config/evac-times.json";
+import { median, pointInRing } from "./geo";
 import type {
   EvacConfig,
   HourPolygon,
@@ -7,7 +7,7 @@ import type {
   ReachLabel,
   RankedSite,
   SiteInput,
-} from "@/lib/types";
+} from "./types";
 
 /** Main ranking includes likely (≥0.7) and possible (0.3–0.7). Below 0.3 is watch only. */
 export const MAIN_MIN_P_REACH = 0.3;

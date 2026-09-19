@@ -4,7 +4,7 @@ import {
   parsePhoneReportFromTranscript,
   PHONE_PARSE_PROMPT,
   type PhoneReport,
-} from "@/lib/phone-report";
+} from "./phone-report";
 import {
   DEFAULT_NEBIUS_BASE_URL,
   DEFAULT_NEBIUS_MODEL,

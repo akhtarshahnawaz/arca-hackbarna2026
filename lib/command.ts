@@ -1,15 +1,15 @@
-import evacConfig from "@/config/evac-times.json";
-import { applyReportedConfirmations } from "@/lib/confirmations";
-import { demoPolygons, demoSites } from "@/lib/demo-data";
-import { fetchDeepfireHotspots } from "@/lib/deepfire";
-import { ensureArcaSchema, listLatestConfirmations, listRememberedSimulations } from "@/lib/db";
-import { rankSites } from "@/lib/ranking";
-import { fetchRegistryFarms } from "@/lib/registry";
-import { applyConfiguredShelters, loadShelterConfig, shelterSourceDetail } from "@/lib/shelters";
-import type { CommandState, EvacConfig, SiteInput } from "@/lib/types";
-import { contactPolicyPublic, listVoiceSummaries, processDueVoiceRetries } from "@/lib/voice-calls";
-import { getVoiceStatus } from "@/lib/voice-status";
-import { loadContactPolicy } from "@/lib/contact-policy";
+import evacConfig from "../config/evac-times.json";
+import { applyReportedConfirmations } from "./confirmations";
+import { demoPolygons, demoSites } from "./demo-data";
+import { fetchDeepfireHotspots } from "./deepfire";
+import { ensureArcaSchema, listLatestConfirmations, listRememberedSimulations } from "./db";
+import { rankSites } from "./ranking";
+import { fetchRegistryFarms } from "./registry";
+import { applyConfiguredShelters, loadShelterConfig, shelterSourceDetail } from "./shelters";
+import type { CommandState, EvacConfig, SiteInput } from "./types";
+import { contactPolicyPublic, listVoiceSummaries, processDueVoiceRetries } from "./voice-calls";
+import { getVoiceStatus } from "./voice-status";
+import { loadContactPolicy } from "./contact-policy";
 
 const config = evacConfig as EvacConfig;
 

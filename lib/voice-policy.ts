@@ -2,7 +2,7 @@ import {
   classifyVonageStatus,
   loadContactPolicy,
   type MissedOutcome,
-} from "@/lib/contact-policy";
+} from "./contact-policy";
 
 const policy = loadContactPolicy();
 

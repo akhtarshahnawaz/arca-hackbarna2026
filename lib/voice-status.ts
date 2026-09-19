@@ -1,4 +1,4 @@
-import type { VoiceStatus } from "@/lib/types";
+import type { VoiceStatus } from "./types";
 
 export function voiceWebhookBase(): string {
   return process.env.VONAGE_VOICE_WEBHOOK_URL?.trim() || "";

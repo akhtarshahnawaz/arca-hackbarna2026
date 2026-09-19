@@ -1,8 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import seed from "@/config/shelters.json";
-import { haversineKm } from "@/lib/geo";
-import type { Shelter, ShelterConfig } from "@/lib/types";
+import seed from "../config/shelters.json";
+import { haversineKm } from "./geo";
+import type { Shelter, ShelterConfig } from "./types";
 
 const COORDINATOR_LABEL = "Configured by coordinator (not live data)";
 

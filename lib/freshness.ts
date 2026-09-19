@@ -1,4 +1,4 @@
-import type { ConfirmationChannel, ConfirmationStatus, FreshnessKind } from "@/lib/types";
+import type { ConfirmationChannel, ConfirmationStatus, FreshnessKind } from "./types";
 
 export function formatClock(iso: string | null, timeZone = "Europe/Madrid"): string {
   if (!iso) return "—";

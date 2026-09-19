@@ -6,7 +6,7 @@ import {
   nextRetryAt,
   uiCallStatus,
   type MissedOutcome,
-} from "@/lib/contact-policy";
+} from "./contact-policy";
 import {
   getVoiceCall,
   insertVoiceCall,
@@ -16,9 +16,9 @@ import {
   saveSlngLog,
   updateVoiceCall,
   type VoiceCallRow,
-} from "@/lib/db";
-import { structurePhoneReport } from "@/lib/nebius-parse";
-import { dtmfToReport, type PhoneReport } from "@/lib/phone-report";
+} from "./db";
+import { structurePhoneReport } from "./nebius-parse";
+import { dtmfToReport, type PhoneReport } from "./phone-report";
 import {
   arcaTransparencyLine,
   dtmfPromptScript,
@@ -26,13 +26,13 @@ import {
   siteCallScript,
   synthesizeSpeech,
   transcribeAudio,
-} from "@/lib/slng";
-import { coordinatorChatId, sendTelegramMessage, sendTelegramVoice } from "@/lib/telegram";
-import type { VoiceCallStatus, VoiceCallSummary } from "@/lib/types";
-import { last4 } from "@/lib/voice-status";
-import { getVoiceStatus } from "@/lib/voice-status";
-import { outcomeFromCapture } from "@/lib/voice-policy";
-import { createOutboundCall, publicAudioUrl, transferCall } from "@/lib/vonage";
+} from "./slng";
+import { coordinatorChatId, sendTelegramMessage, sendTelegramVoice } from "./telegram";
+import type { VoiceCallStatus, VoiceCallSummary } from "./types";
+import { last4 } from "./voice-status";
+import { getVoiceStatus } from "./voice-status";
+import { outcomeFromCapture } from "./voice-policy";
+import { createOutboundCall, publicAudioUrl, transferCall } from "./vonage";
 
 setSlngSink({
   persistLog: async (log) => {

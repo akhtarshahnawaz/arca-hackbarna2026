@@ -1,6 +1,6 @@
-import evacConfig from "@/config/evac-times.json";
-import { ellipseRing } from "@/lib/geo";
-import type { EvacConfig, HourPolygon, SiteInput } from "@/lib/types";
+import evacConfig from "../config/evac-times.json";
+import { ellipseRing } from "./geo";
+import type { EvacConfig, HourPolygon, SiteInput } from "./types";
 
 const config = evacConfig as EvacConfig;
 

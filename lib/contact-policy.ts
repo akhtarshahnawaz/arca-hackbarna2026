@@ -1,4 +1,4 @@
-import seed from "@/config/contact-policy.json";
+import seed from "../config/contact-policy.json";
 
 export type MissedOutcome =
   | "no_answer"
