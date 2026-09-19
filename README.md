@@ -2,6 +2,8 @@
 
 HackBarna AI Summit 2026, Norrsken House Barcelona.
 
+ARCA is an evacuation-planning assistant for civil-protection coordinators. It helps decide who to contact first during a confirmed wildfire.
+
 In a wildfire, people don't refuse to leave because they're stupid. They refuse because the dog is family, and the sheep are the rent.
 
 > Deepfire tells us where the fire may go. ARCA tells us who needs help first.

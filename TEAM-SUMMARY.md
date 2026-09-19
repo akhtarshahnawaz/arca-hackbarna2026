@@ -4,7 +4,7 @@ HackBarna AI Summit 2026, Norrsken House Barcelona. Read this in about five minu
 
 ## What it is
 
-ARCA is a wildfire coordinator tool. Deepfire says where the fire may go. ARCA ranks who needs help first by `spare_time = t_arrival − t_evac`. The formula ranks. The LLM explains. A human Approves any outbound contact.
+ARCA is an evacuation-planning assistant for civil-protection coordinators. It helps decide who to contact first during a confirmed wildfire. Deepfire says where the fire may go. ARCA ranks who needs help first by `spare_time = t_arrival − t_evac`. The formula ranks. The LLM explains. A human Approves any outbound contact.
 
 People stay for the dog and the sheep. Emergency teams already have fire data. Nobody hands them the list: who is inside the ensemble shape, how long each site needs, who is already late. Ensemble language only — “in 7 of 10 runs”, not a flat three hours.
 
