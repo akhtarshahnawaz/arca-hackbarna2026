@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { resolveCallPermission, demoSiteAliases } from "./call-gate";
+import { formatCoordinatorCallStatus } from "./call-status";
 import {
   canScheduleRetry,
   classifyVonageStatus,
   loadContactPolicy,
   nextRetryAt,
+  retryPolicyCopy,
   uiCallStatus,
   type MissedOutcome,
 } from "./contact-policy";
@@ -94,9 +97,13 @@ export async function requestSiteCall(input: {
   if (!toNumber) {
     throw new Error("Coordinator must enter a number. Seed data has no phones.");
   }
+  const permission = await resolveCallPermission(input.siteId);
+  if (!permission.ok) {
+    throw new Error(permission.reason);
+  }
   const row = await insertVoiceCall({
     id: randomUUID(),
-    siteId: input.siteId.trim(),
+    siteId: permission.siteId,
     toNumber,
     status: "awaiting_approval",
     attempt: 0,
@@ -105,7 +112,7 @@ export async function requestSiteCall(input: {
   });
   return {
     call: toVoiceSummary(row),
-    detail: `${loadContactPolicy().dashboardLabel} Approve once — that covers the retry plan (max ${loadContactPolicy().maxAttempts}).`,
+    detail: `${loadContactPolicy().dashboardLabel} ${retryPolicyCopy()}`,
   };
 }
 
@@ -144,20 +151,37 @@ export async function approveSiteCall(input: {
     throw new Error(`Call is ${existing.status}, not waiting for Approve.`);
   }
 
-  const policy = loadContactPolicy();
+  const permission = await resolveCallPermission(existing.siteId);
+  if (!permission.ok) {
+    throw new Error(permission.reason);
+  }
+
   if (input.coordinatorNumber) {
     await updateVoiceCall(existing.id, { coordinatorNumber: input.coordinatorNumber });
   }
   await updateVoiceCall(existing.id, { status: "approved", attempt: Math.max(existing.attempt, 1) });
   const fresh = (await getVoiceCall(existing.id)) ?? existing;
-  const dialed = await dial(fresh, input.town ?? "Font-rubí");
+  const dialed = await dial(fresh, input.town ?? "Sant Fruitós de Bages");
+  const stub = dialed.status === "stubbed";
+  const spoken = formatCoordinatorCallStatus({ stub, status: dialed.status });
   return {
     call: toVoiceSummary(dialed),
-    detail: policy.oneApproveCoversRetryPlan
-      ? `Approved. This Approve covers the retry plan (max ${policy.maxAttempts}).`
-      : "Approved.",
-    stub: dialed.status === "stubbed",
+    detail: stub
+      ? spoken.coordinatorMustRepeatVerbatim
+      : `${spoken.coordinatorMustRepeatVerbatim} ${retryPolicyCopy()}`,
+    stub,
   };
+}
+
+export async function findAwaitingApprovalCall(siteId: string) {
+  const aliases = new Set(demoSiteAliases(siteId).map((key) => key.toLowerCase()));
+  aliases.add(siteId.trim().toLowerCase());
+  const rows = await listVoiceCalls();
+  return (
+    rows.find(
+      (row) => row.status === "awaiting_approval" && aliases.has(row.siteId.toLowerCase()),
+    ) ?? null
+  );
 }
 
 export async function denySiteCall(callId: string): Promise<VoiceCallSummary> {
@@ -404,6 +428,7 @@ export function contactPolicyPublic() {
     dashboardLabel: policy.dashboardLabel,
     approvalRequiredForAllContact: policy.approvalRequiredForAllContact,
     oneApproveCoversRetryPlan: policy.oneApproveCoversRetryPlan,
+    retryPolicyCopy: policy.retryPolicyCopy,
     maxAttempts: policy.maxAttempts,
     hangupFollowUp: policy.hangupFollowUp,
     autoVetoEnabled: policy.autoVetoWindow.enabled,

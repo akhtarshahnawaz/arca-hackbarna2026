@@ -1,17 +1,29 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { siteKindLabel } from "@/lib/demo-data";
 import { confirmedCopy, freshnessLabel, formatClock, registeredCopy } from "@/lib/freshness";
-import { ensembleReachCopy, formatHours, spareTimeCopy } from "@/lib/ranking";
-import type { CommandState, RankedSite, Shelter, VoiceCallSummary } from "@/lib/types";
+import {
+  arcaMayCall,
+  actionLabel,
+  PROTECTIVE_ACTIONS,
+  type ProtectiveAction,
+} from "@/lib/protective-action";
+import { siteKindBadgeClass, siteKindLabel } from "@/lib/site-kind";
+import {
+  plainDuration,
+  timeLeftCopy,
+  urgencyBadgeLabel,
+  urgencyRowCopy,
+  urgencyTier,
+  type UrgencyTier,
+} from "@/lib/urgency";
+import { callStatusLabel } from "@/lib/call-status";
+import type { CommandState, RankedSite, VoiceCallSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const CommandMap = dynamic(() => import("@/components/command-map"), {
@@ -19,73 +31,120 @@ const CommandMap = dynamic(() => import("@/components/command-map"), {
   loading: () => <Skeleton className="size-full rounded-none" />,
 });
 
+const tierRowClass: Record<UrgencyTier, string> = {
+  late: "border-l-4 border-l-red-600 bg-red-50 hover:bg-red-100/70",
+  now: "border-l-4 border-l-orange-500 bg-orange-50 hover:bg-orange-100/70",
+  prepare: "border-l-4 border-l-yellow-400 hover:bg-yellow-50",
+  none: "border-l-4 border-l-transparent opacity-75 hover:bg-muted/60",
+};
+
+const tierBadgeClass: Record<UrgencyTier, string> = {
+  late: "bg-red-600 text-white",
+  now: "bg-orange-500 text-white",
+  prepare: "bg-yellow-400 text-yellow-950",
+  none: "bg-muted text-muted-foreground",
+};
+
+const tierPanelClass: Record<UrgencyTier, string> = {
+  late: "bg-red-50/90",
+  now: "bg-orange-50/90",
+  prepare: "bg-yellow-50/80",
+  none: "bg-muted/40",
+};
+
 type Props = {
   initial: CommandState;
 };
 
 export function CommandConsole({ initial }: Props) {
-  const [state] = useState(initial);
-  const [selectedId, setSelectedId] = useState(
-    initial.sites[0]?.id ?? initial.watch?.[0]?.id ?? null,
-  );
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [state, setState] = useState(initial);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const watchSites = state.watch ?? [];
 
-  const selected = useMemo(() => {
+  const openSite = useMemo(() => {
+    if (!openId) return null;
     return (
-      state.sites.find((site) => site.id === selectedId) ??
-      watchSites.find((site) => site.id === selectedId) ??
-      state.sites[0] ??
-      watchSites[0] ??
+      state.sites.find((site) => site.id === openId) ??
+      watchSites.find((site) => site.id === openId) ??
       null
     );
-  }, [selectedId, state.sites, watchSites]);
+  }, [openId, state.sites, watchSites]);
 
-  function selectSite(id: string) {
-    setSelectedId(id);
-    if (window.matchMedia("(max-width: 1023px)").matches) {
-      setMobileOpen(true);
-    }
+  useEffect(() => {
+    if (!openId) return;
+    document.getElementById(`site-item-${openId}`)?.scrollIntoView({
+      block: "nearest",
+      behavior: "smooth",
+    });
+  }, [openId]);
+
+  function toggleSite(id: string) {
+    setOpenId((current) => (current === id ? null : id));
+  }
+
+  function openSiteById(id: string) {
+    setOpenId(id);
+  }
+
+  function patchSite(siteKey: string, patch: Partial<RankedSite>) {
+    const match = (site: RankedSite) => site.id === siteKey || site.code === siteKey;
+    setState((prev) => ({
+      ...prev,
+      sites: prev.sites.map((site) => (match(site) ? { ...site, ...patch } : site)),
+      watch: (prev.watch ?? []).map((site) => (match(site) ? { ...site, ...patch } : site)),
+    }));
+  }
+
+  function upsertCall(call: VoiceCallSummary) {
+    setState((prev) => ({
+      ...prev,
+      voiceCalls: [call, ...prev.voiceCalls.filter((item) => item.id !== call.id)],
+    }));
   }
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
-      <header className="flex flex-col gap-4 border-b px-5 py-4 md:px-8">
+      <header className="flex flex-col gap-3 border-b px-5 py-4 md:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-1">
             <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
               Coordinator console
             </p>
             <h1 className="font-heading text-3xl tracking-tight">ARCA</h1>
-            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Deepfire tells us where the fire may go. ARCA tells us who needs help first.
+            <p className="max-w-xl text-sm">
+              <span className="font-medium">Red = most urgent.</span>{" "}
+              <span className="text-muted-foreground">
+                You choose: monitor, latent, confine, or evacuate.
+              </span>
             </p>
           </div>
           <div className="flex flex-col items-start gap-1 md:items-end">
             <Badge variant="outline">INC-DEMO Bages</Badge>
-            <Badge>{state.contactPolicy?.dashboardLabel ?? "Contact policy: human approval required."}</Badge>
+            <Badge>{state.contactPolicy?.dashboardLabel ?? "Approval required"}</Badge>
             <p className="font-mono text-xs text-muted-foreground">
               {state.fire.municipality} · {state.fire.ensembleMembers} runs · {state.fire.horizonHours} h
             </p>
           </div>
         </div>
-        <FreshnessStrip state={state} />
+        <details>
+          <summary className="cursor-pointer text-xs text-muted-foreground select-none">
+            Data status
+          </summary>
+          <div className="mt-3 flex flex-col gap-2">
+            <FreshnessStrip state={state} />
+            {state.banners.map((banner) => (
+              <p key={banner} className="text-xs text-muted-foreground">
+                {banner}
+              </p>
+            ))}
+          </div>
+        </details>
       </header>
 
-      {state.banners.length > 0 ? (
-        <div className="flex flex-col gap-1 border-b bg-muted/40 px-5 py-2 md:px-8">
-          {state.banners.map((banner) => (
-            <p key={banner} className="text-xs text-muted-foreground">
-              {banner}
-            </p>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="relative min-h-[52dvh] lg:min-h-0">
-          <CommandMap state={state} selectedId={selectedId} onSelect={selectSite} />
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_380px] lg:grid-rows-1">
+        <section className="relative min-h-[52dvh] lg:min-h-0 lg:h-full">
+          <CommandMap state={state} selectedId={openId} onSelect={openSiteById} />
           <div className="pointer-events-none absolute top-4 left-4 rounded-md border bg-background/90 px-3 py-2">
             <p className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground uppercase">
               Demo polygons
@@ -94,84 +153,73 @@ export function CommandConsole({ initial }: Props) {
           </div>
         </section>
 
-        <aside className="flex min-h-0 flex-col border-t lg:border-t-0 lg:border-l">
-          <div className="flex items-center justify-between px-5 py-4">
-            <div>
+        <aside className="flex min-h-0 flex-col border-t lg:h-full lg:overflow-hidden lg:border-t-0 lg:border-l">
+          <div className="flex flex-col gap-2 px-5 py-3">
+            <div className="flex items-center justify-between">
               <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-                Ranked sites
+                Most urgent first
               </p>
-              <p className="text-sm text-muted-foreground">
-                Formula ranks this list. LLM explains. You Approve contact. Not tap-rank.
-              </p>
+              <span className="font-mono text-xs text-muted-foreground">{state.sites.length}</span>
             </div>
-            <span className="font-mono text-xs text-muted-foreground">{state.sites.length}</span>
+            <UrgencyLegend />
           </div>
           <Separator />
-          <ScrollArea className="h-[40dvh] lg:h-auto lg:flex-1">
+          <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
             <ol className="flex flex-col">
               {state.sites.length === 0 ? (
-                <li className="px-5 py-4 text-sm text-muted-foreground">
-                  No likely or possible sites in this briefing.
-                </li>
+                <li className="px-5 py-4 text-sm text-muted-foreground">No ranked sites.</li>
               ) : (
                 state.sites.map((site) => (
                   <SiteRow
                     key={site.id}
                     site={site}
-                    selected={selected?.id === site.id}
-                    onSelect={selectSite}
+                    open={openSite?.id === site.id}
+                    onToggle={toggleSite}
                     showRank
-                  />
+                  >
+                    <SitePanel
+                      site={site}
+                      calls={state.voiceCalls}
+                      onPatchSite={patchSite}
+                      onUpsertCall={upsertCall}
+                    />
+                  </SiteRow>
                 ))
               )}
             </ol>
-            <div className="border-t px-5 pt-4 pb-2">
+            <div className="border-t px-5 pt-3 pb-1">
               <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-                Watch
+                Not close
               </p>
-              <p className="text-sm text-muted-foreground">
-                Below 3 in 10 runs. Not in the ranking — a 1/10 site cannot win the list.
+              <p className="text-xs text-muted-foreground">
+                Fewer than {state.watchIfFewerThanRuns} of {state.fire.ensembleMembers} runs
               </p>
             </div>
             <ol className="flex flex-col pb-2">
               {watchSites.length === 0 ? (
-                <li className="px-5 py-3 text-sm text-muted-foreground">
-                  No watch sites in this briefing.
-                </li>
+                <li className="px-5 py-3 text-sm text-muted-foreground">No watch sites.</li>
               ) : (
                 watchSites.map((site) => (
                   <SiteRow
                     key={site.id}
                     site={site}
-                    selected={selected?.id === site.id}
-                    onSelect={selectSite}
+                    open={openSite?.id === site.id}
+                    onToggle={toggleSite}
                     showRank={false}
-                  />
+                  >
+                    <SitePanel
+                      site={site}
+                      calls={state.voiceCalls}
+                      onPatchSite={patchSite}
+                      onUpsertCall={upsertCall}
+                    />
+                  </SiteRow>
                 ))
               )}
             </ol>
-          </ScrollArea>
-          <div className="hidden border-t lg:block">
-            {selected ? <SiteDetail site={selected} state={state} /> : null}
           </div>
         </aside>
       </div>
-
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="bottom" className="max-h-[80dvh] overflow-y-auto lg:hidden">
-          {selected ? (
-            <>
-              <SheetHeader>
-                <SheetTitle>{selected.code}</SheetTitle>
-                <SheetDescription>
-                  {siteKindLabel(selected.kind)} · {selected.municipality}
-                </SheetDescription>
-              </SheetHeader>
-              <SiteDetail site={selected} state={state} showHeader={false} />
-            </>
-          ) : null}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
@@ -179,9 +227,6 @@ export function CommandConsole({ initial }: Props) {
 function FreshnessStrip({ state }: { state: CommandState }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-muted-foreground">
-        Every answer is only as fresh as its oldest input. Fire moves in minutes. The farm book does not.
-      </p>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {state.sources.map((source) => (
           <div
@@ -205,258 +250,168 @@ function FreshnessStrip({ state }: { state: CommandState }) {
   );
 }
 
-function SiteRow({
-  site,
-  selected,
-  onSelect,
-  showRank,
-}: {
-  site: RankedSite;
-  selected: boolean;
-  onSelect: (id: string) => void;
-  showRank: boolean;
-}) {
+function UrgencyLegend() {
+  const tiers: UrgencyTier[] = ["late", "now", "prepare", "none"];
   return (
-    <li>
-      <button
-        type="button"
-        onClick={() => onSelect(site.id)}
-        className={cn(
-          "flex w-full items-start gap-3 px-5 py-3.5 text-left transition-colors hover:bg-muted/60",
-          selected && "bg-muted",
-        )}
-      >
-        <span className="font-mono w-6 pt-0.5 text-xs text-muted-foreground">
-          {showRank ? site.rank : "–"}
+    <div className="flex flex-wrap gap-1.5">
+      {tiers.map((tier) => (
+        <span
+          key={tier}
+          className={cn(
+            "rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide",
+            tierBadgeClass[tier],
+          )}
+        >
+          {urgencyBadgeLabel[tier]}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
-            <span className="truncate font-medium">{site.code}</span>
-            <Badge variant="outline">{siteKindLabel(site.kind)}</Badge>
-          </span>
-          <span className="mt-1 block text-xs text-muted-foreground">
-            {site.municipality} · {ensembleReachCopy(site.runsReach, site.ensembleMembers, site.tArrival)}
-          </span>
-        </span>
-        <SpareChip site={site} />
-      </button>
-    </li>
-  );
-}
-
-function SpareChip({ site }: { site: RankedSite }) {
-  const urgent = site.spareTime !== null && site.spareTime < 0;
-  return (
-    <span className="flex flex-col items-end gap-1">
-      <Badge variant={urgent ? "destructive" : "secondary"}>
-        {site.spareTime === null ? "No reach" : formatHours(site.spareTime)}
-      </Badge>
-      <span className="font-mono text-[10px] text-muted-foreground">{site.label}</span>
-    </span>
-  );
-}
-
-function SiteDetail({
-  site,
-  state,
-  showHeader = true,
-}: {
-  site: RankedSite;
-  state: CommandState;
-  showHeader?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-4 px-5 py-4">
-      {showHeader ? (
-        <div className="flex flex-col gap-1">
-          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-            Site {site.code}
-          </p>
-          <h2 className="text-lg font-medium tracking-tight">
-            {siteKindLabel(site.kind)} · {site.municipality}
-          </h2>
-          <p className="text-sm text-muted-foreground">{site.notes}</p>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">{site.notes}</p>
-      )}
-
-      <div className="grid grid-cols-2 gap-3">
-        <Metric label="Spare time" value={site.spareTime === null ? "—" : formatHours(site.spareTime)} />
-        <Metric label="Evac assumption" value={formatHours(site.tEvac)} />
-      </div>
-      <p className="text-sm leading-relaxed">{spareTimeCopy(site.spareTime)}</p>
-      <p className="text-sm">{ensembleReachCopy(site.runsReach, site.ensembleMembers, site.tArrival)}</p>
-      <p className="font-mono text-[11px] text-muted-foreground">
-        Reach {site.label} · {Math.round(site.pReach * 10)} in 10 runs
-      </p>
-
-      <Separator />
-
-      <div className="flex flex-col gap-2">
-        <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-          Animals
-        </p>
-        {site.animals.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No animals registered at this site.</p>
-        ) : (
-          site.animals.map((animal) => (
-            <div key={animal.species} className="flex flex-col gap-1 text-sm">
-              <p className="font-medium capitalize">{animal.species}</p>
-              <p className="text-muted-foreground">
-                Registered capacity {animal.registeredCapacity ?? "—"} · {registeredCopy(site.capacityUpdatedAt)}
-              </p>
-              <p className={animal.confirmedCount === null ? "text-destructive" : "text-foreground"}>
-                Headcount {animal.confirmedCount ?? "—"} ·{" "}
-                {confirmedCopy(site.confirmedAt, site.confirmationStatus, site.confirmationChannel)}
-              </p>
-              {site.confirmationCorrectionCopy ? (
-                <p className="text-xs text-muted-foreground">{site.confirmationCorrectionCopy}</p>
-              ) : null}
-            </div>
-          ))
-        )}
-      </div>
-
-      <div className="flex flex-col gap-1 text-sm">
-        <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-          Transport
-        </p>
-        <p>
-          {site.hasOwnTransport === null
-            ? "Own transport unknown. Ask."
-            : site.hasOwnTransport
-              ? "Can move some animals themselves."
-              : "No own transport. Send a pickup."}
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-1 text-sm">
-        <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-          Shelter that takes animals
-        </p>
-        <p className="text-xs font-medium">{state.shelterLabel}</p>
-        <p>{site.shelterHint}</p>
-      </div>
-
-      <ShelterList shelters={state.shelters} />
-
-      <CallApprove site={site} calls={state.voiceCalls} voice={state.voice} />
-
-      <p className="text-[11px] text-muted-foreground">
-        Minimal personal data. Site codes and counts only. No names or phones in this briefing.
-      </p>
-
-      <LogOutcome key={site.id} site={site} />
+      ))}
     </div>
   );
 }
 
-function LogOutcome({ site }: { site: RankedSite }) {
-  const defaultSpecies = site.animals[0]?.species ?? "sheep";
-  const [species, setSpecies] = useState(defaultSpecies);
-  const [count, setCount] = useState(
-    site.animals[0]?.confirmedCount !== null && site.animals[0]?.confirmedCount !== undefined
-      ? String(site.animals[0].confirmedCount)
-      : "",
-  );
-  const [truck, setTruck] = useState(site.hasOwnTransport === true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const parsed = Number(count);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      setError("Enter a non-negative count from the call.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/confirmations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          siteId: site.code,
-          species,
-          count: parsed,
-          hasTransport: truck,
-        }),
-      });
-      if (!response.ok) {
-        setError("Could not save the report.");
-        setBusy(false);
-        return;
-      }
-      window.location.reload();
-    } catch {
-      setError("Could not save the report.");
-      setBusy(false);
-    }
-  }
-
+function SiteRow({
+  site,
+  open,
+  onToggle,
+  showRank,
+  children,
+}: {
+  site: RankedSite;
+  open: boolean;
+  onToggle: (id: string) => void;
+  showRank: boolean;
+  children: ReactNode;
+}) {
+  const tier = urgencyTier(site);
   return (
-    <form className="flex flex-col gap-3" onSubmit={onSubmit}>
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        You can still call yourself and log here. Or Approve a Voice call above. Counts are
-        reported, not verified.
-      </p>
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
-          Species
+    <li id={`site-item-${site.id}`}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={`site-panel-${site.id}`}
+        onClick={() => onToggle(site.id)}
+        className={cn(
+          "flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors",
+          tierRowClass[tier],
+          open && "ring-2 ring-foreground/50 ring-inset",
+        )}
+      >
+        <span className="w-7 pt-0.5 text-center font-mono text-lg font-semibold">
+          {showRank ? site.rank : "·"}
         </span>
-        <input
-          className="rounded-md border bg-background px-3 py-2"
-          value={species}
-          onChange={(event) => setSpecies(event.target.value)}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">
-          Reported count
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="truncate font-medium">{site.code}</span>
+            <Badge className={siteKindBadgeClass[site.kind]}>{siteKindLabel(site.kind)}</Badge>
+          </span>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            {site.municipality} · {urgencyRowCopy(site)}
+          </span>
         </span>
-        <input
-          className="rounded-md border bg-background px-3 py-2"
-          inputMode="numeric"
-          value={count}
-          onChange={(event) => setCount(event.target.value)}
-        />
-      </label>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={truck}
-          onChange={(event) => setTruck(event.target.checked)}
-        />
-        Has a truck / own transport
-      </label>
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <Button type="submit" className="w-full" disabled={busy}>
-        {busy ? "Saving report…" : "Log outcome"}
-      </Button>
-    </form>
+        <span className="flex shrink-0 flex-col items-end gap-1">
+          <span
+            className={cn(
+              "rounded px-2 py-1 text-[11px] font-bold tracking-wide whitespace-nowrap",
+              tierBadgeClass[tier],
+            )}
+          >
+            {urgencyBadgeLabel[tier]}
+          </span>
+          <span
+            className={cn(
+              "text-[11px] font-medium whitespace-nowrap",
+              tier === "late" ? "text-red-700" : "text-muted-foreground",
+            )}
+          >
+            {timeLeftCopy(site)}
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            {site.protectiveAction ? actionLabel[site.protectiveAction] : "No decision"}
+          </span>
+        </span>
+      </button>
+      {open ? children : null}
+    </li>
   );
 }
 
-function ShelterList({ shelters }: { shelters: Shelter[] }) {
+function siteFactsLine(site: RankedSite): string | null {
+  const animals = site.animals
+    .map((animal) => {
+      const n = animal.confirmedCount ?? animal.registeredCapacity;
+      return n != null ? `${n} ${animal.species}` : animal.species;
+    })
+    .join(", ");
+  const transport =
+    site.hasOwnTransport === null ? null : site.hasOwnTransport ? "own transport" : "no transport";
+  const bits = [animals || null, transport].filter(Boolean);
+  return bits.length ? bits.join(" · ") : null;
+}
+
+function SitePanel({
+  site,
+  calls,
+  onPatchSite,
+  onUpsertCall,
+}: {
+  site: RankedSite;
+  calls: VoiceCallSummary[];
+  onPatchSite: (siteKey: string, patch: Partial<RankedSite>) => void;
+  onUpsertCall: (call: VoiceCallSummary) => void;
+}) {
+  const tier = urgencyTier(site);
+  const facts = siteFactsLine(site);
+  const mayCall = arcaMayCall(site.protectiveAction);
+
   return (
-    <div className="flex flex-col gap-2 text-sm">
-      <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-        Configured pet shelters
-      </p>
-      <p className="text-xs text-muted-foreground">
-        Configured by coordinator (not live data). Edit config/shelters.json.
-      </p>
-      <ul className="flex flex-col gap-1">
-        {shelters.map((shelter) => (
-          <li key={shelter.id} className="text-xs text-muted-foreground">
-            {shelter.name}
-            {shelter.municipality ? ` · ${shelter.municipality}` : ""}
-            {shelter.pets_allowed ? " · dogs yes" : " · no pets"}
-          </li>
-        ))}
-      </ul>
+    <div
+      id={`site-panel-${site.id}`}
+      className={cn("flex flex-col gap-3 border-t px-4 py-3", tierPanelClass[tier])}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className={cn(
+            "rounded px-2 py-1 text-[11px] font-bold tracking-wide",
+            tierBadgeClass[tier],
+          )}
+        >
+          {urgencyBadgeLabel[tier]}
+        </span>
+        <Badge className={siteKindBadgeClass[site.kind]}>{siteKindLabel(site.kind)}</Badge>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Metric
+          label="Fire arrives"
+          value={site.tArrival === null ? "not soon" : `~${plainDuration(site.tArrival)}`}
+        />
+        <Metric label="They need" value={plainDuration(site.tEvac)} />
+      </div>
+
+      {facts ? <p className="text-xs text-muted-foreground">{facts}</p> : null}
+
+      <ProtectiveChoice site={site} onPatchSite={onPatchSite} />
+
+      {mayCall ? (
+        <CallApprove site={site} calls={calls} onUpsertCall={onUpsertCall} />
+      ) : null}
+
+      <details className="text-xs text-muted-foreground">
+        <summary className="cursor-pointer select-none">More</summary>
+        <div className="mt-2 flex flex-col gap-1">
+          {site.animals.map((animal) => (
+            <p key={animal.species}>
+              {animal.species}: {animal.confirmedCount ?? "—"} / {animal.registeredCapacity ?? "—"}
+              {site.confirmedAt
+                ? ` · ${confirmedCopy(site.confirmedAt, site.confirmationStatus, site.confirmationChannel)}`
+                : site.capacityUpdatedAt
+                  ? ` · ${registeredCopy(site.capacityUpdatedAt)}`
+                  : ""}
+            </p>
+          ))}
+          {site.shelterHint ? <p>{site.shelterHint}</p> : null}
+        </div>
+      </details>
     </div>
   );
 }
@@ -464,18 +419,18 @@ function ShelterList({ shelters }: { shelters: Shelter[] }) {
 function CallApprove({
   site,
   calls,
-  voice,
+  onUpsertCall,
 }: {
   site: RankedSite;
   calls: VoiceCallSummary[];
-  voice: CommandState["voice"];
+  onUpsertCall: (call: VoiceCallSummary) => void;
 }) {
   const latest = calls.find((call) => call.siteId === site.code || call.siteId === site.id);
   const [number, setNumber] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function post(action: "request" | "approve" | "deny") {
+  async function post(action: "request" | "approve") {
     setBusy(true);
     setError(null);
     try {
@@ -490,47 +445,48 @@ function CallApprove({
           spareTime: site.spareTime,
         }),
       });
-      const json = (await response.json()) as { ok?: boolean; error?: string };
+      const json = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        call?: VoiceCallSummary;
+      };
       if (!response.ok || !json.ok) {
-        setError(json.error ?? "Voice request failed.");
+        setError(json.error ?? "Call failed.");
         setBusy(false);
         return;
       }
-      window.location.reload();
+      if (json.call) onUpsertCall(json.call);
+      setBusy(false);
     } catch {
-      setError("Voice request failed.");
+      setError("Call failed.");
       setBusy(false);
     }
   }
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-        Voice call
-      </p>
-      {voice?.banner ? <p className="text-xs text-muted-foreground">{voice.banner}</p> : null}
-      <p className="text-xs text-muted-foreground">
-        Call then Approve. One Approve covers the retry plan (max 3). Hang-up is flag-only — no
-        Telegram to the farmer.
-      </p>
       {latest ? (
-        <p className="text-sm">
-          Status{" "}
-          <span className="font-medium">
-            {latest.uiStatus ?? latest.status.replaceAll("_", " ")}
-          </span>
-          {latest.correctionCopy ? ` · ${latest.correctionCopy}` : ""}
+        <p className="text-xs">
+          {latest.status === "stubbed"
+            ? callStatusLabel(latest.status)
+            : (latest.uiStatus ?? callStatusLabel(latest.status))}
         </p>
       ) : null}
       <input
         className="rounded-md border bg-background px-3 py-2 text-sm"
-        placeholder="E.164 — coordinator typed, not in seed"
+        placeholder="E.164 number"
         value={number}
         onChange={(event) => setNumber(event.target.value)}
       />
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <div className="flex gap-2">
-        <Button type="button" variant="outline" className="flex-1" disabled={busy} onClick={() => post("request")}>
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1"
+          disabled={busy}
+          onClick={() => post("request")}
+        >
           Call
         </Button>
         <Button
@@ -546,11 +502,67 @@ function CallApprove({
   );
 }
 
+function ProtectiveChoice({
+  site,
+  onPatchSite,
+}: {
+  site: RankedSite;
+  onPatchSite: (siteKey: string, patch: Partial<RankedSite>) => void;
+}) {
+  const [busy, setBusy] = useState<ProtectiveAction | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function choose(action: ProtectiveAction) {
+    setBusy(action);
+    setError(null);
+    try {
+      const response = await fetch("/api/protective-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteId: site.code, action }),
+      });
+      if (!response.ok) {
+        setError("Could not save.");
+        setBusy(null);
+        return;
+      }
+      onPatchSite(site.id, { protectiveAction: action });
+      setBusy(null);
+    } catch {
+      setError("Could not save.");
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-2 gap-2">
+        {PROTECTIVE_ACTIONS.map((action) => {
+          const selected = site.protectiveAction === action;
+          return (
+            <Button
+              key={action}
+              type="button"
+              size="sm"
+              variant={selected ? "default" : "outline"}
+              disabled={busy !== null}
+              onClick={() => choose(action)}
+            >
+              {busy === action ? "…" : actionLabel[action]}
+            </Button>
+          );
+        })}
+      </div>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+    </div>
+  );
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-0.5">
       <p className="font-mono text-[10px] tracking-[0.16em] text-muted-foreground uppercase">{label}</p>
-      <p className="font-mono text-xl tracking-tight">{value}</p>
+      <p className="font-mono text-lg tracking-tight">{value}</p>
     </div>
   );
 }

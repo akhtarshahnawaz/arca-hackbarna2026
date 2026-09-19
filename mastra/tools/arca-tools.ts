@@ -2,14 +2,41 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { MASS_ALERT_POLICY, massAlertBlockedReason } from "../../lib/alert-policy";
 import { formatCoordinatorBriefing, formatResidentAlert } from "../../lib/briefing";
-import { getCommandState } from "../../lib/command";
 import {
+  looksLikePhoneId,
+  matchKnownSite,
+  PHONE_IS_NOT_A_SITE_REFUSAL,
+  resolveCallPermission,
+  UNKNOWN_SITE_REFUSAL,
+} from "../../lib/call-gate";
+import {
+  formatCoordinatorCallStatus,
+  modelMustEchoCallStatus,
+  SAY_THIS_EXACTLY_AWAITING_APPROVE,
+} from "../../lib/call-status";
+import { getCommandState } from "../../lib/command";
+import { retryPolicyCopy } from "../../lib/contact-policy";
+import {
+  afterLookupChoices,
+  afterRequestChoices,
+  briefingChoices,
+  formatCta,
+} from "../../lib/coordinator-cta";
+import {
+  getVoiceCall,
   listOptedInResidents,
   saveAlertRequest,
+  saveProtectiveAction,
   saveReportedConfirmation,
   upsertResident,
 } from "../../lib/db";
 import { structurePhoneReport } from "../../lib/nebius-parse";
+import {
+  actionEffectCopy,
+  actionLabel,
+  arcaMayCall,
+  isProtectiveAction,
+} from "../../lib/protective-action";
 import { ensembleReachCopy } from "../../lib/ranking";
 import { transcribeAudio } from "../../lib/slng";
 import {
@@ -18,7 +45,13 @@ import {
   downloadTelegramFile,
   sendTelegramMessage,
 } from "../../lib/telegram";
-import { approveSiteCall, requestSiteCall, sendApprovedTelegramVoice } from "../../lib/voice-calls";
+import {
+  approveSiteCall,
+  denySiteCall,
+  findAwaitingApprovalCall,
+  requestSiteCall,
+  sendApprovedTelegramVoice,
+} from "../../lib/voice-calls";
 
 export const getBriefingTool = createTool({
   id: "get-briefing",
@@ -29,6 +62,7 @@ export const getBriefingTool = createTool({
   }),
   execute: async () => {
     const state = await getCommandState();
+    const cta = formatCta(briefingChoices());
     return {
       text: formatCoordinatorBriefing(state),
       fire: state.fire.name,
@@ -36,6 +70,10 @@ export const getBriefingTool = createTool({
       simulation: "DEMO ensemble — not a live Deepfire perimeter",
       rankedCount: state.sites.length,
       watchCount: state.watch.length,
+      phoneOnFile: null,
+      cta,
+      instruction:
+        "Present the numbered choices from cta.choiceList. Do not ask a free-text yes/no about calling.",
     };
   },
 });
@@ -74,12 +112,98 @@ export const rankSitesTool = createTool({
         kind: site.kind,
         ensemble: ensembleReachCopy(site.runsReach, site.ensembleMembers, site.tArrival),
         spareTime: site.spareTime,
+        protectiveAction: site.protectiveAction,
+        phoneOnFile: null,
         confirmationStatus: site.confirmationStatus ?? (site.confirmedAt ? "reported" : null),
       })),
       watch: state.watch.map((site) => ({
         code: site.code,
         ensemble: ensembleReachCopy(site.runsReach, site.ensembleMembers, site.tArrival),
+        protectiveAction: site.protectiveAction,
+        phoneOnFile: null,
       })),
+      note: "No phones in seed data. A phone number is not a site id.",
+    };
+  },
+});
+
+export const lookupSiteTool = createTool({
+  id: "lookup-site",
+  description:
+    "Look up one site from the shared command list by code or id only. Never invent a phone. Seed data has no phones. A number such as 633209158 is not a site.",
+  inputSchema: z.object({
+    siteId: z.string().describe("Site code or id from the ranked list, e.g. REGA-B-1842"),
+  }),
+  execute: async (input) => {
+    if (looksLikePhoneId(input.siteId)) {
+      return {
+        found: false,
+        phoneOnFile: null,
+        reason: PHONE_IS_NOT_A_SITE_REFUSAL,
+        cta: formatCta(briefingChoices()),
+      };
+    }
+    const state = await getCommandState();
+    const site = matchKnownSite([...state.sites, ...state.watch], input.siteId);
+    if (!site) {
+      return {
+        found: false,
+        phoneOnFile: null,
+        reason: UNKNOWN_SITE_REFUSAL,
+        cta: formatCta(briefingChoices()),
+      };
+    }
+    const mayCall = arcaMayCall(site.protectiveAction);
+    const cta = formatCta(afterLookupChoices(mayCall));
+    return {
+      found: true,
+      id: site.id,
+      code: site.code,
+      kind: site.kind,
+      municipality: site.municipality,
+      protectiveAction: site.protectiveAction,
+      decisionLabel: site.protectiveAction ? actionLabel[site.protectiveAction] : "none — call locked",
+      mayCall,
+      phoneOnFile: null,
+      ensemble: ensembleReachCopy(site.runsReach, site.ensembleMembers, site.tArrival),
+      spareTime: site.spareTime,
+      shelterHint: site.shelterHint,
+      note: "No phone on file. Coordinator must type the number. Do not invent a mapping.",
+      cta,
+      instruction:
+        "Present the numbered choices. If mayCall is false, do not offer a free-text call.",
+    };
+  },
+});
+
+export const setProtectiveActionTool = createTool({
+  id: "set-protective-action",
+  description:
+    "Save Monitor, Latent, Confine, or Evacuate for a known site in the same database the map uses. Call stays locked until Confine or Evacuate.",
+  inputSchema: z.object({
+    siteId: z.string().describe("Site code from the ranked list"),
+    action: z.enum(["monitor", "latent", "confine", "evacuate"]),
+  }),
+  execute: async (input) => {
+    const state = await getCommandState();
+    const site = matchKnownSite([...state.sites, ...state.watch], input.siteId);
+    if (!site) {
+      return { saved: false, reason: UNKNOWN_SITE_REFUSAL, phoneOnFile: null };
+    }
+    if (!isProtectiveAction(input.action)) {
+      return { saved: false, reason: "Action must be monitor, latent, confine, or evacuate." };
+    }
+    await saveProtectiveAction({ siteId: site.code, action: input.action });
+    const mayCall = arcaMayCall(input.action);
+    return {
+      saved: true,
+      siteId: site.code,
+      action: input.action,
+      decisionLabel: actionLabel[input.action],
+      mayCall,
+      effect: actionEffectCopy(input.action),
+      phoneOnFile: null,
+      cta: formatCta(afterLookupChoices(mayCall)),
     };
   },
 });
@@ -255,40 +379,173 @@ export const escalateCoordinatorTool = createTool({
   },
 });
 
+export const requestSiteCallTool = createTool({
+  id: "request-site-call",
+  description:
+    "Queue a Voice call as awaiting_approval. Does not place or approve the call. Typing Call is not approval. Requires Confine or Evacuate already saved. Coordinator must type the number — seed data has no phones.",
+  inputSchema: z.object({
+    siteId: z.string().describe("Site code from the ranked list, e.g. REGA-B-1842"),
+    toNumber: z
+      .string()
+      .describe("E.164 number the coordinator typed in this turn. Never invent a number."),
+  }),
+  execute: async (input) => {
+    const permission = await resolveCallPermission(input.siteId);
+    if (!permission.ok) {
+      return {
+        refused: true,
+        placed: false,
+        status: "refused",
+        reason: permission.reason,
+        action: permission.action,
+        phoneOnFile: null,
+        cta: formatCta(afterLookupChoices(false)),
+        coordinatorMustRepeatVerbatim: `SAY_THIS_EXACTLY: ${permission.reason}`,
+      };
+    }
+    try {
+      const requested = await requestSiteCall({
+        siteId: permission.siteId,
+        toNumber: input.toNumber,
+      });
+      const spoken = formatCoordinatorCallStatus({ status: requested.call.status });
+      return {
+        refused: false,
+        requireApproval: false,
+        call: requested.call,
+        ...spoken,
+        placed: false,
+        modelMustSay: modelMustEchoCallStatus(spoken),
+        detail: requested.detail,
+        retryPolicy: retryPolicyCopy(),
+        approval:
+          "TYPING IS NOT APPROVAL. Next: invoke call-site so Mastra can show Approve/Deny. Do not treat the coordinator’s last message as approval.",
+        cta: formatCta(afterRequestChoices()),
+        phoneOnFile: null,
+      };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Call request refused.";
+      return {
+        refused: true,
+        placed: false,
+        reason,
+        phoneOnFile: null,
+        coordinatorMustRepeatVerbatim: `SAY_THIS_EXACTLY: ${reason}`,
+        cta: formatCta(afterLookupChoices(false)),
+      };
+    }
+  },
+});
+
 export const callSiteTool = createTool({
   id: "call-site",
   description:
-    "Place a Vonage Voice call to a site. requireApproval is on: execute only after the coordinator Approves. First sentence always names ARCA. Never auto-retry an empty hangup. One retry only if they Approve again.",
+    "Place a pending Voice call after the coordinator taps Approve. requireApproval is on: Mastra shows Approve/Deny. Do not invoke this because they typed Call. First spoken sentence is the ARCA disclosure. One Approve covers the retry plan (max 3).",
   requireApproval: true,
   inputSchema: z.object({
-    siteId: z.string().describe("Site code such as REGA-B-1842"),
-    toNumber: z
-      .string()
-      .describe("E.164 number the coordinator typed. Not stored in seed data."),
-    town: z.string().optional().describe("Town name spoken in the ARCA transparency line"),
-    retryEmpty: z
-      .boolean()
-      .optional()
-      .describe("True only when this is the single re-Approve after an empty hangup"),
+    callId: z.string().optional().describe("Pending call id from request-site-call"),
+    siteId: z.string().optional().describe("Site code of an existing awaiting_approval request"),
   }),
   execute: async (input) => {
-    const requested = await requestSiteCall({
-      siteId: input.siteId,
-      toNumber: input.toNumber,
-    });
-    const placed = await approveSiteCall({
-      callId: requested.call.id,
-      town: input.town,
-      retry: input.retryEmpty === true,
-    });
-    return {
-      requireApproval: true,
-      call: placed.call,
-      stub: placed.stub,
-      detail: placed.detail,
-      policy:
-        "ARCA may place this Voice call only because a human Approved. Coordinator can still dial themselves. Empty 3s hangup is flagged, not looped.",
-    };
+    const pending = input.callId
+      ? await getVoiceCall(input.callId)
+      : input.siteId
+        ? await findAwaitingApprovalCall(input.siteId)
+        : null;
+    if (!pending) {
+      const spoken = formatCoordinatorCallStatus({ status: "denied" });
+      return {
+        refused: true,
+        reason:
+          "No pending call waiting for Approve. Use request-site-call first. Typing Call is not approval.",
+        ...spoken,
+        placed: false,
+        coordinatorMustRepeatVerbatim: SAY_THIS_EXACTLY_AWAITING_APPROVE,
+        modelMustSay: modelMustEchoCallStatus({
+          ...spoken,
+          coordinatorMustRepeatVerbatim: SAY_THIS_EXACTLY_AWAITING_APPROVE,
+        }),
+        cta: formatCta(afterRequestChoices()),
+      };
+    }
+
+    const permission = await resolveCallPermission(pending.siteId);
+    if (!permission.ok) {
+      return {
+        refused: true,
+        placed: false,
+        reason: permission.reason,
+        action: permission.action,
+        coordinatorMustRepeatVerbatim: `SAY_THIS_EXACTLY: ${permission.reason}`,
+        cta: formatCta(afterLookupChoices(false)),
+      };
+    }
+
+    try {
+      const placed = await approveSiteCall({ callId: pending.id });
+      const spoken = formatCoordinatorCallStatus({
+        stub: placed.stub,
+        status: placed.call.status,
+      });
+      return {
+        refused: false,
+        requireApproval: true,
+        call: placed.call,
+        detail: placed.detail,
+        retryPolicy: retryPolicyCopy(),
+        phoneOnFile: null,
+        ...spoken,
+        stub: placed.stub,
+        modelMustSay: modelMustEchoCallStatus(spoken),
+        policy:
+          "ARCA may place this Voice call only because a human tapped Approve. Coordinator can still dial themselves. Empty 3s hangup is flagged, not looped.",
+      };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "Call was not placed.";
+      return {
+        refused: true,
+        placed: false,
+        reason,
+        coordinatorMustRepeatVerbatim: `SAY_THIS_EXACTLY: ${reason}`,
+        modelMustSay: modelMustEchoCallStatus({
+          coordinatorMustRepeatVerbatim: `SAY_THIS_EXACTLY: ${reason}`,
+          call_status: "CALL_FAILED_NO_LIVE_CALL",
+          placed: false,
+          stub: false,
+          live: false,
+        }),
+      };
+    }
+  },
+  toModelOutput: (output) => {
+    const record = output as { modelMustSay?: string; coordinatorMustRepeatVerbatim?: string };
+    const line =
+      record.modelMustSay ??
+      record.coordinatorMustRepeatVerbatim ??
+      "SAY_THIS_EXACTLY: Test mode, no call placed.";
+    return `${line}\n${JSON.stringify(output)}`;
+  },
+});
+
+export const denySiteCallTool = createTool({
+  id: "deny-site-call",
+  description: "Cancel a pending Voice request. Does not place a call.",
+  inputSchema: z.object({
+    callId: z.string().optional(),
+    siteId: z.string().optional(),
+  }),
+  execute: async (input) => {
+    const pending = input.callId
+      ? await getVoiceCall(input.callId)
+      : input.siteId
+        ? await findAwaitingApprovalCall(input.siteId)
+        : null;
+    if (!pending) {
+      return { denied: false, reason: "No pending call to deny." };
+    }
+    const call = await denySiteCall(pending.id);
+    const spoken = formatCoordinatorCallStatus({ status: call.status });
+    return { denied: true, call, ...spoken, modelMustSay: modelMustEchoCallStatus(spoken) };
   },
 });
 

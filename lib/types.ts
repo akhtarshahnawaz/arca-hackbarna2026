@@ -1,3 +1,5 @@
+import type { ProtectiveAction } from "./protective-action";
+
 export type LonLat = [number, number];
 
 export type SiteKind = "care_home" | "hospital" | "school" | "farm" | "household";
@@ -62,6 +64,7 @@ export type ContactPolicyPublic = {
   dashboardLabel: string;
   approvalRequiredForAllContact: boolean;
   oneApproveCoversRetryPlan: boolean;
+  retryPolicyCopy?: string;
   maxAttempts: number;
   hangupFollowUp: string;
   autoVetoEnabled: boolean;
@@ -119,6 +122,8 @@ export type RankedSite = SiteInput & {
   spareTime: number | null;
   label: ReachLabel;
   arrivalHours: number[];
+  /** Coordinator's protective action. Null means not chosen yet. */
+  protectiveAction: ProtectiveAction | null;
 };
 
 export type RankedPartition = {
@@ -160,6 +165,8 @@ export type CommandState = {
   };
   sites: RankedSite[];
   watch: RankedSite[];
+  /** From config/ranking-policy.json. Watch is fewer than this many reaching runs. */
+  watchIfFewerThanRuns: number;
   hotspots: Hotspot[];
   sources: DataSourceStatus[];
   banners: string[];

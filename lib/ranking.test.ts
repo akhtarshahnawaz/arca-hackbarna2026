@@ -206,7 +206,7 @@ describe("ranking", () => {
   it("explains negative spare_time as already behind", () => {
     const copy = spareTimeCopy(-1);
     expect(copy).toMatch(/already behind/i);
-    expect(copy).toMatch(/extra transport/i);
+    expect(copy).toMatch(/not an order to leave/i);
   });
 
   it("uses confirmed counts for farm evac time when present", () => {

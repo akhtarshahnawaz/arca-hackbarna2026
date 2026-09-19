@@ -150,10 +150,4 @@ export function demoSites(): SiteInput[] {
   ];
 }
 
-export function siteKindLabel(kind: SiteInput["kind"]): string {
-  if (kind === "care_home") return "Care home";
-  if (kind === "hospital") return "Hospital";
-  if (kind === "school") return "School";
-  if (kind === "farm") return "Farm";
-  return "Household";
-}
+export { siteKindLabel } from "./site-kind";

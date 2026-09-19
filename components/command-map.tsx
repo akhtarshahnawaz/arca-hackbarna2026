@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { CircleMarker, MapContainer, Polygon, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { siteKindMarkerColor } from "@/lib/site-kind";
 import type { CommandState, RankedSite } from "@/lib/types";
 import "leaflet/dist/leaflet.css";
 
@@ -95,6 +96,7 @@ export function CommandMap({ state, selectedId, onSelect }: Props) {
       {allSites.map((site) => {
         const active = site.id === selectedId;
         const watch = site.label === "watch";
+        const fill = siteKindMarkerColor[site.kind];
         return (
           <CircleMarker
             key={site.id}
@@ -102,10 +104,10 @@ export function CommandMap({ state, selectedId, onSelect }: Props) {
             radius={active ? 11 : watch ? 7 : 8}
             eventHandlers={{ click: () => onSelect(site.id) }}
             pathOptions={{
-              color: active ? "#1c1917" : watch ? "#78716c" : "#44403c",
-              weight: active ? 2 : 1,
-              fillColor: active ? "#1c1917" : watch ? "#e7e5e4" : "#fafaf9",
-              fillOpacity: active ? 1 : 0.95,
+              color: active ? "#1c1917" : fill,
+              weight: active ? 2.5 : 1,
+              fillColor: fill,
+              fillOpacity: active ? 1 : watch ? 0.55 : 0.9,
             }}
           >
             <Tooltip permanent direction="top" offset={[0, -8]} className="arca-site-tip">

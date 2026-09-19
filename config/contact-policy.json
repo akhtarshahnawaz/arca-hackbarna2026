@@ -2,6 +2,7 @@
   "dashboardLabel": "Contact policy: human approval required.",
   "approvalRequiredForAllContact": true,
   "oneApproveCoversRetryPlan": true,
+  "retryPolicyCopy": "One Approve covers the retry plan (max 3). Do not ask for a second Approve to retry a missed call.",
   "maxAttempts": 3,
   "hangupFollowUp": "flag_only",
   "hangupFollowUpNote": "Do not Telegram the farmer after a phone hang-up. Flag the coordinator only. Vonage SMS is a later option, not this demo.",

@@ -16,7 +16,7 @@ Pet shelters are `config/shelters.json` — **configured by the coordinator (not
 
 **User:** municipal / civil protection coordinator. Residents can opt in on Telegram.
 
-Spoken 60-second and six beats: `PITCH.md`. Read `ARCA-PLAN.md` before extending this.
+Spoken 60-second and six beats: `PITCH.md`. Teammate briefing: `TEAM-SUMMARY.md`. Read `ARCA-PLAN.md` before extending this.
 
 ## Run
 
@@ -45,6 +45,58 @@ npm run telegram:ping
 ```
 
 `telegram:ping` prints the bot username, never the token.
+
+## mastra:dev
+
+`npm run mastra:dev` runs `mastra dev --dir mastra`. That is **not** Next.js. It is a second local process — Mastra’s equivalent of `next dev` — for the **agent runtime only**.
+
+`--dir mastra` loads `mastra/index.ts`. The CLI bundles `mastra/` into `.mastra/output/`, watches for changes, and serves on [http://localhost:4111](http://localhost:4111).
+
+- Studio UI: `/`
+- REST / stream APIs: `/api`
+- OpenAPI: `/api/openapi.json`
+- Swagger: `/swagger-ui`
+
+The coordinator UI stays on `:3000`. Mastra Studio and the agent HTTP APIs stay on `:4111`.
+
+```
+You / Studio / curl / mastra api
+        │
+        ▼
+  mastra dev  :4111
+        │
+        ├─ Studio UI
+        ├─ HTTP APIs (generate / stream / workflows / tools)
+        ├─ Telegram polling  ──►  Telegram
+        └─ arca-agent  ──►  Nebius + tools + mastra.db
+```
+
+**What this project loads**
+
+- Agents: `arcaAgent` (Nebius + ARCA tools) and `weatherAgent` (Mastra scaffold, not the product)
+- Workflow: `weatherWorkflow` (same scaffold)
+- Telegram channel in **polling** mode — if `TELEGRAM_BOT_TOKEN` is set, Mastra long-polls Telegram and routes to `arca-agent`. No public webhook or ngrok for local Telegram.
+- Storage: local `mastra.db` (LibSQL) for memory / installations; DuckDB for observability. App data is `arca.db` — see Environment.
+- Observability traces locally. Mastra Platform only if `MASTRA_PLATFORM_ACCESS_TOKEN` is set.
+
+**What you need to run it**
+
+1. Node 22 **in that terminal**: `nvm use 22` then `npm run mastra:dev`
+2. Copy `.env.example` → `.env.local` (never commit secrets). Names and purpose: [Environment](#environment).
+
+For a useful **Mastra** local demo specifically:
+
+- `NEBIUS_API_KEY` — agent / explainer LLM
+- `TELEGRAM_BOT_TOKEN` — BotFather token for polling (optional if you only use Studio chat)
+- `COORDINATOR_TELEGRAM_CHAT_ID` / `TELEGRAM_BACKUP_CHAT_ID` — escalate nudges if you use the Telegram coordinator flow
+
+You do **not** need `mastra:dev` just to open the coordinator UI at `:3000`. You **do** need it to chat with ARCA in Studio or to receive Telegram `/briefing` locally.
+
+**What it is not**
+
+- Not `npm run dev` (that is Next.js, `:3000`)
+- Not `npm run mastra:studio` (Studio UI only; it expects a backend already running). `mastra:dev` is UI + backend together.
+- Not production (`mastra build` + `mastra start`)
 
 ## Environment
 

@@ -19,6 +19,8 @@ describe("contact policy file", () => {
     expect(policy.autoVetoWindow.enabled).toBe(false);
     expect(policy.maxAttempts).toBe(3);
     expect(policy.oneApproveCoversRetryPlan).toBe(true);
+    expect(policy.retryPolicyCopy).toMatch(/One Approve covers the retry plan/i);
+    expect(policy.retryPolicyCopy).not.toMatch(/Approve again/i);
     expect(policy.hangupFollowUp).toBe("flag_only");
     expect(hangupFollowsUpFarmer()).toBe(false);
   });

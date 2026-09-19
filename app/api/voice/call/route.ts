@@ -1,3 +1,4 @@
+import { resolveCallPermission } from "@/lib/call-gate";
 import { approveSiteCall, denySiteCall, listVoiceSummaries, requestSiteCall } from "@/lib/voice-calls";
 import { getVoiceStatus } from "@/lib/voice-status";
 
@@ -28,10 +29,19 @@ export async function POST(request: Request) {
     if (action === "request") {
       const siteId = typeof body?.siteId === "string" ? body.siteId : "";
       const toNumber = typeof body?.toNumber === "string" ? body.toNumber : "";
+      const permission = await resolveCallPermission(siteId);
+      if (!permission.ok) {
+        return Response.json({ ok: false, error: permission.reason }, { status: 400 });
+      }
       const spareTime = typeof body?.spareTime === "number" ? body.spareTime : null;
       const coordinatorNumber =
         typeof body?.coordinatorNumber === "string" ? body.coordinatorNumber : null;
-      const result = await requestSiteCall({ siteId, toNumber, spareTime, coordinatorNumber });
+      const result = await requestSiteCall({
+        siteId: permission.siteId,
+        toNumber,
+        spareTime,
+        coordinatorNumber,
+      });
       return Response.json({ ok: true, ...result, voice: getVoiceStatus() });
     }
     if (action === "approve") {

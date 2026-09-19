@@ -1,3 +1,5 @@
+import { briefingChoices, formatCta } from "./coordinator-cta";
+import { actionLabel } from "./protective-action";
 import { ensembleReachCopy, formatHours, spareTimeCopy } from "./ranking";
 import type { CommandState, RankedSite } from "./types";
 
@@ -25,7 +27,8 @@ function siteLine(site: RankedSite): string {
     `   ${ensembleReachCopy(site.runsReach, site.ensembleMembers, site.tArrival)}`,
     `   Spare ${site.spareTime === null ? "—" : formatHours(site.spareTime)} · ${spareTimeCopy(site.spareTime)}`,
     `   ${animals || "no animals on file"} · ${truck}`,
-    `   Call yourself, or Approve so ARCA places the Voice call. Shelter (coordinator config, not OSM): ${site.shelterHint}`,
+    `   Decision: ${site.protectiveAction ? actionLabel[site.protectiveAction] : "none — call locked"}`,
+    `   ARCA calls only after Confine or Evacuate, and only after the Approve button. Typing Call is not approval. Shelter (coordinator config, not OSM): ${site.shelterHint}`,
   ].join("\n");
 }
 
@@ -44,8 +47,8 @@ export function formatCoordinatorBriefing(state: CommandState): string {
     `${state.fire.name} · ${state.fire.municipality}`,
     `Simulation: ${state.fire.mode.toUpperCase()} ensemble, ${state.fire.ensembleMembers} members, ${state.fire.horizonHours} h horizon. Hour polygons on the map are DEMO — not a live Deepfire perimeter.`,
     state.contactPolicy?.dashboardLabel ?? "Contact policy: human approval required.",
-    "Formula ranks this list. You do not tap-rank it. LLM explains. One Approve covers the Voice retry plan (max 3).",
-    "Call the farm yourself, or tap Call then Approve so ARCA places a Vonage Voice call.",
+    "Formula ranks this list. You do not tap-rank it. LLM explains. One Approve covers the Voice retry plan (max 3). Do not ask for a second Approve to retry.",
+    "Call the farm yourself, or request a call then tap Approve. Typing Call is not approval.",
     "",
     "Ranked (likely + possible only; filter then spare time):",
     ranked || "No likely or possible sites.",
@@ -55,6 +58,8 @@ export function formatCoordinatorBriefing(state: CommandState): string {
     "",
     "Log a farmer reply as reported, not verified: “farmer says 200 sheep, has a truck”. Ranking will recalculate.",
     "Resident mass-alert needs Approve. If you wait 30 minutes, we escalate — we do not blast.",
+    "",
+    formatCta(briefingChoices()).choiceList,
   ].join("\n");
 }
 

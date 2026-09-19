@@ -88,8 +88,11 @@ export function mockMp3Bytes(): Buffer {
   ]);
 }
 
-export function arcaTransparencyLine(town: string): string {
-  return `This is ARCA, the automatic fire alert assistant for ${town}.`;
+export const ARCA_DISCLOSURE_LINE =
+  "This is ARCA, the automatic alert assistant for Sant Fruitós de Bages.";
+
+export function arcaTransparencyLine(_town?: string): string {
+  return ARCA_DISCLOSURE_LINE;
 }
 
 export function siteCallScript(town: string): string {

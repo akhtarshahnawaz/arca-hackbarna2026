@@ -1,5 +1,6 @@
 import evacConfig from "../config/evac-times.json";
 import { median, pointInRing } from "./geo";
+import { watchCut } from "./ranking-policy";
 import type {
   EvacConfig,
   HourPolygon,
@@ -9,14 +10,18 @@ import type {
   SiteInput,
 } from "./types";
 
-/** Main ranking includes likely (≥0.7) and possible (0.3–0.7). Below 0.3 is watch only. */
-export const MAIN_MIN_P_REACH = 0.3;
-
 const config = evacConfig as EvacConfig;
 
-export function reachLabel(pReach: number): ReachLabel {
+/**
+ * Main list starts at this share of runs. Comes from config/ranking-policy.json
+ * (watchIfFewerThanRuns / ensemble size) so the screen and the sort use one cut.
+ */
+export const MAIN_MIN_P_REACH = watchCut(config.ensembleMembers);
+
+export function reachLabel(pReach: number, ensembleMembers = config.ensembleMembers): ReachLabel {
+  const min = watchCut(ensembleMembers);
   if (pReach >= 0.7) return "likely";
-  if (pReach >= 0.3) return "possible";
+  if (pReach >= min) return "possible";
   return "watch";
 }
 
@@ -106,13 +111,15 @@ export function rankSites(
       tArrival,
       tEvac,
       spareTime,
-      label: reachLabel(pReach),
+      label: reachLabel(pReach, ensembleMembers),
+      protectiveAction: null,
       arrivalHours,
     } satisfies RankedSite;
   });
 
-  const main = scored.filter((site) => site.pReach >= MAIN_MIN_P_REACH);
-  const watch = scored.filter((site) => site.pReach < MAIN_MIN_P_REACH);
+  const minReach = watchCut(ensembleMembers);
+  const main = scored.filter((site) => site.pReach >= minReach);
+  const watch = scored.filter((site) => site.pReach < minReach);
 
   main.sort(compareBySpareThenReach);
   watch.sort(compareBySpareThenReach);
@@ -148,7 +155,7 @@ export function spareTimeCopy(spareTime: number | null): string {
   }
   if (spareTime < 0) {
     const behind = Math.abs(spareTime);
-    return `Already behind by ${formatHours(behind)}. Evacuation time is longer than the ensemble arrival window. Start now and send extra transport.`;
+    return `Already behind by ${formatHours(behind)}. Fire arrives before they finish leaving. Urgency only — not an order to leave. Coordinator decides with Bombers.`;
   }
   if (spareTime === 0) {
     return "Spare time is zero. Movement has to start now to finish as the fire arrives in the median reaching run.";

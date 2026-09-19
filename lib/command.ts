@@ -2,7 +2,7 @@ import evacConfig from "../config/evac-times.json";
 import { applyReportedConfirmations } from "./confirmations";
 import { demoPolygons, demoSites } from "./demo-data";
 import { fetchDeepfireHotspots } from "./deepfire";
-import { ensureArcaSchema, listLatestConfirmations, listRememberedSimulations } from "./db";
+import { ensureArcaSchema, listLatestConfirmations, listProtectiveActions, listRememberedSimulations } from "./db";
 import { rankSites } from "./ranking";
 import { fetchRegistryFarms } from "./registry";
 import { applyConfiguredShelters, loadShelterConfig, shelterSourceDetail } from "./shelters";
@@ -10,6 +10,8 @@ import type { CommandState, EvacConfig, SiteInput } from "./types";
 import { contactPolicyPublic, listVoiceSummaries, processDueVoiceRetries } from "./voice-calls";
 import { getVoiceStatus } from "./voice-status";
 import { loadContactPolicy } from "./contact-policy";
+import { loadRankingPolicy } from "./ranking-policy";
+import type { ProtectiveAction } from "./protective-action";
 
 const config = evacConfig as EvacConfig;
 
@@ -59,6 +61,18 @@ export async function getCommandState(): Promise<CommandState> {
     horizonHours: config.horizonHours,
   });
 
+  let chosen = new Map<string, ProtectiveAction>();
+  try {
+    chosen = await listProtectiveActions();
+  } catch {
+    // Schema already reported if the file could not open.
+  }
+  const withChoice = <T extends { id: string; code: string }>(rows: T[]) =>
+    rows.map((site) => ({
+      ...site,
+      protectiveAction: chosen.get(site.code) ?? chosen.get(site.id) ?? null,
+    }));
+
   if (demoClusterId) {
     banners.push(
       `Demo cluster ${demoClusterId} is a Catalan wildfire pick, not Tarragona industry. Map rings stay DEMO.`,
@@ -92,8 +106,9 @@ export async function getCommandState(): Promise<CommandState> {
       polygons,
       displayMember: 4,
     },
-    sites: ranked,
-    watch,
+    sites: withChoice(ranked),
+    watch: withChoice(watch),
+    watchIfFewerThanRuns: loadRankingPolicy().watchIfFewerThanRuns,
     sources: [
       {
         id: "deepfire",

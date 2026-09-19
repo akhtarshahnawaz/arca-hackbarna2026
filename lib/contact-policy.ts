@@ -12,6 +12,7 @@ export type ContactPolicy = {
   dashboardLabel: string;
   approvalRequiredForAllContact: boolean;
   oneApproveCoversRetryPlan: boolean;
+  retryPolicyCopy: string;
   maxAttempts: number;
   hangupFollowUp: "flag_only" | "sms" | "telegram_farmer";
   hangupFollowUpNote: string;
@@ -58,6 +59,11 @@ export function contactPolicyLabel(policy: ContactPolicy = loadContactPolicy()):
 
 export function approvalRequired(policy: ContactPolicy = loadContactPolicy()): boolean {
   return policy.approvalRequiredForAllContact === true;
+}
+
+/** Single retry rule: one Approve covers the plan. There is no “Approve again”. */
+export function retryPolicyCopy(policy: ContactPolicy = loadContactPolicy()): string {
+  return policy.retryPolicyCopy;
 }
 
 export function autoVetoEnabled(policy: ContactPolicy = loadContactPolicy()): boolean {

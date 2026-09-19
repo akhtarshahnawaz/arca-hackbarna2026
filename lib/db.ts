@@ -1,4 +1,5 @@
 import { createClient, type Client } from "@libsql/client";
+import { isProtectiveAction, type ProtectiveAction } from "./protective-action";
 
 /**
  * ARCA app data on LibSQL / SQLite — same engine Mastra uses for memory.
@@ -76,6 +77,11 @@ const SCHEMA = [
     telegram_followup INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS protective_actions (
+    site_id TEXT PRIMARY KEY,
+    action TEXT NOT NULL,
+    decided_at TEXT NOT NULL
   )`,
 ] as const;
 
@@ -508,4 +514,31 @@ export async function listVoiceCalls(limit = 40): Promise<VoiceCallRow[]> {
     args: [limit],
   });
   return result.rows.map((row) => mapVoiceCall(row as Record<string, unknown>));
+}
+
+export async function saveProtectiveAction(input: {
+  siteId: string;
+  action: ProtectiveAction;
+}): Promise<void> {
+  const db = await ensureArcaSchema();
+  await db.execute({
+    sql: `INSERT INTO protective_actions (site_id, action, decided_at)
+          VALUES (?, ?, ?)
+          ON CONFLICT(site_id) DO UPDATE SET
+            action = excluded.action,
+            decided_at = excluded.decided_at`,
+    args: [input.siteId, input.action, new Date().toISOString()],
+  });
+}
+
+export async function listProtectiveActions(): Promise<Map<string, ProtectiveAction>> {
+  const db = await ensureArcaSchema();
+  const result = await db.execute(`SELECT site_id, action FROM protective_actions`);
+  const actions = new Map<string, ProtectiveAction>();
+  for (const row of result.rows) {
+    const siteId = String(row.site_id ?? "");
+    const action = row.action;
+    if (siteId && isProtectiveAction(action)) actions.set(siteId, action);
+  }
+  return actions;
 }
