@@ -16,7 +16,9 @@
     "mastra:studio": "mastra studio --dir mastra",
     "nebius:ping": "node --env-file=.env.local --experimental-strip-types scripts/nebius-ping.ts",
     "telegram:ping": "node --env-file=.env.local --experimental-strip-types scripts/telegram-ping.ts",
-    "demo:reset": "node --env-file=.env.local --experimental-strip-types scripts/demo-reset.ts"
+    "demo:reset": "node --env-file=.env.local --experimental-strip-types scripts/demo-reset.ts",
+    "data:refresh": "python3 scripts/import_official_data.py",
+    "test:data": "python3 -m unittest discover -s scripts -p \"test_official_data.py\""
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

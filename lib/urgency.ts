@@ -15,10 +15,10 @@ export function urgencyTier(site: RankedSite): UrgencyTier {
 }
 
 export const urgencyBadgeLabel: Record<UrgencyTier, string> = {
-  late: "MOST URGENT",
-  now: "URGENT",
-  prepare: "LESS URGENT",
-  none: "NOT CLOSE",
+  late: "Most urgent",
+  now: "Urgent",
+  prepare: "Less urgent",
+  none: "Not close",
 };
 
 /** "1 h 30 min", "45 min", "3 h" — no decimals, no minus signs. */
@@ -62,19 +62,13 @@ export function timeLeftCopy(site: RankedSite): string {
 export function urgencySituationCopy(site: RankedSite): string {
   const tier = urgencyTier(site);
   if (tier === "late") {
-    return `Check this one first. The fire gets there about ${plainDuration(
-      site.spareTime ?? 0,
-    )} before they can finish leaving. Leaving late can be more dangerous than staying inside. You decide — ARCA does not.`;
+    return `The fire gets there about ${plainDuration(site.spareTime ?? 0)} before they can finish leaving.`;
   }
   if (tier === "now") {
-    return `Urgent, but they can still finish leaving. About ${plainDuration(
-      site.spareTime ?? 0,
-    )} of margin. Check it after the red ones. You decide whether they go or stay.`;
+    return `They still have about ${plainDuration(site.spareTime ?? 0)} of margin.`;
   }
   if (tier === "prepare") {
-    return `Less urgent. About ${plainDuration(
-      site.spareTime ?? 0,
-    )} of margin. Look after the red and orange sites. You still decide.`;
+    return `Less urgent than the red ones. About ${plainDuration(site.spareTime ?? 0)} of margin.`;
   }
-  return "Not close. The fire is not expected here soon. Nothing to order. You can still mark monitor or latent.";
+  return "The fire is not expected here soon.";
 }

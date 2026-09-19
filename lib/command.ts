@@ -1,3 +1,4 @@
+import { loadOfficialFacilities } from "./official-facilities";
 import evacConfig from "../config/evac-times.json";
 import { applyReportedConfirmations } from "./confirmations";
 import { demoPolygons, demoSites } from "./demo-data";
@@ -39,9 +40,10 @@ export async function getCommandState(): Promise<CommandState> {
     alerts.push(`ARCA LibSQL could not open (${message}). Rankings still run in memory.`);
   }
 
-  const [deepfire, registry] = await Promise.all([
+  const [deepfire, registry, official] = await Promise.all([
     fetchDeepfireHotspots(),
     fetchRegistryFarms(),
+    loadOfficialFacilities(),
   ]);
 
   const seeded = demoSites();
@@ -55,7 +57,7 @@ export async function getCommandState(): Promise<CommandState> {
     // Schema already reported if the file could not open.
   }
   const sites: SiteInput[] = applyConfiguredShelters(
-    applyReportedConfirmations([...seeded, ...extra], confirmations),
+    applyReportedConfirmations([...seeded, ...extra, ...official.sites], confirmations),
     shelterConfig,
   );
   const polygons = demoPolygons();
@@ -99,6 +101,7 @@ export async function getCommandState(): Promise<CommandState> {
 
   if (!deepfire.ok) alerts.push(deepfire.detail);
   if (!registry.ok) alerts.push(registry.detail);
+  if (!official.status.ok) alerts.push(official.status.detail);
 
   return {
     generatedAt,
@@ -117,6 +120,7 @@ export async function getCommandState(): Promise<CommandState> {
     watch: withChoice(watch),
     watchIfFewerThanRuns: loadRankingPolicy().watchIfFewerThanRuns,
     sources: [
+      official.status,
       {
         id: "deepfire",
         label: "Deepfire hotspots",

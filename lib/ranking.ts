@@ -69,6 +69,8 @@ export function arrivalHoursForSite(
   ensembleMembers: number,
   horizonHours: number,
 ): number[] {
+  // Municipality reference points cannot establish facility-level fire arrival.
+  if (site.locationQuality === "municipality_centroid") return [];
   const arrivals: number[] = [];
 
   for (let member = 0; member < ensembleMembers; member += 1) {

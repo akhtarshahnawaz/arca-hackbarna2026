@@ -7,7 +7,7 @@ import {
 } from "@/lib/site-kind";
 import type { SiteKind } from "@/lib/types";
 
-const kinds: SiteKind[] = ["care_home", "hospital", "school", "farm", "household"];
+const kinds: SiteKind[] = ["care_home", "cap", "hospital", "school", "farm", "household"];
 
 describe("site kind colors", () => {
   it("labels every kind", () => {

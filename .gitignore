@@ -64,3 +64,6 @@ mastra/public/*.duckdb.wal
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python data importer cache
+__pycache__/

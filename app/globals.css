@@ -152,7 +152,14 @@
 
 .arca-map .leaflet-control-attribution {
   background: color-mix(in oklch, var(--background) 88%, transparent);
-  font-size: 10px;
+  font-size: 12px;
+}
+
+.arca-map .leaflet-control-zoom a {
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+  font-size: 18px;
 }
 
 .arca-site-tip {
@@ -161,9 +168,10 @@
   border-radius: 6px !important;
   box-shadow: none !important;
   color: var(--foreground) !important;
-  font-family: var(--font-mono), ui-monospace, monospace !important;
-  font-size: 10px !important;
-  padding: 2px 6px !important;
+  font-family: var(--font-sans), ui-sans-serif, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 4px 8px !important;
 }
 
 .arca-site-tip::before {

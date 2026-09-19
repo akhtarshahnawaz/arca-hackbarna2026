@@ -124,6 +124,7 @@ const BASEMAPS = {
 
 const SATELLITE_KIND_FILL: Record<SiteKind, string> = {
   care_home: "#c4b5fd",
+  cap: "#5eead4",
   hospital: "#fb7185",
   school: "#7dd3fc",
   farm: "#6ee7b7",
@@ -210,7 +211,7 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
         center={FALLBACK_CENTER}
         zoom={11}
         className="arca-map size-full"
-        zoomControl={false}
+        zoomControl
         attributionControl
         scrollWheelZoom
       >
@@ -231,9 +232,7 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
               fillOpacity: 1,
             }}
           >
-            <Tooltip sticky>
-              DEMO · hour {polygon.hour} · member {polygon.member + 1}/10
-            </Tooltip>
+            <Tooltip sticky>Fire in about {polygon.hour} hours</Tooltip>
           </Polygon>
         ))}
         {state.hotspots.map((spot) => (
@@ -289,7 +288,7 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
               }}
             >
               <Tooltip permanent direction="top" offset={[0, -8]} className="arca-site-tip">
-                {watch ? `Watch · ${site.code}` : `${site.rank} · ${site.code}`}
+                {site.locationQuality === "municipality_centroid" ? `Approximate · ${site.name ?? site.code}` : watch ? `Watch · ${site.name ?? site.code}` : `${site.rank} · ${site.name ?? site.code}`}
               </Tooltip>
             </CircleMarker>
           );

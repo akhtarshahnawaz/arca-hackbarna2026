@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { resolveCallPermission, demoSiteAliases } from "./call-gate";
+import { officialPhoneForSite } from "./official-facilities";
 import { coordinatorPhone, phoneForSite } from "./demo-cast";
 import { formatCoordinatorCallStatus } from "./call-status";
 import {
@@ -94,7 +95,7 @@ export async function requestSiteCall(input: {
   coordinatorNumber?: string | null;
   spareTime?: number | null;
 }): Promise<{ call: VoiceCallSummary; detail: string }> {
-  const toNumber = input.toNumber.trim() || phoneForSite(input.siteId) || "";
+  const toNumber = input.toNumber.trim() || phoneForSite(input.siteId) || await officialPhoneForSite(input.siteId) || "";
   if (!toNumber) {
     throw new Error("Coordinator must enter a number. No phone on file for this site.");
   }
