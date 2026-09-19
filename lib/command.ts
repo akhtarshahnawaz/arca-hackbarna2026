@@ -27,13 +27,16 @@ export async function getCommandState(): Promise<CommandState> {
     "Formula ranks automatically. LLM explains. One Approve covers the Voice retry plan (max 3).",
   ];
   if (voice.banner) banners.push(voice.banner);
+  // Degraded inputs stay out of `banners`. The console collapses the notes, so a
+  // feed failure mixed in there reads as one more line of demo copy.
+  const alerts: string[] = [];
   await processDueVoiceRetries().catch(() => 0);
 
   try {
     await ensureArcaSchema();
   } catch (error) {
     const message = error instanceof Error ? error.message : "db error";
-    banners.push(`ARCA LibSQL could not open (${message}). Rankings still run in memory.`);
+    alerts.push(`ARCA LibSQL could not open (${message}). Rankings still run in memory.`);
   }
 
   const [deepfire, registry] = await Promise.all([
@@ -94,8 +97,8 @@ export async function getCommandState(): Promise<CommandState> {
     }
   }
 
-  if (!deepfire.ok) banners.push(deepfire.detail);
-  if (!registry.ok) banners.push(registry.detail);
+  if (!deepfire.ok) alerts.push(deepfire.detail);
+  if (!registry.ok) alerts.push(registry.detail);
 
   return {
     generatedAt,
@@ -169,6 +172,7 @@ export async function getCommandState(): Promise<CommandState> {
       },
     ],
     banners,
+    alerts,
     hotspots: deepfire.hotspots,
     shelters: shelterConfig.shelters,
     shelterLabel: shelterConfig.label,

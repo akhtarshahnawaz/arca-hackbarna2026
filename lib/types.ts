@@ -173,7 +173,10 @@ export type CommandState = {
   watchIfFewerThanRuns: number;
   hotspots: Hotspot[];
   sources: DataSourceStatus[];
+  /** Notes that explain the demo. Safe to collapse. */
   banners: string[];
+  /** Degraded inputs: a feed or the store failed. Always shown. */
+  alerts: string[];
   shelters: Shelter[];
   shelterLabel: string;
   voice: VoiceStatus;

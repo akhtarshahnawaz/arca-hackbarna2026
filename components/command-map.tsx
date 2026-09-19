@@ -48,6 +48,36 @@ function FitFeatures({ bounds }: { bounds: LatLngBoundsExpression | undefined })
 }
 
 /**
+ * Keeps Leaflet's cached container size in step with the panel.
+ *
+ * Leaflet listens for `window` resize only, and `FitFeatures` invalidates once.
+ * The console resizes this panel without a window resize — collapsing the
+ * context strip, or an alert strip appearing — which leaves Leaflet painting
+ * tiles and culling markers against the old edge until the window changes.
+ */
+function InvalidateOnResize() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    let frame = 0;
+    const observer = new ResizeObserver(() => {
+      // Coalesce to one call per frame: a toggle fires several entries as the
+      // flex layout settles.
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => map.invalidateSize({ animate: false }));
+    });
+    observer.observe(container);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [map]);
+
+  return null;
+}
+
+/**
  * Keep the tile layer mounted so Leaflet swaps the URL in place.
  * Attribution is not reactive on the layer, so it goes through the control.
  */
@@ -185,6 +215,7 @@ export function CommandMap({ state, selectedId, onSelect, basemap }: Props) {
         scrollWheelZoom
       >
         <FitFeatures bounds={bounds} />
+        <InvalidateOnResize />
         <TileLayer url={BASEMAPS[basemap].url} />
         <SyncBasemapUrl url={BASEMAPS[basemap].url} />
         <BasemapAttribution text={BASEMAPS[basemap].attribution} />
