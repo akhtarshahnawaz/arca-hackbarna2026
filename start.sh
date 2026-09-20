@@ -111,6 +111,13 @@ fi
 
 # --- environment -------------------------------------------------------------
 
+# A fresh clone has no .env: it is gitignored, so that the filled copy never
+# reaches git. Seed it from the template so there is always a file to edit.
+if [[ ! -f .env && -f .env.example ]]; then
+  cp .env.example .env
+  ok "Created .env from .env.example — open it to add credentials"
+fi
+
 if [[ -f .env ]]; then
   # Export for the web app. The agent loads .env itself via
   # --env-file-if-exists, but Next reads its own directory, not the repo root.
@@ -121,7 +128,6 @@ if [[ -f .env ]]; then
   ok ".env loaded"
 else
   warn "No .env found. Running with defaults — the replay demo still works."
-  warn "Copy .env.example to .env when you have credentials to add."
 fi
 
 AGENT_PORT="${PORT:-4000}"

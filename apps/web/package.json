@@ -8,7 +8,8 @@
     "build": "next build --webpack",
     "start": "next start -p ${PORT:-3000}",
     "typecheck": "tsc --noEmit",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prebuild": "pnpm --filter @arca/core build"
   },
   "dependencies": {
     "@arca/core": "workspace:*",

@@ -129,7 +129,7 @@ export class VoiceService {
     };
 
     if (!this.configured) {
-      return this.failed(base, "SLNG is not configured, so no call was placed.");
+      return this.failed(base, "SLNG is not configured.");
     }
 
     // Everything that is not a permitted phone call becomes a browser session

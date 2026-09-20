@@ -245,7 +245,9 @@ export class IncidentService {
     }
 
     if (!outcome.report) {
-      const message = `Could not read a report from the call to ${site.payload.name}: ${outcome.error}. The ranking is unchanged.`;
+      // The error already ends in a full stop, so do not add a second one.
+      const reason = (outcome.error ?? "reason unknown").replace(/\.$/, "");
+      const message = `Could not read a report from the call to ${site.payload.name}: ${reason}. The ranking is unchanged.`;
       await this.ctx.timeline(input.incidentId, "call_completed", message, { data: { callId: input.callId } });
       return { summary: message, reranked: false };
     }
