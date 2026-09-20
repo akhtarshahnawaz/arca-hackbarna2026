@@ -374,9 +374,18 @@ Only needed if you want outbound voice. It is a one-off: it creates an agent at
 SLNG and prints an id.
 
 There is no `SLNG_AGENT_ID` to look up before you have created one — the id is
-minted when the agent is created, and this script is what creates it. If you
-have already created one (in SLNG's own dashboard, or by running this before),
-skip to *Reading back an id you already have* below.
+minted when the agent is created, and this script is what creates it. A fresh
+SLNG key lists no agents at all, so if you went looking for the id first and
+found nothing, that is why. If you have already created one, skip to *Reading
+back an id you already have* below.
+
+Locally, with `SLNG_API_KEY` in your `.env`, this is the whole thing:
+
+```bash
+pnpm --filter @arca/agent slng:create-agent
+```
+
+The Railway route below is for doing it without a terminal.
 
 **Borrow the Pre-deploy slot.** It runs exactly once per deployment, its output
 lands in the deploy log, and nothing lingers afterwards.
@@ -403,20 +412,25 @@ lands in the deploy log, and nothing lingers afterwards.
 
 ### Reading back an id you already have
 
-`GET https://api.agents.slng.ai/v1/agents` lists the agents on your key. In a
-browser console, with the site open so there is no CORS preflight to argue with,
-or from anywhere that can send a header:
+`GET https://api.agents.slng.ai/v1/agents` lists the agents on your key.
 
-```js
-const key = "YOUR_SLNG_API_KEY";
-const r = await fetch("https://api.agents.slng.ai/v1/agents", {
-  headers: { authorization: `Bearer ${key}` },
-});
-console.log(await r.json());
+**Not from a browser console.** Any request carrying an `authorization` header
+triggers a CORS preflight, and SLNG sends no `Access-Control-Allow-Origin`, so
+the browser refuses it before it leaves — whatever page you run it from. This
+needs something that is not a browser:
+
+```bash
+curl -s -H "authorization: Bearer $SLNG_API_KEY" \
+  https://api.agents.slng.ai/v1/agents
 ```
 
-Look for the one named `arca-site-check` — that is the name the script gives it
-— and take its `id`. A 401 means the key is wrong; the route itself is there.
+Look for the one named `arca-site-check` — the name this repo's script gives it
+— and take its `id`. `[]` means you have not created one yet: go back to the
+step above. A 401 means the key is wrong; the route itself is there.
+
+No terminal at all? Put `curl` in the agent's Pre-deploy Command for one
+deployment and read the output from the deploy log, the same trick as creating
+it. Railway's own shell is a terminal too, if you have one open.
 
 <details>
 <summary>The temporary-service alternative, and why it is worse</summary>
