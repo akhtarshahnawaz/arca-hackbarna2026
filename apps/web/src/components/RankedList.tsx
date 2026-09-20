@@ -121,7 +121,7 @@ function SiteRow(props: {
         style={{ background: style.colour, opacity: settled ? 0.25 : 1 }}
       />
 
-      <div className="pl-4 pr-3 py-3">
+      <div className="pl-4 pr-3 py-2.5">
         <div className="flex items-start gap-3">
           <span
             className="num shrink-0 w-6 text-center text-sm"
@@ -146,16 +146,14 @@ function SiteRow(props: {
               ) : null}
             </div>
 
-            <div className="mt-0.5 text-[11px] text-[var(--color-ink-faint)]">
+            <div className="mt-0.5 text-[10px] text-[var(--color-ink-faint)] truncate">
               {titleCase(site.subcategory)} · {site.peopleEstimate} people
-              <span className="text-[var(--color-ink-faint)]">
-                {site.evac.basis === "reported" ? " reported" : " registered"}
-              </span>
+              {site.evac.basis === "reported" ? " reported" : " registered"}
               {site.livestockUnits ? ` · ${site.livestockUnits} animals` : ""}
             </div>
 
             {/* The arithmetic that puts this row where it is. */}
-            <div className="mt-2 flex items-center gap-3 text-[11px]">
+            <div className="mt-1.5 flex items-center gap-2.5 text-[11px]">
               <Metric label="arrival" value={minutes(site.arrivalMinutes)} />
               <span className="text-[var(--color-ink-faint)]">−</span>
               <Metric label="needs" value={minutes(site.evac.minutes)} />
@@ -180,7 +178,7 @@ function SiteRow(props: {
           </div>
         </div>
 
-        <div className="mt-2.5 pl-9 flex items-center gap-2 flex-wrap">
+        <div className="mt-2 pl-9 flex items-center gap-2 flex-wrap">
           <span
             className="text-[10px] px-1.5 py-0.5 rounded"
             style={{

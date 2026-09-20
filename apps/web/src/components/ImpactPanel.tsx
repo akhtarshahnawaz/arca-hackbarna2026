@@ -39,8 +39,8 @@ export function ImpactPanel(props: ImpactPanelProps) {
     props.hour === null ? `next ${props.horizonHours} h` : `first ${props.hour} h`;
 
   return (
-    <section className="panel p-4" aria-label="Impact">
-      <header className="flex items-baseline justify-between mb-3">
+    <section className="panel px-4 py-3" aria-label="Impact">
+      <header className="flex items-baseline justify-between mb-2">
         <h2 className="text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-faint)]">
           At risk in the {label}
         </h2>
@@ -49,7 +49,7 @@ export function ImpactPanel(props: ImpactPanelProps) {
         ) : null}
       </header>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2">
         <Figure
           value={compact(people)}
           label="people at facilities"
@@ -71,7 +71,7 @@ export function ImpactPanel(props: ImpactPanelProps) {
         />
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <Pill
           value={Math.round(shelter)}
           label="out of time"
@@ -86,7 +86,7 @@ export function ImpactPanel(props: ImpactPanelProps) {
         />
       </div>
 
-      <div className="mt-4 pt-3 border-t hairline flex items-baseline justify-between">
+      <div className="mt-3 pt-2 border-t hairline flex items-baseline justify-between">
         <span className="text-[11px] text-[var(--color-ink-faint)]">
           Replacement cost, triage estimate
         </span>
@@ -105,15 +105,15 @@ function Figure(props: {
   return (
     <div>
       <div
-        className={`num text-[28px] leading-none ${
+        className={`num text-[24px] leading-none ${
           props.tone === "ink" ? "text-[var(--color-ink)]" : "text-[var(--color-ink-dim)]"
         }`}
       >
         {props.value}
       </div>
-      <div className="mt-1 text-[11px] text-[var(--color-ink-dim)]">{props.label}</div>
+      <div className="mt-0.5 text-[10px] text-[var(--color-ink-dim)] leading-tight">{props.label}</div>
       {props.caption ? (
-        <div className="text-[10px] text-[var(--color-ink-faint)]">{props.caption}</div>
+        <div className="text-[9px] text-[var(--color-ink-faint)] leading-tight">{props.caption}</div>
       ) : null}
     </div>
   );
@@ -124,19 +124,19 @@ function Pill(props: { value: number; label: string; colour: string; help: strin
   return (
     <div
       title={props.help}
-      className="rounded-lg px-3 py-2 border transition-colors"
+      className="rounded-lg px-3 py-1.5 border transition-colors"
       style={{
         borderColor: active ? `${props.colour}66` : "var(--color-line)",
         background: active ? `${props.colour}14` : "transparent",
       }}
     >
       <div
-        className="num text-xl leading-none"
+        className="num text-lg leading-none"
         style={{ color: active ? props.colour : "var(--color-ink-faint)" }}
       >
         {props.value}
       </div>
-      <div className="mt-1 text-[10px] uppercase tracking-[0.08em] text-[var(--color-ink-dim)]">
+      <div className="mt-0.5 text-[9px] uppercase tracking-[0.08em] text-[var(--color-ink-dim)]">
         {props.label}
       </div>
     </div>

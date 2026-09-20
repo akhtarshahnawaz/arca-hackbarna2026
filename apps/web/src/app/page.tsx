@@ -274,7 +274,7 @@ export default function OperationsPage() {
             </div>
           </div>
 
-          <div className="h-[280px] shrink-0 flex flex-col panel p-2">
+          <div className="h-[228px] shrink-0 flex flex-col panel p-2">
             <div className="flex items-center gap-1 px-1 pb-2">
               {(["timeline", "chat"] as const).map((value) => (
                 <button
