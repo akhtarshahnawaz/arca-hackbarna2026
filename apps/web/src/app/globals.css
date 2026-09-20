@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+/**
+ * ARCA operations room.
+ *
+ * Designed for two screens at once: a wall display seen from four metres and a
+ * laptop at arm's length. That drives most of what follows — large tabular
+ * numerals, high contrast, and colour used as a language rather than decoration.
+ *
+ * The ground is a warm near-black rather than pure black. Pure black against an
+ * amber fire ramp vibrates unpleasantly on a projector, and a room lit by a
+ * wall screen at 3 a.m. is hard enough on the eyes already.
+ */
+
+@theme {
+  --color-ground: #0a0908;
+  --color-surface: #131110;
+  --color-surface-2: #1c1917;
+  --color-surface-3: #262220;
+  --color-line: #2e2926;
+  --color-line-bright: #433c37;
+
+  --color-ink: #f5f2ef;
+  --color-ink-dim: #a8a09a;
+  --color-ink-faint: #6f6762;
+
+  /* Protective actions. One colour each, used on the map, the list and the
+     legend, so a colour always means the same instruction. */
+  --color-shelter: #e879f9;
+  --color-evacuate: #ef4444;
+  --color-exclusion: #f59e0b;
+  --color-resource: #22d3ee;
+  --color-prepare: #fbbf24;
+  --color-monitor: #64748b;
+
+  /* Burn probability, matching DeepFire's own ramp so the two products read
+     the same fire the same way. */
+  --color-burn-20: #fef08a;
+  --color-burn-40: #fbbf24;
+  --color-burn-60: #f97316;
+  --color-burn-80: #dc2626;
+  --color-burn-100: #7f1d1d;
+
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* Every figure on screen is a measurement. Tabular numerals stop the ranked
+   list from shivering as spare time ticks down. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+}
+
+.hairline {
+  border-color: var(--color-line);
+}
+
+/* Scrollbars that do not shout. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-bright) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line-bright);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* The one piece of motion that carries meaning: a site that cannot finish
+   evacuating before the fire arrives. Nothing else on screen pulses, so this
+   reads as urgency rather than as an animated interface. */
+@keyframes urgent-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-shelter) 55%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in oklab, var(--color-shelter) 0%, transparent); }
+}
+.urgent {
+  animation: urgent-pulse 2.4s ease-out infinite;
+}
+
+@keyframes sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+.sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--color-ink) 8%, transparent),
+    transparent
+  );
+  animation: sweep 1.6s ease-in-out infinite;
+}
+
+@keyframes fade-rise {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.enter {
+  animation: fade-rise 260ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urgent,
+  .sweep::after,
+  .enter {
+    animation: none;
+  }
+}
+
+/* MapLibre's own furniture, restyled to belong here. */
+.maplibregl-ctrl-attrib {
+  background: color-mix(in oklab, var(--color-ground) 82%, transparent) !important;
+  color: var(--color-ink-faint) !important;
+  font-size: 10px !important;
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--color-ink-dim) !important;
+}
+.maplibregl-popup-content {
+  background: var(--color-surface-2) !important;
+  color: var(--color-ink) !important;
+  border: 1px solid var(--color-line-bright) !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 12px !important;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.5) !important;
+}
+.maplibregl-popup-tip {
+  border-top-color: var(--color-surface-2) !important;
+  border-bottom-color: var(--color-surface-2) !important;
+}
+.maplibregl-ctrl-group {
+  background: var(--color-surface-2) !important;
+  border: 1px solid var(--color-line) !important;
+}
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--color-line) !important;
+}
+.maplibregl-ctrl-group button span {
+  filter: invert(1) opacity(0.7);
+}

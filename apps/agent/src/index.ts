@@ -39,9 +39,15 @@ async function main(): Promise<void> {
 
   let telegram: TelegramBot | null = null;
 
-  const incidents = new IncidentService(ctx, async (incident, text, ranking) => {
-    await telegram?.briefIncident(incident, text, ranking);
-  });
+  const incidents = new IncidentService(
+    ctx,
+    async (incident, text, ranking) => {
+      await telegram?.briefIncident(incident, text, ranking);
+    },
+    // Replay incidents carry their own exposure, so the pipeline runs end to
+    // end with no Talaia key. Live incidents get null and rely on Talaia.
+    async (incident) => (incident.replay ? replay.exposureFor(incident.name) : null),
+  );
 
   const agent = createCoordinatorAgent({
     ctx,

@@ -1,0 +1,7535 @@
+{
+  "name": "demo-bages-synthetic",
+  "synthetic": true,
+  "note": "Generated demo data, not recorded satellite output. Real geography near Sant Fruitós de Bages; detections, model run and exposure are constructed to exercise the cleaning, banding and ranking rules. Use scripts/record-fixture.ts to capture a real fire from the DeepFire API.",
+  "clusterId": "demo-cluster-bages",
+  "position": [
+    1.876,
+    41.766
+  ],
+  "firstObserved": "2026-09-19T11:40:00.000Z",
+  "lastObserved": "2026-09-19T12:45:00.000Z",
+  "hasPerimeter": true,
+  "staticSources": [
+    {
+      "id": "demo-static-quarry",
+      "type": "Thermal anomaly",
+      "remarks": "Pedrera de Sant Salvador (demo quarry)",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              1.78585,
+              41.703
+            ],
+            [
+              1.785817,
+              41.703378
+            ],
+            [
+              1.785719,
+              41.703749
+            ],
+            [
+              1.785557,
+              41.704108
+            ],
+            [
+              1.785334,
+              41.704447
+            ],
+            [
+              1.785055,
+              41.704762
+            ],
+            [
+              1.784723,
+              41.705047
+            ],
+            [
+              1.784344,
+              41.705297
+            ],
+            [
+              1.783925,
+              41.705507
+            ],
+            [
+              1.783473,
+              41.705675
+            ],
+            [
+              1.782997,
+              41.705796
+            ],
+            [
+              1.782503,
+              41.70587
+            ],
+            [
+              1.782,
+              41.705895
+            ],
+            [
+              1.781497,
+              41.70587
+            ],
+            [
+              1.781003,
+              41.705796
+            ],
+            [
+              1.780527,
+              41.705675
+            ],
+            [
+              1.780075,
+              41.705507
+            ],
+            [
+              1.779656,
+              41.705297
+            ],
+            [
+              1.779277,
+              41.705047
+            ],
+            [
+              1.778945,
+              41.704762
+            ],
+            [
+              1.778666,
+              41.704447
+            ],
+            [
+              1.778443,
+              41.704108
+            ],
+            [
+              1.778281,
+              41.703749
+            ],
+            [
+              1.778183,
+              41.703378
+            ],
+            [
+              1.77815,
+              41.703
+            ],
+            [
+              1.778183,
+              41.702622
+            ],
+            [
+              1.778281,
+              41.702251
+            ],
+            [
+              1.778443,
+              41.701892
+            ],
+            [
+              1.778666,
+              41.701553
+            ],
+            [
+              1.778945,
+              41.701238
+            ],
+            [
+              1.779277,
+              41.700953
+            ],
+            [
+              1.779656,
+              41.700703
+            ],
+            [
+              1.780075,
+              41.700493
+            ],
+            [
+              1.780527,
+              41.700325
+            ],
+            [
+              1.781003,
+              41.700204
+            ],
+            [
+              1.781497,
+              41.70013
+            ],
+            [
+              1.782,
+              41.700105
+            ],
+            [
+              1.782503,
+              41.70013
+            ],
+            [
+              1.782997,
+              41.700204
+            ],
+            [
+              1.783473,
+              41.700325
+            ],
+            [
+              1.783925,
+              41.700493
+            ],
+            [
+              1.784344,
+              41.700703
+            ],
+            [
+              1.784723,
+              41.700953
+            ],
+            [
+              1.785055,
+              41.701238
+            ],
+            [
+              1.785334,
+              41.701553
+            ],
+            [
+              1.785557,
+              41.701892
+            ],
+            [
+              1.785719,
+              41.702251
+            ],
+            [
+              1.785817,
+              41.702622
+            ],
+            [
+              1.78585,
+              41.703
+            ]
+          ]
+        ]
+      }
+    }
+  ],
+  "hotspots": [
+    {
+      "id": "demo-h000",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.869255,
+        41.7622
+      ],
+      "observedAt": "2026-09-19T11:40:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 42,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h001",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.874073,
+        41.764914
+      ],
+      "observedAt": "2026-09-19T11:40:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 51,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h002",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.878891,
+        41.767628
+      ],
+      "observedAt": "2026-09-19T11:40:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 60,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h003",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.883708,
+        41.770342
+      ],
+      "observedAt": "2026-09-19T11:40:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 69,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h004",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.888526,
+        41.773056
+      ],
+      "observedAt": "2026-09-19T11:40:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 78,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h005",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.893343,
+        41.77577
+      ],
+      "observedAt": "2026-09-19T11:40:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 87,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h006",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.873832,
+        41.766362
+      ],
+      "observedAt": "2026-09-19T12:02:00.000Z",
+      "source": "MTG_I1",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 60,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h007",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.877927,
+        41.767447
+      ],
+      "observedAt": "2026-09-19T12:02:00.000Z",
+      "source": "MTG_I1",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 74,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h008",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.882022,
+        41.768533
+      ],
+      "observedAt": "2026-09-19T12:02:00.000Z",
+      "source": "MTG_I1",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 88,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h009",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.873892,
+        41.766407
+      ],
+      "observedAt": "2026-09-19T12:04:00.000Z",
+      "source": "MTG_I1",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 58,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h010",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.867569,
+        41.761296
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 70,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h011",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.872628,
+        41.764281
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 81,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h012",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.877686,
+        41.767267
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 92,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h013",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.882745,
+        41.770252
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 103,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h014",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.887803,
+        41.773237
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 114,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h015",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.892861,
+        41.776223
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 125,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h016",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.89792,
+        41.779208
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 136,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h017",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.902978,
+        41.782193
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 147,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h018",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.908036,
+        41.785179
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 158,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h019",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.913095,
+        41.788164
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 169,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h020",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.918153,
+        41.791149
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 180,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h021",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.923212,
+        41.794135
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 191,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h022",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.92827,
+        41.79712
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 202,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h023",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.933328,
+        41.800105
+      ],
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 213,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h024",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.89527,
+        41.77776
+      ],
+      "observedAt": "2026-09-19T12:41:00.000Z",
+      "source": "LANDSAT_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 180,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h025",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.896715,
+        41.778756
+      ],
+      "observedAt": "2026-09-19T12:41:00.000Z",
+      "source": "LANDSAT_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 210,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h026",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.898161,
+        41.779751
+      ],
+      "observedAt": "2026-09-19T12:41:00.000Z",
+      "source": "LANDSAT_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 240,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h027",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.899606,
+        41.780746
+      ],
+      "observedAt": "2026-09-19T12:41:00.000Z",
+      "source": "LANDSAT_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 270,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h028",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.782,
+        41.703
+      ],
+      "observedAt": "2026-09-19T11:48:00.000Z",
+      "source": "MODIS_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 21,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h029",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.7823,
+        41.7032
+      ],
+      "observedAt": "2026-09-19T12:26:00.000Z",
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 24,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-h030",
+      "clusterId": "demo-cluster-stray",
+      "position": [
+        1.938628,
+        41.722577
+      ],
+      "observedAt": "2026-09-19T12:17:00.000Z",
+      "source": "MODIS_NRT",
+      "confidence": "LOW",
+      "fireRadiativePowerMw": 9,
+      "country": "ES",
+      "active": true
+    }
+  ],
+  "simulation": {
+    "id": "demo-sim-bages",
+    "status": "COMPLETED",
+    "clusterId": "demo-cluster-bages",
+    "model": "elmfire",
+    "durationHours": 6,
+    "ensembleMembers": 10,
+    "sources": [
+      "VIIRS_SNPP_NRT",
+      "VIIRS_NOAA20_NRT",
+      "LANDSAT_NRT"
+    ],
+    "lookbackHours": 12,
+    "locationName": "Sant Fruitós de Bages, Catalunya",
+    "ignitionPointCount": 24,
+    "ignition": {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              1.876,
+              41.766
+            ]
+          },
+          "properties": {}
+        }
+      ]
+    },
+    "summary": {
+      "burnedAreaM2": 21400000,
+      "edgeReached": false,
+      "windSpeedAvgMs": 8.4,
+      "windDirectionAvg": 227
+    },
+    "result": {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.890087,
+                  41.770369
+                ],
+                [
+                  1.890019,
+                  41.770939
+                ],
+                [
+                  1.889819,
+                  41.7715
+                ],
+                [
+                  1.889489,
+                  41.772041
+                ],
+                [
+                  1.889034,
+                  41.772554
+                ],
+                [
+                  1.888464,
+                  41.773029
+                ],
+                [
+                  1.887786,
+                  41.773459
+                ],
+                [
+                  1.887014,
+                  41.773836
+                ],
+                [
+                  1.88616,
+                  41.774153
+                ],
+                [
+                  1.885238,
+                  41.774406
+                ],
+                [
+                  1.884266,
+                  41.77459
+                ],
+                [
+                  1.883258,
+                  41.774701
+                ],
+                [
+                  1.882233,
+                  41.774738
+                ],
+                [
+                  1.881208,
+                  41.774701
+                ],
+                [
+                  1.8802,
+                  41.77459
+                ],
+                [
+                  1.879228,
+                  41.774406
+                ],
+                [
+                  1.878306,
+                  41.774153
+                ],
+                [
+                  1.877452,
+                  41.773836
+                ],
+                [
+                  1.87668,
+                  41.773459
+                ],
+                [
+                  1.876002,
+                  41.773029
+                ],
+                [
+                  1.875432,
+                  41.772554
+                ],
+                [
+                  1.874977,
+                  41.772041
+                ],
+                [
+                  1.874647,
+                  41.7715
+                ],
+                [
+                  1.874447,
+                  41.770939
+                ],
+                [
+                  1.874379,
+                  41.770369
+                ],
+                [
+                  1.874447,
+                  41.769799
+                ],
+                [
+                  1.874647,
+                  41.769238
+                ],
+                [
+                  1.874977,
+                  41.768697
+                ],
+                [
+                  1.875432,
+                  41.768184
+                ],
+                [
+                  1.876002,
+                  41.767709
+                ],
+                [
+                  1.87668,
+                  41.767279
+                ],
+                [
+                  1.877452,
+                  41.766902
+                ],
+                [
+                  1.878306,
+                  41.766585
+                ],
+                [
+                  1.879228,
+                  41.766332
+                ],
+                [
+                  1.8802,
+                  41.766148
+                ],
+                [
+                  1.881208,
+                  41.766037
+                ],
+                [
+                  1.882233,
+                  41.766
+                ],
+                [
+                  1.883258,
+                  41.766037
+                ],
+                [
+                  1.884266,
+                  41.766148
+                ],
+                [
+                  1.885238,
+                  41.766332
+                ],
+                [
+                  1.88616,
+                  41.766585
+                ],
+                [
+                  1.887014,
+                  41.766902
+                ],
+                [
+                  1.887786,
+                  41.767279
+                ],
+                [
+                  1.888464,
+                  41.767709
+                ],
+                [
+                  1.889034,
+                  41.768184
+                ],
+                [
+                  1.889489,
+                  41.768697
+                ],
+                [
+                  1.889819,
+                  41.769238
+                ],
+                [
+                  1.890019,
+                  41.769799
+                ],
+                [
+                  1.890087,
+                  41.770369
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 1,
+            "elapsed_seconds": 3600,
+            "burn_probability": 0.9
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.893079,
+                  41.770369
+                ],
+                [
+                  1.892986,
+                  41.771157
+                ],
+                [
+                  1.892709,
+                  41.771931
+                ],
+                [
+                  1.892253,
+                  41.772678
+                ],
+                [
+                  1.891626,
+                  41.773386
+                ],
+                [
+                  1.890837,
+                  41.774042
+                ],
+                [
+                  1.889902,
+                  41.774636
+                ],
+                [
+                  1.888835,
+                  41.775156
+                ],
+                [
+                  1.887656,
+                  41.775595
+                ],
+                [
+                  1.886383,
+                  41.775944
+                ],
+                [
+                  1.88504,
+                  41.776197
+                ],
+                [
+                  1.883649,
+                  41.776351
+                ],
+                [
+                  1.882233,
+                  41.776403
+                ],
+                [
+                  1.880817,
+                  41.776351
+                ],
+                [
+                  1.879426,
+                  41.776197
+                ],
+                [
+                  1.878083,
+                  41.775944
+                ],
+                [
+                  1.87681,
+                  41.775595
+                ],
+                [
+                  1.875631,
+                  41.775156
+                ],
+                [
+                  1.874564,
+                  41.774636
+                ],
+                [
+                  1.873629,
+                  41.774042
+                ],
+                [
+                  1.87284,
+                  41.773386
+                ],
+                [
+                  1.872213,
+                  41.772678
+                ],
+                [
+                  1.871757,
+                  41.771931
+                ],
+                [
+                  1.87148,
+                  41.771157
+                ],
+                [
+                  1.871387,
+                  41.770369
+                ],
+                [
+                  1.87148,
+                  41.769581
+                ],
+                [
+                  1.871757,
+                  41.768807
+                ],
+                [
+                  1.872213,
+                  41.76806
+                ],
+                [
+                  1.87284,
+                  41.767352
+                ],
+                [
+                  1.873629,
+                  41.766696
+                ],
+                [
+                  1.874564,
+                  41.766102
+                ],
+                [
+                  1.875631,
+                  41.765582
+                ],
+                [
+                  1.87681,
+                  41.765143
+                ],
+                [
+                  1.878083,
+                  41.764794
+                ],
+                [
+                  1.879426,
+                  41.764541
+                ],
+                [
+                  1.880817,
+                  41.764387
+                ],
+                [
+                  1.882233,
+                  41.764335
+                ],
+                [
+                  1.883649,
+                  41.764387
+                ],
+                [
+                  1.88504,
+                  41.764541
+                ],
+                [
+                  1.886383,
+                  41.764794
+                ],
+                [
+                  1.887656,
+                  41.765143
+                ],
+                [
+                  1.888835,
+                  41.765582
+                ],
+                [
+                  1.889902,
+                  41.766102
+                ],
+                [
+                  1.890837,
+                  41.766696
+                ],
+                [
+                  1.891626,
+                  41.767352
+                ],
+                [
+                  1.892253,
+                  41.76806
+                ],
+                [
+                  1.892709,
+                  41.768807
+                ],
+                [
+                  1.892986,
+                  41.769581
+                ],
+                [
+                  1.893079,
+                  41.770369
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 1,
+            "elapsed_seconds": 3600,
+            "burn_probability": 0.7
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.89607,
+                  41.770369
+                ],
+                [
+                  1.895952,
+                  41.771374
+                ],
+                [
+                  1.895599,
+                  41.772362
+                ],
+                [
+                  1.895017,
+                  41.773315
+                ],
+                [
+                  1.894217,
+                  41.774218
+                ],
+                [
+                  1.893211,
+                  41.775056
+                ],
+                [
+                  1.892018,
+                  41.775813
+                ],
+                [
+                  1.890657,
+                  41.776477
+                ],
+                [
+                  1.889152,
+                  41.777036
+                ],
+                [
+                  1.887528,
+                  41.777482
+                ],
+                [
+                  1.885814,
+                  41.777805
+                ],
+                [
+                  1.884039,
+                  41.778002
+                ],
+                [
+                  1.882233,
+                  41.778068
+                ],
+                [
+                  1.880427,
+                  41.778002
+                ],
+                [
+                  1.878652,
+                  41.777805
+                ],
+                [
+                  1.876938,
+                  41.777482
+                ],
+                [
+                  1.875314,
+                  41.777036
+                ],
+                [
+                  1.873809,
+                  41.776477
+                ],
+                [
+                  1.872448,
+                  41.775813
+                ],
+                [
+                  1.871255,
+                  41.775056
+                ],
+                [
+                  1.870249,
+                  41.774218
+                ],
+                [
+                  1.869449,
+                  41.773315
+                ],
+                [
+                  1.868867,
+                  41.772362
+                ],
+                [
+                  1.868514,
+                  41.771374
+                ],
+                [
+                  1.868396,
+                  41.770369
+                ],
+                [
+                  1.868514,
+                  41.769364
+                ],
+                [
+                  1.868867,
+                  41.768376
+                ],
+                [
+                  1.869449,
+                  41.767423
+                ],
+                [
+                  1.870249,
+                  41.76652
+                ],
+                [
+                  1.871255,
+                  41.765682
+                ],
+                [
+                  1.872448,
+                  41.764925
+                ],
+                [
+                  1.873809,
+                  41.764261
+                ],
+                [
+                  1.875314,
+                  41.763702
+                ],
+                [
+                  1.876938,
+                  41.763256
+                ],
+                [
+                  1.878652,
+                  41.762933
+                ],
+                [
+                  1.880427,
+                  41.762736
+                ],
+                [
+                  1.882233,
+                  41.76267
+                ],
+                [
+                  1.884039,
+                  41.762736
+                ],
+                [
+                  1.885814,
+                  41.762933
+                ],
+                [
+                  1.887528,
+                  41.763256
+                ],
+                [
+                  1.889152,
+                  41.763702
+                ],
+                [
+                  1.890657,
+                  41.764261
+                ],
+                [
+                  1.892018,
+                  41.764925
+                ],
+                [
+                  1.893211,
+                  41.765682
+                ],
+                [
+                  1.894217,
+                  41.76652
+                ],
+                [
+                  1.895017,
+                  41.767423
+                ],
+                [
+                  1.895599,
+                  41.768376
+                ],
+                [
+                  1.895952,
+                  41.769364
+                ],
+                [
+                  1.89607,
+                  41.770369
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 1,
+            "elapsed_seconds": 3600,
+            "burn_probability": 0.5
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.899062,
+                  41.770369
+                ],
+                [
+                  1.898918,
+                  41.771591
+                ],
+                [
+                  1.898489,
+                  41.772792
+                ],
+                [
+                  1.897781,
+                  41.773952
+                ],
+                [
+                  1.896808,
+                  41.775051
+                ],
+                [
+                  1.895585,
+                  41.776069
+                ],
+                [
+                  1.894133,
+                  41.77699
+                ],
+                [
+                  1.892478,
+                  41.777797
+                ],
+                [
+                  1.890648,
+                  41.778478
+                ],
+                [
+                  1.888673,
+                  41.779019
+                ],
+                [
+                  1.886589,
+                  41.779413
+                ],
+                [
+                  1.88443,
+                  41.779652
+                ],
+                [
+                  1.882233,
+                  41.779732
+                ],
+                [
+                  1.880036,
+                  41.779652
+                ],
+                [
+                  1.877877,
+                  41.779413
+                ],
+                [
+                  1.875793,
+                  41.779019
+                ],
+                [
+                  1.873818,
+                  41.778478
+                ],
+                [
+                  1.871988,
+                  41.777797
+                ],
+                [
+                  1.870333,
+                  41.77699
+                ],
+                [
+                  1.868881,
+                  41.776069
+                ],
+                [
+                  1.867658,
+                  41.775051
+                ],
+                [
+                  1.866685,
+                  41.773952
+                ],
+                [
+                  1.865977,
+                  41.772792
+                ],
+                [
+                  1.865548,
+                  41.771591
+                ],
+                [
+                  1.865404,
+                  41.770369
+                ],
+                [
+                  1.865548,
+                  41.769147
+                ],
+                [
+                  1.865977,
+                  41.767946
+                ],
+                [
+                  1.866685,
+                  41.766786
+                ],
+                [
+                  1.867658,
+                  41.765687
+                ],
+                [
+                  1.868881,
+                  41.764669
+                ],
+                [
+                  1.870333,
+                  41.763748
+                ],
+                [
+                  1.871988,
+                  41.762941
+                ],
+                [
+                  1.873818,
+                  41.76226
+                ],
+                [
+                  1.875793,
+                  41.761719
+                ],
+                [
+                  1.877877,
+                  41.761325
+                ],
+                [
+                  1.880036,
+                  41.761086
+                ],
+                [
+                  1.882233,
+                  41.761006
+                ],
+                [
+                  1.88443,
+                  41.761086
+                ],
+                [
+                  1.886589,
+                  41.761325
+                ],
+                [
+                  1.888673,
+                  41.761719
+                ],
+                [
+                  1.890648,
+                  41.76226
+                ],
+                [
+                  1.892478,
+                  41.762941
+                ],
+                [
+                  1.894133,
+                  41.763748
+                ],
+                [
+                  1.895585,
+                  41.764669
+                ],
+                [
+                  1.896808,
+                  41.765687
+                ],
+                [
+                  1.897781,
+                  41.766786
+                ],
+                [
+                  1.898489,
+                  41.767946
+                ],
+                [
+                  1.898918,
+                  41.769147
+                ],
+                [
+                  1.899062,
+                  41.770369
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 1,
+            "elapsed_seconds": 3600,
+            "burn_probability": 0.3
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.900932,
+                  41.770369
+                ],
+                [
+                  1.900772,
+                  41.771727
+                ],
+                [
+                  1.900295,
+                  41.773062
+                ],
+                [
+                  1.899509,
+                  41.77435
+                ],
+                [
+                  1.898427,
+                  41.775571
+                ],
+                [
+                  1.897068,
+                  41.776702
+                ],
+                [
+                  1.895455,
+                  41.777725
+                ],
+                [
+                  1.893616,
+                  41.778623
+                ],
+                [
+                  1.891583,
+                  41.779379
+                ],
+                [
+                  1.889389,
+                  41.779981
+                ],
+                [
+                  1.887073,
+                  41.780418
+                ],
+                [
+                  1.884674,
+                  41.780683
+                ],
+                [
+                  1.882233,
+                  41.780772
+                ],
+                [
+                  1.879792,
+                  41.780683
+                ],
+                [
+                  1.877393,
+                  41.780418
+                ],
+                [
+                  1.875077,
+                  41.779981
+                ],
+                [
+                  1.872883,
+                  41.779379
+                ],
+                [
+                  1.87085,
+                  41.778623
+                ],
+                [
+                  1.869011,
+                  41.777725
+                ],
+                [
+                  1.867398,
+                  41.776702
+                ],
+                [
+                  1.866039,
+                  41.775571
+                ],
+                [
+                  1.864957,
+                  41.77435
+                ],
+                [
+                  1.864171,
+                  41.773062
+                ],
+                [
+                  1.863694,
+                  41.771727
+                ],
+                [
+                  1.863534,
+                  41.770369
+                ],
+                [
+                  1.863694,
+                  41.769011
+                ],
+                [
+                  1.864171,
+                  41.767676
+                ],
+                [
+                  1.864957,
+                  41.766388
+                ],
+                [
+                  1.866039,
+                  41.765167
+                ],
+                [
+                  1.867398,
+                  41.764036
+                ],
+                [
+                  1.869011,
+                  41.763013
+                ],
+                [
+                  1.87085,
+                  41.762115
+                ],
+                [
+                  1.872883,
+                  41.761359
+                ],
+                [
+                  1.875077,
+                  41.760757
+                ],
+                [
+                  1.877393,
+                  41.76032
+                ],
+                [
+                  1.879792,
+                  41.760055
+                ],
+                [
+                  1.882233,
+                  41.759966
+                ],
+                [
+                  1.884674,
+                  41.760055
+                ],
+                [
+                  1.887073,
+                  41.76032
+                ],
+                [
+                  1.889389,
+                  41.760757
+                ],
+                [
+                  1.891583,
+                  41.761359
+                ],
+                [
+                  1.893616,
+                  41.762115
+                ],
+                [
+                  1.895455,
+                  41.763013
+                ],
+                [
+                  1.897068,
+                  41.764036
+                ],
+                [
+                  1.898427,
+                  41.765167
+                ],
+                [
+                  1.899509,
+                  41.766388
+                ],
+                [
+                  1.900295,
+                  41.767676
+                ],
+                [
+                  1.900772,
+                  41.769011
+                ],
+                [
+                  1.900932,
+                  41.770369
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 1,
+            "elapsed_seconds": 3600,
+            "burn_probability": 0.2
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.904173,
+                  41.774739
+                ],
+                [
+                  1.904039,
+                  41.77588
+                ],
+                [
+                  1.903638,
+                  41.777001
+                ],
+                [
+                  1.902978,
+                  41.778083
+                ],
+                [
+                  1.902069,
+                  41.779108
+                ],
+                [
+                  1.900927,
+                  41.780059
+                ],
+                [
+                  1.899573,
+                  41.780918
+                ],
+                [
+                  1.898028,
+                  41.781672
+                ],
+                [
+                  1.896319,
+                  41.782307
+                ],
+                [
+                  1.894476,
+                  41.782813
+                ],
+                [
+                  1.892531,
+                  41.78318
+                ],
+                [
+                  1.890515,
+                  41.783403
+                ],
+                [
+                  1.888465,
+                  41.783478
+                ],
+                [
+                  1.886415,
+                  41.783403
+                ],
+                [
+                  1.884399,
+                  41.78318
+                ],
+                [
+                  1.882454,
+                  41.782813
+                ],
+                [
+                  1.880611,
+                  41.782307
+                ],
+                [
+                  1.878902,
+                  41.781672
+                ],
+                [
+                  1.877357,
+                  41.780918
+                ],
+                [
+                  1.876003,
+                  41.780059
+                ],
+                [
+                  1.874861,
+                  41.779108
+                ],
+                [
+                  1.873952,
+                  41.778083
+                ],
+                [
+                  1.873292,
+                  41.777001
+                ],
+                [
+                  1.872891,
+                  41.77588
+                ],
+                [
+                  1.872757,
+                  41.774739
+                ],
+                [
+                  1.872891,
+                  41.773598
+                ],
+                [
+                  1.873292,
+                  41.772477
+                ],
+                [
+                  1.873952,
+                  41.771395
+                ],
+                [
+                  1.874861,
+                  41.77037
+                ],
+                [
+                  1.876003,
+                  41.769419
+                ],
+                [
+                  1.877357,
+                  41.76856
+                ],
+                [
+                  1.878902,
+                  41.767806
+                ],
+                [
+                  1.880611,
+                  41.767171
+                ],
+                [
+                  1.882454,
+                  41.766665
+                ],
+                [
+                  1.884399,
+                  41.766298
+                ],
+                [
+                  1.886415,
+                  41.766075
+                ],
+                [
+                  1.888465,
+                  41.766
+                ],
+                [
+                  1.890515,
+                  41.766075
+                ],
+                [
+                  1.892531,
+                  41.766298
+                ],
+                [
+                  1.894476,
+                  41.766665
+                ],
+                [
+                  1.896319,
+                  41.767171
+                ],
+                [
+                  1.898028,
+                  41.767806
+                ],
+                [
+                  1.899573,
+                  41.76856
+                ],
+                [
+                  1.900927,
+                  41.769419
+                ],
+                [
+                  1.902069,
+                  41.77037
+                ],
+                [
+                  1.902978,
+                  41.771395
+                ],
+                [
+                  1.903638,
+                  41.772477
+                ],
+                [
+                  1.904039,
+                  41.773598
+                ],
+                [
+                  1.904173,
+                  41.774739
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 2,
+            "elapsed_seconds": 7200,
+            "burn_probability": 0.9
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.910158,
+                  41.774739
+                ],
+                [
+                  1.909972,
+                  41.776314
+                ],
+                [
+                  1.909418,
+                  41.777862
+                ],
+                [
+                  1.908506,
+                  41.779357
+                ],
+                [
+                  1.907251,
+                  41.780773
+                ],
+                [
+                  1.905675,
+                  41.782086
+                ],
+                [
+                  1.903804,
+                  41.783272
+                ],
+                [
+                  1.901671,
+                  41.784313
+                ],
+                [
+                  1.899311,
+                  41.78519
+                ],
+                [
+                  1.896766,
+                  41.785888
+                ],
+                [
+                  1.894079,
+                  41.786396
+                ],
+                [
+                  1.891296,
+                  41.786704
+                ],
+                [
+                  1.888465,
+                  41.786807
+                ],
+                [
+                  1.885634,
+                  41.786704
+                ],
+                [
+                  1.882851,
+                  41.786396
+                ],
+                [
+                  1.880164,
+                  41.785888
+                ],
+                [
+                  1.877619,
+                  41.78519
+                ],
+                [
+                  1.875259,
+                  41.784313
+                ],
+                [
+                  1.873126,
+                  41.783272
+                ],
+                [
+                  1.871255,
+                  41.782086
+                ],
+                [
+                  1.869679,
+                  41.780773
+                ],
+                [
+                  1.868424,
+                  41.779357
+                ],
+                [
+                  1.867512,
+                  41.777862
+                ],
+                [
+                  1.866958,
+                  41.776314
+                ],
+                [
+                  1.866772,
+                  41.774739
+                ],
+                [
+                  1.866958,
+                  41.773164
+                ],
+                [
+                  1.867512,
+                  41.771616
+                ],
+                [
+                  1.868424,
+                  41.770121
+                ],
+                [
+                  1.869679,
+                  41.768705
+                ],
+                [
+                  1.871255,
+                  41.767392
+                ],
+                [
+                  1.873126,
+                  41.766206
+                ],
+                [
+                  1.875259,
+                  41.765165
+                ],
+                [
+                  1.877619,
+                  41.764288
+                ],
+                [
+                  1.880164,
+                  41.76359
+                ],
+                [
+                  1.882851,
+                  41.763082
+                ],
+                [
+                  1.885634,
+                  41.762774
+                ],
+                [
+                  1.888465,
+                  41.762671
+                ],
+                [
+                  1.891296,
+                  41.762774
+                ],
+                [
+                  1.894079,
+                  41.763082
+                ],
+                [
+                  1.896766,
+                  41.76359
+                ],
+                [
+                  1.899311,
+                  41.764288
+                ],
+                [
+                  1.901671,
+                  41.765165
+                ],
+                [
+                  1.903804,
+                  41.766206
+                ],
+                [
+                  1.905675,
+                  41.767392
+                ],
+                [
+                  1.907251,
+                  41.768705
+                ],
+                [
+                  1.908506,
+                  41.770121
+                ],
+                [
+                  1.909418,
+                  41.771616
+                ],
+                [
+                  1.909972,
+                  41.773164
+                ],
+                [
+                  1.910158,
+                  41.774739
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 2,
+            "elapsed_seconds": 7200,
+            "burn_probability": 0.7
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.916142,
+                  41.774739
+                ],
+                [
+                  1.915905,
+                  41.776749
+                ],
+                [
+                  1.915199,
+                  41.778724
+                ],
+                [
+                  1.914035,
+                  41.780631
+                ],
+                [
+                  1.912434,
+                  41.782438
+                ],
+                [
+                  1.910422,
+                  41.784112
+                ],
+                [
+                  1.908035,
+                  41.785626
+                ],
+                [
+                  1.905314,
+                  41.786954
+                ],
+                [
+                  1.902303,
+                  41.788073
+                ],
+                [
+                  1.899056,
+                  41.788964
+                ],
+                [
+                  1.895628,
+                  41.789611
+                ],
+                [
+                  1.892078,
+                  41.790004
+                ],
+                [
+                  1.888465,
+                  41.790136
+                ],
+                [
+                  1.884852,
+                  41.790004
+                ],
+                [
+                  1.881302,
+                  41.789611
+                ],
+                [
+                  1.877874,
+                  41.788964
+                ],
+                [
+                  1.874627,
+                  41.788073
+                ],
+                [
+                  1.871616,
+                  41.786954
+                ],
+                [
+                  1.868895,
+                  41.785626
+                ],
+                [
+                  1.866508,
+                  41.784112
+                ],
+                [
+                  1.864496,
+                  41.782438
+                ],
+                [
+                  1.862895,
+                  41.780631
+                ],
+                [
+                  1.861731,
+                  41.778724
+                ],
+                [
+                  1.861025,
+                  41.776749
+                ],
+                [
+                  1.860788,
+                  41.774739
+                ],
+                [
+                  1.861025,
+                  41.772729
+                ],
+                [
+                  1.861731,
+                  41.770754
+                ],
+                [
+                  1.862895,
+                  41.768847
+                ],
+                [
+                  1.864496,
+                  41.76704
+                ],
+                [
+                  1.866508,
+                  41.765366
+                ],
+                [
+                  1.868895,
+                  41.763852
+                ],
+                [
+                  1.871616,
+                  41.762524
+                ],
+                [
+                  1.874627,
+                  41.761405
+                ],
+                [
+                  1.877874,
+                  41.760514
+                ],
+                [
+                  1.881302,
+                  41.759867
+                ],
+                [
+                  1.884852,
+                  41.759474
+                ],
+                [
+                  1.888465,
+                  41.759342
+                ],
+                [
+                  1.892078,
+                  41.759474
+                ],
+                [
+                  1.895628,
+                  41.759867
+                ],
+                [
+                  1.899056,
+                  41.760514
+                ],
+                [
+                  1.902303,
+                  41.761405
+                ],
+                [
+                  1.905314,
+                  41.762524
+                ],
+                [
+                  1.908035,
+                  41.763852
+                ],
+                [
+                  1.910422,
+                  41.765366
+                ],
+                [
+                  1.912434,
+                  41.76704
+                ],
+                [
+                  1.914035,
+                  41.768847
+                ],
+                [
+                  1.915199,
+                  41.770754
+                ],
+                [
+                  1.915905,
+                  41.772729
+                ],
+                [
+                  1.916142,
+                  41.774739
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 2,
+            "elapsed_seconds": 7200,
+            "burn_probability": 0.5
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.922126,
+                  41.774739
+                ],
+                [
+                  1.921838,
+                  41.777183
+                ],
+                [
+                  1.920979,
+                  41.779586
+                ],
+                [
+                  1.919564,
+                  41.781905
+                ],
+                [
+                  1.917616,
+                  41.784102
+                ],
+                [
+                  1.91517,
+                  41.786139
+                ],
+                [
+                  1.912267,
+                  41.78798
+                ],
+                [
+                  1.908956,
+                  41.789596
+                ],
+                [
+                  1.905295,
+                  41.790956
+                ],
+                [
+                  1.901346,
+                  41.79204
+                ],
+                [
+                  1.897177,
+                  41.792827
+                ],
+                [
+                  1.892859,
+                  41.793305
+                ],
+                [
+                  1.888465,
+                  41.793465
+                ],
+                [
+                  1.884071,
+                  41.793305
+                ],
+                [
+                  1.879753,
+                  41.792827
+                ],
+                [
+                  1.875584,
+                  41.79204
+                ],
+                [
+                  1.871635,
+                  41.790956
+                ],
+                [
+                  1.867974,
+                  41.789596
+                ],
+                [
+                  1.864663,
+                  41.78798
+                ],
+                [
+                  1.86176,
+                  41.786139
+                ],
+                [
+                  1.859314,
+                  41.784102
+                ],
+                [
+                  1.857366,
+                  41.781905
+                ],
+                [
+                  1.855951,
+                  41.779586
+                ],
+                [
+                  1.855092,
+                  41.777183
+                ],
+                [
+                  1.854804,
+                  41.774739
+                ],
+                [
+                  1.855092,
+                  41.772295
+                ],
+                [
+                  1.855951,
+                  41.769892
+                ],
+                [
+                  1.857366,
+                  41.767573
+                ],
+                [
+                  1.859314,
+                  41.765376
+                ],
+                [
+                  1.86176,
+                  41.763339
+                ],
+                [
+                  1.864663,
+                  41.761498
+                ],
+                [
+                  1.867974,
+                  41.759882
+                ],
+                [
+                  1.871635,
+                  41.758522
+                ],
+                [
+                  1.875584,
+                  41.757438
+                ],
+                [
+                  1.879753,
+                  41.756651
+                ],
+                [
+                  1.884071,
+                  41.756173
+                ],
+                [
+                  1.888465,
+                  41.756013
+                ],
+                [
+                  1.892859,
+                  41.756173
+                ],
+                [
+                  1.897177,
+                  41.756651
+                ],
+                [
+                  1.901346,
+                  41.757438
+                ],
+                [
+                  1.905295,
+                  41.758522
+                ],
+                [
+                  1.908956,
+                  41.759882
+                ],
+                [
+                  1.912267,
+                  41.761498
+                ],
+                [
+                  1.91517,
+                  41.763339
+                ],
+                [
+                  1.917616,
+                  41.765376
+                ],
+                [
+                  1.919564,
+                  41.767573
+                ],
+                [
+                  1.920979,
+                  41.769892
+                ],
+                [
+                  1.921838,
+                  41.772295
+                ],
+                [
+                  1.922126,
+                  41.774739
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 2,
+            "elapsed_seconds": 7200,
+            "burn_probability": 0.3
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.925866,
+                  41.774739
+                ],
+                [
+                  1.925546,
+                  41.777455
+                ],
+                [
+                  1.924592,
+                  41.780124
+                ],
+                [
+                  1.923019,
+                  41.782701
+                ],
+                [
+                  1.920855,
+                  41.785142
+                ],
+                [
+                  1.918137,
+                  41.787405
+                ],
+                [
+                  1.914912,
+                  41.789452
+                ],
+                [
+                  1.911233,
+                  41.791246
+                ],
+                [
+                  1.907166,
+                  41.792758
+                ],
+                [
+                  1.902778,
+                  41.793962
+                ],
+                [
+                  1.898145,
+                  41.794837
+                ],
+                [
+                  1.893347,
+                  41.795368
+                ],
+                [
+                  1.888465,
+                  41.795546
+                ],
+                [
+                  1.883583,
+                  41.795368
+                ],
+                [
+                  1.878785,
+                  41.794837
+                ],
+                [
+                  1.874152,
+                  41.793962
+                ],
+                [
+                  1.869764,
+                  41.792758
+                ],
+                [
+                  1.865697,
+                  41.791246
+                ],
+                [
+                  1.862018,
+                  41.789452
+                ],
+                [
+                  1.858793,
+                  41.787405
+                ],
+                [
+                  1.856075,
+                  41.785142
+                ],
+                [
+                  1.853911,
+                  41.782701
+                ],
+                [
+                  1.852338,
+                  41.780124
+                ],
+                [
+                  1.851384,
+                  41.777455
+                ],
+                [
+                  1.851064,
+                  41.774739
+                ],
+                [
+                  1.851384,
+                  41.772023
+                ],
+                [
+                  1.852338,
+                  41.769354
+                ],
+                [
+                  1.853911,
+                  41.766777
+                ],
+                [
+                  1.856075,
+                  41.764336
+                ],
+                [
+                  1.858793,
+                  41.762073
+                ],
+                [
+                  1.862018,
+                  41.760026
+                ],
+                [
+                  1.865697,
+                  41.758232
+                ],
+                [
+                  1.869764,
+                  41.75672
+                ],
+                [
+                  1.874152,
+                  41.755516
+                ],
+                [
+                  1.878785,
+                  41.754641
+                ],
+                [
+                  1.883583,
+                  41.75411
+                ],
+                [
+                  1.888465,
+                  41.753932
+                ],
+                [
+                  1.893347,
+                  41.75411
+                ],
+                [
+                  1.898145,
+                  41.754641
+                ],
+                [
+                  1.902778,
+                  41.755516
+                ],
+                [
+                  1.907166,
+                  41.75672
+                ],
+                [
+                  1.911233,
+                  41.758232
+                ],
+                [
+                  1.914912,
+                  41.760026
+                ],
+                [
+                  1.918137,
+                  41.762073
+                ],
+                [
+                  1.920855,
+                  41.764336
+                ],
+                [
+                  1.923019,
+                  41.766777
+                ],
+                [
+                  1.924592,
+                  41.769354
+                ],
+                [
+                  1.925546,
+                  41.772023
+                ],
+                [
+                  1.925866,
+                  41.774739
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 2,
+            "elapsed_seconds": 7200,
+            "burn_probability": 0.2
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.918262,
+                  41.779108
+                ],
+                [
+                  1.918061,
+                  41.780819
+                ],
+                [
+                  1.917459,
+                  41.782501
+                ],
+                [
+                  1.916469,
+                  41.784124
+                ],
+                [
+                  1.915105,
+                  41.785662
+                ],
+                [
+                  1.913393,
+                  41.787088
+                ],
+                [
+                  1.91136,
+                  41.788377
+                ],
+                [
+                  1.909043,
+                  41.789508
+                ],
+                [
+                  1.90648,
+                  41.79046
+                ],
+                [
+                  1.903716,
+                  41.791219
+                ],
+                [
+                  1.900797,
+                  41.79177
+                ],
+                [
+                  1.897774,
+                  41.792104
+                ],
+                [
+                  1.894698,
+                  41.792216
+                ],
+                [
+                  1.891622,
+                  41.792104
+                ],
+                [
+                  1.888599,
+                  41.79177
+                ],
+                [
+                  1.88568,
+                  41.791219
+                ],
+                [
+                  1.882916,
+                  41.79046
+                ],
+                [
+                  1.880353,
+                  41.789508
+                ],
+                [
+                  1.878036,
+                  41.788377
+                ],
+                [
+                  1.876003,
+                  41.787088
+                ],
+                [
+                  1.874291,
+                  41.785662
+                ],
+                [
+                  1.872927,
+                  41.784124
+                ],
+                [
+                  1.871937,
+                  41.782501
+                ],
+                [
+                  1.871335,
+                  41.780819
+                ],
+                [
+                  1.871134,
+                  41.779108
+                ],
+                [
+                  1.871335,
+                  41.777397
+                ],
+                [
+                  1.871937,
+                  41.775715
+                ],
+                [
+                  1.872927,
+                  41.774092
+                ],
+                [
+                  1.874291,
+                  41.772554
+                ],
+                [
+                  1.876003,
+                  41.771128
+                ],
+                [
+                  1.878036,
+                  41.769839
+                ],
+                [
+                  1.880353,
+                  41.768708
+                ],
+                [
+                  1.882916,
+                  41.767756
+                ],
+                [
+                  1.88568,
+                  41.766997
+                ],
+                [
+                  1.888599,
+                  41.766446
+                ],
+                [
+                  1.891622,
+                  41.766112
+                ],
+                [
+                  1.894698,
+                  41.766
+                ],
+                [
+                  1.897774,
+                  41.766112
+                ],
+                [
+                  1.900797,
+                  41.766446
+                ],
+                [
+                  1.903716,
+                  41.766997
+                ],
+                [
+                  1.90648,
+                  41.767756
+                ],
+                [
+                  1.909043,
+                  41.768708
+                ],
+                [
+                  1.91136,
+                  41.769839
+                ],
+                [
+                  1.913393,
+                  41.771128
+                ],
+                [
+                  1.915105,
+                  41.772554
+                ],
+                [
+                  1.916469,
+                  41.774092
+                ],
+                [
+                  1.917459,
+                  41.775715
+                ],
+                [
+                  1.918061,
+                  41.777397
+                ],
+                [
+                  1.918262,
+                  41.779108
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 3,
+            "elapsed_seconds": 10800,
+            "burn_probability": 0.9
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.927239,
+                  41.779108
+                ],
+                [
+                  1.926961,
+                  41.781471
+                ],
+                [
+                  1.92613,
+                  41.783793
+                ],
+                [
+                  1.924762,
+                  41.786035
+                ],
+                [
+                  1.922879,
+                  41.788159
+                ],
+                [
+                  1.920515,
+                  41.790128
+                ],
+                [
+                  1.917708,
+                  41.791908
+                ],
+                [
+                  1.914508,
+                  41.793469
+                ],
+                [
+                  1.910969,
+                  41.794785
+                ],
+                [
+                  1.907151,
+                  41.795832
+                ],
+                [
+                  1.90312,
+                  41.796593
+                ],
+                [
+                  1.898945,
+                  41.797055
+                ],
+                [
+                  1.894698,
+                  41.79721
+                ],
+                [
+                  1.890451,
+                  41.797055
+                ],
+                [
+                  1.886276,
+                  41.796593
+                ],
+                [
+                  1.882245,
+                  41.795832
+                ],
+                [
+                  1.878427,
+                  41.794785
+                ],
+                [
+                  1.874888,
+                  41.793469
+                ],
+                [
+                  1.871688,
+                  41.791908
+                ],
+                [
+                  1.868881,
+                  41.790128
+                ],
+                [
+                  1.866517,
+                  41.788159
+                ],
+                [
+                  1.864634,
+                  41.786035
+                ],
+                [
+                  1.863266,
+                  41.783793
+                ],
+                [
+                  1.862435,
+                  41.781471
+                ],
+                [
+                  1.862157,
+                  41.779108
+                ],
+                [
+                  1.862435,
+                  41.776745
+                ],
+                [
+                  1.863266,
+                  41.774423
+                ],
+                [
+                  1.864634,
+                  41.772181
+                ],
+                [
+                  1.866517,
+                  41.770057
+                ],
+                [
+                  1.868881,
+                  41.768088
+                ],
+                [
+                  1.871688,
+                  41.766308
+                ],
+                [
+                  1.874888,
+                  41.764747
+                ],
+                [
+                  1.878427,
+                  41.763431
+                ],
+                [
+                  1.882245,
+                  41.762384
+                ],
+                [
+                  1.886276,
+                  41.761623
+                ],
+                [
+                  1.890451,
+                  41.761161
+                ],
+                [
+                  1.894698,
+                  41.761006
+                ],
+                [
+                  1.898945,
+                  41.761161
+                ],
+                [
+                  1.90312,
+                  41.761623
+                ],
+                [
+                  1.907151,
+                  41.762384
+                ],
+                [
+                  1.910969,
+                  41.763431
+                ],
+                [
+                  1.914508,
+                  41.764747
+                ],
+                [
+                  1.917708,
+                  41.766308
+                ],
+                [
+                  1.920515,
+                  41.768088
+                ],
+                [
+                  1.922879,
+                  41.770057
+                ],
+                [
+                  1.924762,
+                  41.772181
+                ],
+                [
+                  1.92613,
+                  41.774423
+                ],
+                [
+                  1.926961,
+                  41.776745
+                ],
+                [
+                  1.927239,
+                  41.779108
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 3,
+            "elapsed_seconds": 10800,
+            "burn_probability": 0.7
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.936216,
+                  41.779108
+                ],
+                [
+                  1.935861,
+                  41.782123
+                ],
+                [
+                  1.934801,
+                  41.785086
+                ],
+                [
+                  1.933056,
+                  41.787946
+                ],
+                [
+                  1.930654,
+                  41.790656
+                ],
+                [
+                  1.927636,
+                  41.793168
+                ],
+                [
+                  1.924056,
+                  41.795439
+                ],
+                [
+                  1.919973,
+                  41.797431
+                ],
+                [
+                  1.915457,
+                  41.799109
+                ],
+                [
+                  1.910586,
+                  41.800446
+                ],
+                [
+                  1.905444,
+                  41.801417
+                ],
+                [
+                  1.900117,
+                  41.802006
+                ],
+                [
+                  1.894698,
+                  41.802204
+                ],
+                [
+                  1.889279,
+                  41.802006
+                ],
+                [
+                  1.883952,
+                  41.801417
+                ],
+                [
+                  1.87881,
+                  41.800446
+                ],
+                [
+                  1.873939,
+                  41.799109
+                ],
+                [
+                  1.869423,
+                  41.797431
+                ],
+                [
+                  1.86534,
+                  41.795439
+                ],
+                [
+                  1.86176,
+                  41.793168
+                ],
+                [
+                  1.858742,
+                  41.790656
+                ],
+                [
+                  1.85634,
+                  41.787946
+                ],
+                [
+                  1.854595,
+                  41.785086
+                ],
+                [
+                  1.853535,
+                  41.782123
+                ],
+                [
+                  1.85318,
+                  41.779108
+                ],
+                [
+                  1.853535,
+                  41.776093
+                ],
+                [
+                  1.854595,
+                  41.77313
+                ],
+                [
+                  1.85634,
+                  41.77027
+                ],
+                [
+                  1.858742,
+                  41.76756
+                ],
+                [
+                  1.86176,
+                  41.765048
+                ],
+                [
+                  1.86534,
+                  41.762777
+                ],
+                [
+                  1.869423,
+                  41.760785
+                ],
+                [
+                  1.873939,
+                  41.759107
+                ],
+                [
+                  1.87881,
+                  41.75777
+                ],
+                [
+                  1.883952,
+                  41.756799
+                ],
+                [
+                  1.889279,
+                  41.75621
+                ],
+                [
+                  1.894698,
+                  41.756012
+                ],
+                [
+                  1.900117,
+                  41.75621
+                ],
+                [
+                  1.905444,
+                  41.756799
+                ],
+                [
+                  1.910586,
+                  41.75777
+                ],
+                [
+                  1.915457,
+                  41.759107
+                ],
+                [
+                  1.919973,
+                  41.760785
+                ],
+                [
+                  1.924056,
+                  41.762777
+                ],
+                [
+                  1.927636,
+                  41.765048
+                ],
+                [
+                  1.930654,
+                  41.76756
+                ],
+                [
+                  1.933056,
+                  41.77027
+                ],
+                [
+                  1.934801,
+                  41.77313
+                ],
+                [
+                  1.935861,
+                  41.776093
+                ],
+                [
+                  1.936216,
+                  41.779108
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 3,
+            "elapsed_seconds": 10800,
+            "burn_probability": 0.5
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.945193,
+                  41.779108
+                ],
+                [
+                  1.944761,
+                  41.782774
+                ],
+                [
+                  1.943472,
+                  41.786378
+                ],
+                [
+                  1.941349,
+                  41.789857
+                ],
+                [
+                  1.938428,
+                  41.793153
+                ],
+                [
+                  1.934758,
+                  41.796208
+                ],
+                [
+                  1.930403,
+                  41.79897
+                ],
+                [
+                  1.925437,
+                  41.801393
+                ],
+                [
+                  1.919945,
+                  41.803434
+                ],
+                [
+                  1.914022,
+                  41.805059
+                ],
+                [
+                  1.907767,
+                  41.80624
+                ],
+                [
+                  1.901289,
+                  41.806957
+                ],
+                [
+                  1.894698,
+                  41.807197
+                ],
+                [
+                  1.888107,
+                  41.806957
+                ],
+                [
+                  1.881629,
+                  41.80624
+                ],
+                [
+                  1.875374,
+                  41.805059
+                ],
+                [
+                  1.869451,
+                  41.803434
+                ],
+                [
+                  1.863959,
+                  41.801393
+                ],
+                [
+                  1.858993,
+                  41.79897
+                ],
+                [
+                  1.854638,
+                  41.796208
+                ],
+                [
+                  1.850968,
+                  41.793153
+                ],
+                [
+                  1.848047,
+                  41.789857
+                ],
+                [
+                  1.845924,
+                  41.786378
+                ],
+                [
+                  1.844635,
+                  41.782774
+                ],
+                [
+                  1.844203,
+                  41.779108
+                ],
+                [
+                  1.844635,
+                  41.775442
+                ],
+                [
+                  1.845924,
+                  41.771838
+                ],
+                [
+                  1.848047,
+                  41.768359
+                ],
+                [
+                  1.850968,
+                  41.765063
+                ],
+                [
+                  1.854638,
+                  41.762008
+                ],
+                [
+                  1.858993,
+                  41.759246
+                ],
+                [
+                  1.863959,
+                  41.756823
+                ],
+                [
+                  1.869451,
+                  41.754782
+                ],
+                [
+                  1.875374,
+                  41.753157
+                ],
+                [
+                  1.881629,
+                  41.751976
+                ],
+                [
+                  1.888107,
+                  41.751259
+                ],
+                [
+                  1.894698,
+                  41.751019
+                ],
+                [
+                  1.901289,
+                  41.751259
+                ],
+                [
+                  1.907767,
+                  41.751976
+                ],
+                [
+                  1.914022,
+                  41.753157
+                ],
+                [
+                  1.919945,
+                  41.754782
+                ],
+                [
+                  1.925437,
+                  41.756823
+                ],
+                [
+                  1.930403,
+                  41.759246
+                ],
+                [
+                  1.934758,
+                  41.762008
+                ],
+                [
+                  1.938428,
+                  41.765063
+                ],
+                [
+                  1.941349,
+                  41.768359
+                ],
+                [
+                  1.943472,
+                  41.771838
+                ],
+                [
+                  1.944761,
+                  41.775442
+                ],
+                [
+                  1.945193,
+                  41.779108
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 3,
+            "elapsed_seconds": 10800,
+            "burn_probability": 0.3
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.950803,
+                  41.779108
+                ],
+                [
+                  1.950323,
+                  41.783182
+                ],
+                [
+                  1.948892,
+                  41.787186
+                ],
+                [
+                  1.946533,
+                  41.791052
+                ],
+                [
+                  1.943287,
+                  41.794713
+                ],
+                [
+                  1.939209,
+                  41.798108
+                ],
+                [
+                  1.93437,
+                  41.801177
+                ],
+                [
+                  1.928853,
+                  41.803869
+                ],
+                [
+                  1.922751,
+                  41.806137
+                ],
+                [
+                  1.916169,
+                  41.807943
+                ],
+                [
+                  1.909219,
+                  41.809255
+                ],
+                [
+                  1.902021,
+                  41.810051
+                ],
+                [
+                  1.894698,
+                  41.810318
+                ],
+                [
+                  1.887375,
+                  41.810051
+                ],
+                [
+                  1.880177,
+                  41.809255
+                ],
+                [
+                  1.873227,
+                  41.807943
+                ],
+                [
+                  1.866645,
+                  41.806137
+                ],
+                [
+                  1.860543,
+                  41.803869
+                ],
+                [
+                  1.855026,
+                  41.801177
+                ],
+                [
+                  1.850187,
+                  41.798108
+                ],
+                [
+                  1.846109,
+                  41.794713
+                ],
+                [
+                  1.842863,
+                  41.791052
+                ],
+                [
+                  1.840504,
+                  41.787186
+                ],
+                [
+                  1.839073,
+                  41.783182
+                ],
+                [
+                  1.838593,
+                  41.779108
+                ],
+                [
+                  1.839073,
+                  41.775034
+                ],
+                [
+                  1.840504,
+                  41.77103
+                ],
+                [
+                  1.842863,
+                  41.767164
+                ],
+                [
+                  1.846109,
+                  41.763503
+                ],
+                [
+                  1.850187,
+                  41.760108
+                ],
+                [
+                  1.855026,
+                  41.757039
+                ],
+                [
+                  1.860543,
+                  41.754347
+                ],
+                [
+                  1.866645,
+                  41.752079
+                ],
+                [
+                  1.873227,
+                  41.750273
+                ],
+                [
+                  1.880177,
+                  41.748961
+                ],
+                [
+                  1.887375,
+                  41.748165
+                ],
+                [
+                  1.894698,
+                  41.747898
+                ],
+                [
+                  1.902021,
+                  41.748165
+                ],
+                [
+                  1.909219,
+                  41.748961
+                ],
+                [
+                  1.916169,
+                  41.750273
+                ],
+                [
+                  1.922751,
+                  41.752079
+                ],
+                [
+                  1.928853,
+                  41.754347
+                ],
+                [
+                  1.93437,
+                  41.757039
+                ],
+                [
+                  1.939209,
+                  41.760108
+                ],
+                [
+                  1.943287,
+                  41.763503
+                ],
+                [
+                  1.946533,
+                  41.767164
+                ],
+                [
+                  1.948892,
+                  41.77103
+                ],
+                [
+                  1.950323,
+                  41.775034
+                ],
+                [
+                  1.950803,
+                  41.779108
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 3,
+            "elapsed_seconds": 10800,
+            "burn_probability": 0.2
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.932352,
+                  41.783478
+                ],
+                [
+                  1.932083,
+                  41.785759
+                ],
+                [
+                  1.931282,
+                  41.788002
+                ],
+                [
+                  1.92996,
+                  41.790166
+                ],
+                [
+                  1.928143,
+                  41.792217
+                ],
+                [
+                  1.925859,
+                  41.794118
+                ],
+                [
+                  1.923149,
+                  41.795837
+                ],
+                [
+                  1.920059,
+                  41.797344
+                ],
+                [
+                  1.916642,
+                  41.798614
+                ],
+                [
+                  1.912955,
+                  41.799625
+                ],
+                [
+                  1.909063,
+                  41.80036
+                ],
+                [
+                  1.905032,
+                  41.800806
+                ],
+                [
+                  1.900931,
+                  41.800956
+                ],
+                [
+                  1.89683,
+                  41.800806
+                ],
+                [
+                  1.892799,
+                  41.80036
+                ],
+                [
+                  1.888907,
+                  41.799625
+                ],
+                [
+                  1.88522,
+                  41.798614
+                ],
+                [
+                  1.881803,
+                  41.797344
+                ],
+                [
+                  1.878713,
+                  41.795837
+                ],
+                [
+                  1.876003,
+                  41.794118
+                ],
+                [
+                  1.873719,
+                  41.792217
+                ],
+                [
+                  1.871902,
+                  41.790166
+                ],
+                [
+                  1.87058,
+                  41.788002
+                ],
+                [
+                  1.869779,
+                  41.785759
+                ],
+                [
+                  1.86951,
+                  41.783478
+                ],
+                [
+                  1.869779,
+                  41.781197
+                ],
+                [
+                  1.87058,
+                  41.778954
+                ],
+                [
+                  1.871902,
+                  41.77679
+                ],
+                [
+                  1.873719,
+                  41.774739
+                ],
+                [
+                  1.876003,
+                  41.772838
+                ],
+                [
+                  1.878713,
+                  41.771119
+                ],
+                [
+                  1.881803,
+                  41.769612
+                ],
+                [
+                  1.88522,
+                  41.768342
+                ],
+                [
+                  1.888907,
+                  41.767331
+                ],
+                [
+                  1.892799,
+                  41.766596
+                ],
+                [
+                  1.89683,
+                  41.76615
+                ],
+                [
+                  1.900931,
+                  41.766
+                ],
+                [
+                  1.905032,
+                  41.76615
+                ],
+                [
+                  1.909063,
+                  41.766596
+                ],
+                [
+                  1.912955,
+                  41.767331
+                ],
+                [
+                  1.916642,
+                  41.768342
+                ],
+                [
+                  1.920059,
+                  41.769612
+                ],
+                [
+                  1.923149,
+                  41.771119
+                ],
+                [
+                  1.925859,
+                  41.772838
+                ],
+                [
+                  1.928143,
+                  41.774739
+                ],
+                [
+                  1.92996,
+                  41.77679
+                ],
+                [
+                  1.931282,
+                  41.778954
+                ],
+                [
+                  1.932083,
+                  41.781197
+                ],
+                [
+                  1.932352,
+                  41.783478
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 4,
+            "elapsed_seconds": 14400,
+            "burn_probability": 0.9
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.944322,
+                  41.783478
+                ],
+                [
+                  1.943951,
+                  41.786628
+                ],
+                [
+                  1.942844,
+                  41.789725
+                ],
+                [
+                  1.941019,
+                  41.792714
+                ],
+                [
+                  1.938509,
+                  41.795546
+                ],
+                [
+                  1.935355,
+                  41.798171
+                ],
+                [
+                  1.931613,
+                  41.800545
+                ],
+                [
+                  1.927346,
+                  41.802626
+                ],
+                [
+                  1.922627,
+                  41.80438
+                ],
+                [
+                  1.917536,
+                  41.805777
+                ],
+                [
+                  1.912161,
+                  41.806792
+                ],
+                [
+                  1.906595,
+                  41.807408
+                ],
+                [
+                  1.900931,
+                  41.807614
+                ],
+                [
+                  1.895267,
+                  41.807408
+                ],
+                [
+                  1.889701,
+                  41.806792
+                ],
+                [
+                  1.884326,
+                  41.805777
+                ],
+                [
+                  1.879235,
+                  41.80438
+                ],
+                [
+                  1.874516,
+                  41.802626
+                ],
+                [
+                  1.870249,
+                  41.800545
+                ],
+                [
+                  1.866507,
+                  41.798171
+                ],
+                [
+                  1.863353,
+                  41.795546
+                ],
+                [
+                  1.860843,
+                  41.792714
+                ],
+                [
+                  1.859018,
+                  41.789725
+                ],
+                [
+                  1.857911,
+                  41.786628
+                ],
+                [
+                  1.85754,
+                  41.783478
+                ],
+                [
+                  1.857911,
+                  41.780328
+                ],
+                [
+                  1.859018,
+                  41.777231
+                ],
+                [
+                  1.860843,
+                  41.774242
+                ],
+                [
+                  1.863353,
+                  41.77141
+                ],
+                [
+                  1.866507,
+                  41.768785
+                ],
+                [
+                  1.870249,
+                  41.766411
+                ],
+                [
+                  1.874516,
+                  41.76433
+                ],
+                [
+                  1.879235,
+                  41.762576
+                ],
+                [
+                  1.884326,
+                  41.761179
+                ],
+                [
+                  1.889701,
+                  41.760164
+                ],
+                [
+                  1.895267,
+                  41.759548
+                ],
+                [
+                  1.900931,
+                  41.759342
+                ],
+                [
+                  1.906595,
+                  41.759548
+                ],
+                [
+                  1.912161,
+                  41.760164
+                ],
+                [
+                  1.917536,
+                  41.761179
+                ],
+                [
+                  1.922627,
+                  41.762576
+                ],
+                [
+                  1.927346,
+                  41.76433
+                ],
+                [
+                  1.931613,
+                  41.766411
+                ],
+                [
+                  1.935355,
+                  41.768785
+                ],
+                [
+                  1.938509,
+                  41.77141
+                ],
+                [
+                  1.941019,
+                  41.774242
+                ],
+                [
+                  1.942844,
+                  41.777231
+                ],
+                [
+                  1.943951,
+                  41.780328
+                ],
+                [
+                  1.944322,
+                  41.783478
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 4,
+            "elapsed_seconds": 14400,
+            "burn_probability": 0.7
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.956292,
+                  41.783478
+                ],
+                [
+                  1.955818,
+                  41.787497
+                ],
+                [
+                  1.954406,
+                  41.791448
+                ],
+                [
+                  1.952078,
+                  41.795262
+                ],
+                [
+                  1.948875,
+                  41.798875
+                ],
+                [
+                  1.944852,
+                  41.802224
+                ],
+                [
+                  1.940077,
+                  41.805253
+                ],
+                [
+                  1.934633,
+                  41.807909
+                ],
+                [
+                  1.928612,
+                  41.810147
+                ],
+                [
+                  1.922117,
+                  41.811928
+                ],
+                [
+                  1.91526,
+                  41.813223
+                ],
+                [
+                  1.908157,
+                  41.814009
+                ],
+                [
+                  1.900931,
+                  41.814272
+                ],
+                [
+                  1.893705,
+                  41.814009
+                ],
+                [
+                  1.886602,
+                  41.813223
+                ],
+                [
+                  1.879745,
+                  41.811928
+                ],
+                [
+                  1.87325,
+                  41.810147
+                ],
+                [
+                  1.867229,
+                  41.807909
+                ],
+                [
+                  1.861785,
+                  41.805253
+                ],
+                [
+                  1.85701,
+                  41.802224
+                ],
+                [
+                  1.852987,
+                  41.798875
+                ],
+                [
+                  1.849784,
+                  41.795262
+                ],
+                [
+                  1.847456,
+                  41.791448
+                ],
+                [
+                  1.846044,
+                  41.787497
+                ],
+                [
+                  1.84557,
+                  41.783478
+                ],
+                [
+                  1.846044,
+                  41.779459
+                ],
+                [
+                  1.847456,
+                  41.775508
+                ],
+                [
+                  1.849784,
+                  41.771694
+                ],
+                [
+                  1.852987,
+                  41.768081
+                ],
+                [
+                  1.85701,
+                  41.764732
+                ],
+                [
+                  1.861785,
+                  41.761703
+                ],
+                [
+                  1.867229,
+                  41.759047
+                ],
+                [
+                  1.87325,
+                  41.756809
+                ],
+                [
+                  1.879745,
+                  41.755028
+                ],
+                [
+                  1.886602,
+                  41.753733
+                ],
+                [
+                  1.893705,
+                  41.752947
+                ],
+                [
+                  1.900931,
+                  41.752684
+                ],
+                [
+                  1.908157,
+                  41.752947
+                ],
+                [
+                  1.91526,
+                  41.753733
+                ],
+                [
+                  1.922117,
+                  41.755028
+                ],
+                [
+                  1.928612,
+                  41.756809
+                ],
+                [
+                  1.934633,
+                  41.759047
+                ],
+                [
+                  1.940077,
+                  41.761703
+                ],
+                [
+                  1.944852,
+                  41.764732
+                ],
+                [
+                  1.948875,
+                  41.768081
+                ],
+                [
+                  1.952078,
+                  41.771694
+                ],
+                [
+                  1.954406,
+                  41.775508
+                ],
+                [
+                  1.955818,
+                  41.779459
+                ],
+                [
+                  1.956292,
+                  41.783478
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 4,
+            "elapsed_seconds": 14400,
+            "burn_probability": 0.5
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.968262,
+                  41.783478
+                ],
+                [
+                  1.967686,
+                  41.788367
+                ],
+                [
+                  1.965968,
+                  41.793171
+                ],
+                [
+                  1.963137,
+                  41.79781
+                ],
+                [
+                  1.959241,
+                  41.802204
+                ],
+                [
+                  1.954348,
+                  41.806278
+                ],
+                [
+                  1.948541,
+                  41.809961
+                ],
+                [
+                  1.94192,
+                  41.813191
+                ],
+                [
+                  1.934597,
+                  41.815913
+                ],
+                [
+                  1.926697,
+                  41.81808
+                ],
+                [
+                  1.918358,
+                  41.819654
+                ],
+                [
+                  1.909719,
+                  41.82061
+                ],
+                [
+                  1.900931,
+                  41.820931
+                ],
+                [
+                  1.892143,
+                  41.82061
+                ],
+                [
+                  1.883504,
+                  41.819654
+                ],
+                [
+                  1.875165,
+                  41.81808
+                ],
+                [
+                  1.867265,
+                  41.815913
+                ],
+                [
+                  1.859942,
+                  41.813191
+                ],
+                [
+                  1.853321,
+                  41.809961
+                ],
+                [
+                  1.847514,
+                  41.806278
+                ],
+                [
+                  1.842621,
+                  41.802204
+                ],
+                [
+                  1.838725,
+                  41.79781
+                ],
+                [
+                  1.835894,
+                  41.793171
+                ],
+                [
+                  1.834176,
+                  41.788367
+                ],
+                [
+                  1.8336,
+                  41.783478
+                ],
+                [
+                  1.834176,
+                  41.778589
+                ],
+                [
+                  1.835894,
+                  41.773785
+                ],
+                [
+                  1.838725,
+                  41.769146
+                ],
+                [
+                  1.842621,
+                  41.764752
+                ],
+                [
+                  1.847514,
+                  41.760678
+                ],
+                [
+                  1.853321,
+                  41.756995
+                ],
+                [
+                  1.859942,
+                  41.753765
+                ],
+                [
+                  1.867265,
+                  41.751043
+                ],
+                [
+                  1.875165,
+                  41.748876
+                ],
+                [
+                  1.883504,
+                  41.747302
+                ],
+                [
+                  1.892143,
+                  41.746346
+                ],
+                [
+                  1.900931,
+                  41.746025
+                ],
+                [
+                  1.909719,
+                  41.746346
+                ],
+                [
+                  1.918358,
+                  41.747302
+                ],
+                [
+                  1.926697,
+                  41.748876
+                ],
+                [
+                  1.934597,
+                  41.751043
+                ],
+                [
+                  1.94192,
+                  41.753765
+                ],
+                [
+                  1.948541,
+                  41.756995
+                ],
+                [
+                  1.954348,
+                  41.760678
+                ],
+                [
+                  1.959241,
+                  41.764752
+                ],
+                [
+                  1.963137,
+                  41.769146
+                ],
+                [
+                  1.965968,
+                  41.773785
+                ],
+                [
+                  1.967686,
+                  41.778589
+                ],
+                [
+                  1.968262,
+                  41.783478
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 4,
+            "elapsed_seconds": 14400,
+            "burn_probability": 0.3
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.975743,
+                  41.783478
+                ],
+                [
+                  1.975103,
+                  41.78891
+                ],
+                [
+                  1.973194,
+                  41.794248
+                ],
+                [
+                  1.970049,
+                  41.799403
+                ],
+                [
+                  1.96572,
+                  41.804285
+                ],
+                [
+                  1.960284,
+                  41.808811
+                ],
+                [
+                  1.953831,
+                  41.812903
+                ],
+                [
+                  1.946474,
+                  41.816493
+                ],
+                [
+                  1.938337,
+                  41.819517
+                ],
+                [
+                  1.92956,
+                  41.821924
+                ],
+                [
+                  1.920294,
+                  41.823674
+                ],
+                [
+                  1.910696,
+                  41.824736
+                ],
+                [
+                  1.900931,
+                  41.825092
+                ],
+                [
+                  1.891166,
+                  41.824736
+                ],
+                [
+                  1.881568,
+                  41.823674
+                ],
+                [
+                  1.872302,
+                  41.821924
+                ],
+                [
+                  1.863525,
+                  41.819517
+                ],
+                [
+                  1.855388,
+                  41.816493
+                ],
+                [
+                  1.848031,
+                  41.812903
+                ],
+                [
+                  1.841578,
+                  41.808811
+                ],
+                [
+                  1.836142,
+                  41.804285
+                ],
+                [
+                  1.831813,
+                  41.799403
+                ],
+                [
+                  1.828668,
+                  41.794248
+                ],
+                [
+                  1.826759,
+                  41.78891
+                ],
+                [
+                  1.826119,
+                  41.783478
+                ],
+                [
+                  1.826759,
+                  41.778046
+                ],
+                [
+                  1.828668,
+                  41.772708
+                ],
+                [
+                  1.831813,
+                  41.767553
+                ],
+                [
+                  1.836142,
+                  41.762671
+                ],
+                [
+                  1.841578,
+                  41.758145
+                ],
+                [
+                  1.848031,
+                  41.754053
+                ],
+                [
+                  1.855388,
+                  41.750463
+                ],
+                [
+                  1.863525,
+                  41.747439
+                ],
+                [
+                  1.872302,
+                  41.745032
+                ],
+                [
+                  1.881568,
+                  41.743282
+                ],
+                [
+                  1.891166,
+                  41.74222
+                ],
+                [
+                  1.900931,
+                  41.741864
+                ],
+                [
+                  1.910696,
+                  41.74222
+                ],
+                [
+                  1.920294,
+                  41.743282
+                ],
+                [
+                  1.92956,
+                  41.745032
+                ],
+                [
+                  1.938337,
+                  41.747439
+                ],
+                [
+                  1.946474,
+                  41.750463
+                ],
+                [
+                  1.953831,
+                  41.754053
+                ],
+                [
+                  1.960284,
+                  41.758145
+                ],
+                [
+                  1.96572,
+                  41.762671
+                ],
+                [
+                  1.970049,
+                  41.767553
+                ],
+                [
+                  1.973194,
+                  41.772708
+                ],
+                [
+                  1.975103,
+                  41.778046
+                ],
+                [
+                  1.975743,
+                  41.783478
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 4,
+            "elapsed_seconds": 14400,
+            "burn_probability": 0.2
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.946442,
+                  41.787847
+                ],
+                [
+                  1.946106,
+                  41.790699
+                ],
+                [
+                  1.945104,
+                  41.793501
+                ],
+                [
+                  1.943452,
+                  41.796208
+                ],
+                [
+                  1.94118,
+                  41.798771
+                ],
+                [
+                  1.938325,
+                  41.801147
+                ],
+                [
+                  1.934938,
+                  41.803295
+                ],
+                [
+                  1.931075,
+                  41.80518
+                ],
+                [
+                  1.926803,
+                  41.806767
+                ],
+                [
+                  1.922194,
+                  41.808031
+                ],
+                [
+                  1.917329,
+                  41.80895
+                ],
+                [
+                  1.91229,
+                  41.809507
+                ],
+                [
+                  1.907163,
+                  41.809694
+                ],
+                [
+                  1.902036,
+                  41.809507
+                ],
+                [
+                  1.896997,
+                  41.80895
+                ],
+                [
+                  1.892132,
+                  41.808031
+                ],
+                [
+                  1.887523,
+                  41.806767
+                ],
+                [
+                  1.883251,
+                  41.80518
+                ],
+                [
+                  1.879388,
+                  41.803295
+                ],
+                [
+                  1.876001,
+                  41.801147
+                ],
+                [
+                  1.873146,
+                  41.798771
+                ],
+                [
+                  1.870874,
+                  41.796208
+                ],
+                [
+                  1.869222,
+                  41.793501
+                ],
+                [
+                  1.86822,
+                  41.790699
+                ],
+                [
+                  1.867884,
+                  41.787847
+                ],
+                [
+                  1.86822,
+                  41.784995
+                ],
+                [
+                  1.869222,
+                  41.782193
+                ],
+                [
+                  1.870874,
+                  41.779486
+                ],
+                [
+                  1.873146,
+                  41.776923
+                ],
+                [
+                  1.876001,
+                  41.774547
+                ],
+                [
+                  1.879388,
+                  41.772399
+                ],
+                [
+                  1.883251,
+                  41.770514
+                ],
+                [
+                  1.887523,
+                  41.768927
+                ],
+                [
+                  1.892132,
+                  41.767663
+                ],
+                [
+                  1.896997,
+                  41.766744
+                ],
+                [
+                  1.902036,
+                  41.766187
+                ],
+                [
+                  1.907163,
+                  41.766
+                ],
+                [
+                  1.91229,
+                  41.766187
+                ],
+                [
+                  1.917329,
+                  41.766744
+                ],
+                [
+                  1.922194,
+                  41.767663
+                ],
+                [
+                  1.926803,
+                  41.768927
+                ],
+                [
+                  1.931075,
+                  41.770514
+                ],
+                [
+                  1.934938,
+                  41.772399
+                ],
+                [
+                  1.938325,
+                  41.774547
+                ],
+                [
+                  1.94118,
+                  41.776923
+                ],
+                [
+                  1.943452,
+                  41.779486
+                ],
+                [
+                  1.945104,
+                  41.782193
+                ],
+                [
+                  1.946106,
+                  41.784995
+                ],
+                [
+                  1.946442,
+                  41.787847
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 5,
+            "elapsed_seconds": 18000,
+            "burn_probability": 0.9
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.961406,
+                  41.787847
+                ],
+                [
+                  1.960942,
+                  41.791785
+                ],
+                [
+                  1.959557,
+                  41.795656
+                ],
+                [
+                  1.957277,
+                  41.799393
+                ],
+                [
+                  1.954138,
+                  41.802932
+                ],
+                [
+                  1.950197,
+                  41.806213
+                ],
+                [
+                  1.945518,
+                  41.80918
+                ],
+                [
+                  1.940184,
+                  41.811783
+                ],
+                [
+                  1.934284,
+                  41.813975
+                ],
+                [
+                  1.927921,
+                  41.815721
+                ],
+                [
+                  1.921202,
+                  41.816989
+                ],
+                [
+                  1.914243,
+                  41.817759
+                ],
+                [
+                  1.907163,
+                  41.818017
+                ],
+                [
+                  1.900083,
+                  41.817759
+                ],
+                [
+                  1.893124,
+                  41.816989
+                ],
+                [
+                  1.886405,
+                  41.815721
+                ],
+                [
+                  1.880042,
+                  41.813975
+                ],
+                [
+                  1.874142,
+                  41.811783
+                ],
+                [
+                  1.868808,
+                  41.80918
+                ],
+                [
+                  1.864129,
+                  41.806213
+                ],
+                [
+                  1.860188,
+                  41.802932
+                ],
+                [
+                  1.857049,
+                  41.799393
+                ],
+                [
+                  1.854769,
+                  41.795656
+                ],
+                [
+                  1.853384,
+                  41.791785
+                ],
+                [
+                  1.85292,
+                  41.787847
+                ],
+                [
+                  1.853384,
+                  41.783909
+                ],
+                [
+                  1.854769,
+                  41.780038
+                ],
+                [
+                  1.857049,
+                  41.776301
+                ],
+                [
+                  1.860188,
+                  41.772762
+                ],
+                [
+                  1.864129,
+                  41.769481
+                ],
+                [
+                  1.868808,
+                  41.766514
+                ],
+                [
+                  1.874142,
+                  41.763911
+                ],
+                [
+                  1.880042,
+                  41.761719
+                ],
+                [
+                  1.886405,
+                  41.759973
+                ],
+                [
+                  1.893124,
+                  41.758705
+                ],
+                [
+                  1.900083,
+                  41.757935
+                ],
+                [
+                  1.907163,
+                  41.757677
+                ],
+                [
+                  1.914243,
+                  41.757935
+                ],
+                [
+                  1.921202,
+                  41.758705
+                ],
+                [
+                  1.927921,
+                  41.759973
+                ],
+                [
+                  1.934284,
+                  41.761719
+                ],
+                [
+                  1.940184,
+                  41.763911
+                ],
+                [
+                  1.945518,
+                  41.766514
+                ],
+                [
+                  1.950197,
+                  41.769481
+                ],
+                [
+                  1.954138,
+                  41.772762
+                ],
+                [
+                  1.957277,
+                  41.776301
+                ],
+                [
+                  1.959557,
+                  41.780038
+                ],
+                [
+                  1.960942,
+                  41.783909
+                ],
+                [
+                  1.961406,
+                  41.787847
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 5,
+            "elapsed_seconds": 18000,
+            "burn_probability": 0.7
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.976369,
+                  41.787847
+                ],
+                [
+                  1.975777,
+                  41.792871
+                ],
+                [
+                  1.974011,
+                  41.79781
+                ],
+                [
+                  1.971101,
+                  41.802578
+                ],
+                [
+                  1.967097,
+                  41.807093
+                ],
+                [
+                  1.962068,
+                  41.81128
+                ],
+                [
+                  1.956099,
+                  41.815066
+                ],
+                [
+                  1.949293,
+                  41.818385
+                ],
+                [
+                  1.941766,
+                  41.821183
+                ],
+                [
+                  1.933647,
+                  41.82341
+                ],
+                [
+                  1.925075,
+                  41.825028
+                ],
+                [
+                  1.916196,
+                  41.826011
+                ],
+                [
+                  1.907163,
+                  41.82634
+                ],
+                [
+                  1.89813,
+                  41.826011
+                ],
+                [
+                  1.889251,
+                  41.825028
+                ],
+                [
+                  1.880679,
+                  41.82341
+                ],
+                [
+                  1.87256,
+                  41.821183
+                ],
+                [
+                  1.865033,
+                  41.818385
+                ],
+                [
+                  1.858227,
+                  41.815066
+                ],
+                [
+                  1.852258,
+                  41.81128
+                ],
+                [
+                  1.847229,
+                  41.807093
+                ],
+                [
+                  1.843225,
+                  41.802578
+                ],
+                [
+                  1.840315,
+                  41.79781
+                ],
+                [
+                  1.838549,
+                  41.792871
+                ],
+                [
+                  1.837957,
+                  41.787847
+                ],
+                [
+                  1.838549,
+                  41.782823
+                ],
+                [
+                  1.840315,
+                  41.777884
+                ],
+                [
+                  1.843225,
+                  41.773116
+                ],
+                [
+                  1.847229,
+                  41.768601
+                ],
+                [
+                  1.852258,
+                  41.764414
+                ],
+                [
+                  1.858227,
+                  41.760628
+                ],
+                [
+                  1.865033,
+                  41.757309
+                ],
+                [
+                  1.87256,
+                  41.754511
+                ],
+                [
+                  1.880679,
+                  41.752284
+                ],
+                [
+                  1.889251,
+                  41.750666
+                ],
+                [
+                  1.89813,
+                  41.749683
+                ],
+                [
+                  1.907163,
+                  41.749354
+                ],
+                [
+                  1.916196,
+                  41.749683
+                ],
+                [
+                  1.925075,
+                  41.750666
+                ],
+                [
+                  1.933647,
+                  41.752284
+                ],
+                [
+                  1.941766,
+                  41.754511
+                ],
+                [
+                  1.949293,
+                  41.757309
+                ],
+                [
+                  1.956099,
+                  41.760628
+                ],
+                [
+                  1.962068,
+                  41.764414
+                ],
+                [
+                  1.967097,
+                  41.768601
+                ],
+                [
+                  1.971101,
+                  41.773116
+                ],
+                [
+                  1.974011,
+                  41.777884
+                ],
+                [
+                  1.975777,
+                  41.782823
+                ],
+                [
+                  1.976369,
+                  41.787847
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 5,
+            "elapsed_seconds": 18000,
+            "burn_probability": 0.5
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.991333,
+                  41.787847
+                ],
+                [
+                  1.990612,
+                  41.793958
+                ],
+                [
+                  1.988465,
+                  41.799964
+                ],
+                [
+                  1.984926,
+                  41.805763
+                ],
+                [
+                  1.980056,
+                  41.811255
+                ],
+                [
+                  1.973939,
+                  41.816347
+                ],
+                [
+                  1.96668,
+                  41.820951
+                ],
+                [
+                  1.958402,
+                  41.824988
+                ],
+                [
+                  1.949248,
+                  41.828391
+                ],
+                [
+                  1.939373,
+                  41.831099
+                ],
+                [
+                  1.928948,
+                  41.833067
+                ],
+                [
+                  1.918149,
+                  41.834262
+                ],
+                [
+                  1.907163,
+                  41.834663
+                ],
+                [
+                  1.896177,
+                  41.834262
+                ],
+                [
+                  1.885378,
+                  41.833067
+                ],
+                [
+                  1.874953,
+                  41.831099
+                ],
+                [
+                  1.865078,
+                  41.828391
+                ],
+                [
+                  1.855924,
+                  41.824988
+                ],
+                [
+                  1.847646,
+                  41.820951
+                ],
+                [
+                  1.840387,
+                  41.816347
+                ],
+                [
+                  1.83427,
+                  41.811255
+                ],
+                [
+                  1.8294,
+                  41.805763
+                ],
+                [
+                  1.825861,
+                  41.799964
+                ],
+                [
+                  1.823714,
+                  41.793958
+                ],
+                [
+                  1.822993,
+                  41.787847
+                ],
+                [
+                  1.823714,
+                  41.781736
+                ],
+                [
+                  1.825861,
+                  41.77573
+                ],
+                [
+                  1.8294,
+                  41.769931
+                ],
+                [
+                  1.83427,
+                  41.764439
+                ],
+                [
+                  1.840387,
+                  41.759347
+                ],
+                [
+                  1.847646,
+                  41.754743
+                ],
+                [
+                  1.855924,
+                  41.750706
+                ],
+                [
+                  1.865078,
+                  41.747303
+                ],
+                [
+                  1.874953,
+                  41.744595
+                ],
+                [
+                  1.885378,
+                  41.742627
+                ],
+                [
+                  1.896177,
+                  41.741432
+                ],
+                [
+                  1.907163,
+                  41.741031
+                ],
+                [
+                  1.918149,
+                  41.741432
+                ],
+                [
+                  1.928948,
+                  41.742627
+                ],
+                [
+                  1.939373,
+                  41.744595
+                ],
+                [
+                  1.949248,
+                  41.747303
+                ],
+                [
+                  1.958402,
+                  41.750706
+                ],
+                [
+                  1.96668,
+                  41.754743
+                ],
+                [
+                  1.973939,
+                  41.759347
+                ],
+                [
+                  1.980056,
+                  41.764439
+                ],
+                [
+                  1.984926,
+                  41.769931
+                ],
+                [
+                  1.988465,
+                  41.77573
+                ],
+                [
+                  1.990612,
+                  41.781736
+                ],
+                [
+                  1.991333,
+                  41.787847
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 5,
+            "elapsed_seconds": 18000,
+            "burn_probability": 0.3
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  2.000685,
+                  41.787847
+                ],
+                [
+                  1.999885,
+                  41.794637
+                ],
+                [
+                  1.997498,
+                  41.80131
+                ],
+                [
+                  1.993566,
+                  41.807753
+                ],
+                [
+                  1.988155,
+                  41.813856
+                ],
+                [
+                  1.981359,
+                  41.819513
+                ],
+                [
+                  1.973293,
+                  41.824629
+                ],
+                [
+                  1.964095,
+                  41.829115
+                ],
+                [
+                  1.953924,
+                  41.832895
+                ],
+                [
+                  1.942952,
+                  41.835905
+                ],
+                [
+                  1.931368,
+                  41.838092
+                ],
+                [
+                  1.91937,
+                  41.839419
+                ],
+                [
+                  1.907163,
+                  41.839864
+                ],
+                [
+                  1.894956,
+                  41.839419
+                ],
+                [
+                  1.882958,
+                  41.838092
+                ],
+                [
+                  1.871374,
+                  41.835905
+                ],
+                [
+                  1.860402,
+                  41.832895
+                ],
+                [
+                  1.850231,
+                  41.829115
+                ],
+                [
+                  1.841033,
+                  41.824629
+                ],
+                [
+                  1.832967,
+                  41.819513
+                ],
+                [
+                  1.826171,
+                  41.813856
+                ],
+                [
+                  1.82076,
+                  41.807753
+                ],
+                [
+                  1.816828,
+                  41.80131
+                ],
+                [
+                  1.814441,
+                  41.794637
+                ],
+                [
+                  1.813641,
+                  41.787847
+                ],
+                [
+                  1.814441,
+                  41.781057
+                ],
+                [
+                  1.816828,
+                  41.774384
+                ],
+                [
+                  1.82076,
+                  41.767941
+                ],
+                [
+                  1.826171,
+                  41.761838
+                ],
+                [
+                  1.832967,
+                  41.756181
+                ],
+                [
+                  1.841033,
+                  41.751065
+                ],
+                [
+                  1.850231,
+                  41.746579
+                ],
+                [
+                  1.860402,
+                  41.742799
+                ],
+                [
+                  1.871374,
+                  41.739789
+                ],
+                [
+                  1.882958,
+                  41.737602
+                ],
+                [
+                  1.894956,
+                  41.736275
+                ],
+                [
+                  1.907163,
+                  41.73583
+                ],
+                [
+                  1.91937,
+                  41.736275
+                ],
+                [
+                  1.931368,
+                  41.737602
+                ],
+                [
+                  1.942952,
+                  41.739789
+                ],
+                [
+                  1.953924,
+                  41.742799
+                ],
+                [
+                  1.964095,
+                  41.746579
+                ],
+                [
+                  1.973293,
+                  41.751065
+                ],
+                [
+                  1.981359,
+                  41.756181
+                ],
+                [
+                  1.988155,
+                  41.761838
+                ],
+                [
+                  1.993566,
+                  41.767941
+                ],
+                [
+                  1.997498,
+                  41.774384
+                ],
+                [
+                  1.999885,
+                  41.781057
+                ],
+                [
+                  2.000685,
+                  41.787847
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 5,
+            "elapsed_seconds": 18000,
+            "burn_probability": 0.2
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.960534,
+                  41.792217
+                ],
+                [
+                  1.960131,
+                  41.795639
+                ],
+                [
+                  1.958928,
+                  41.799002
+                ],
+                [
+                  1.956946,
+                  41.80225
+                ],
+                [
+                  1.954219,
+                  41.805325
+                ],
+                [
+                  1.950793,
+                  41.808177
+                ],
+                [
+                  1.946728,
+                  41.810755
+                ],
+                [
+                  1.942092,
+                  41.813016
+                ],
+                [
+                  1.936965,
+                  41.814921
+                ],
+                [
+                  1.931435,
+                  41.816438
+                ],
+                [
+                  1.925596,
+                  41.81754
+                ],
+                [
+                  1.919549,
+                  41.818209
+                ],
+                [
+                  1.913396,
+                  41.818434
+                ],
+                [
+                  1.907243,
+                  41.818209
+                ],
+                [
+                  1.901196,
+                  41.81754
+                ],
+                [
+                  1.895357,
+                  41.816438
+                ],
+                [
+                  1.889827,
+                  41.814921
+                ],
+                [
+                  1.8847,
+                  41.813016
+                ],
+                [
+                  1.880064,
+                  41.810755
+                ],
+                [
+                  1.875999,
+                  41.808177
+                ],
+                [
+                  1.872573,
+                  41.805325
+                ],
+                [
+                  1.869846,
+                  41.80225
+                ],
+                [
+                  1.867864,
+                  41.799002
+                ],
+                [
+                  1.866661,
+                  41.795639
+                ],
+                [
+                  1.866258,
+                  41.792217
+                ],
+                [
+                  1.866661,
+                  41.788795
+                ],
+                [
+                  1.867864,
+                  41.785432
+                ],
+                [
+                  1.869846,
+                  41.782184
+                ],
+                [
+                  1.872573,
+                  41.779109
+                ],
+                [
+                  1.875999,
+                  41.776257
+                ],
+                [
+                  1.880064,
+                  41.773679
+                ],
+                [
+                  1.8847,
+                  41.771418
+                ],
+                [
+                  1.889827,
+                  41.769513
+                ],
+                [
+                  1.895357,
+                  41.767996
+                ],
+                [
+                  1.901196,
+                  41.766894
+                ],
+                [
+                  1.907243,
+                  41.766225
+                ],
+                [
+                  1.913396,
+                  41.766
+                ],
+                [
+                  1.919549,
+                  41.766225
+                ],
+                [
+                  1.925596,
+                  41.766894
+                ],
+                [
+                  1.931435,
+                  41.767996
+                ],
+                [
+                  1.936965,
+                  41.769513
+                ],
+                [
+                  1.942092,
+                  41.771418
+                ],
+                [
+                  1.946728,
+                  41.773679
+                ],
+                [
+                  1.950793,
+                  41.776257
+                ],
+                [
+                  1.954219,
+                  41.779109
+                ],
+                [
+                  1.956946,
+                  41.782184
+                ],
+                [
+                  1.958928,
+                  41.785432
+                ],
+                [
+                  1.960131,
+                  41.788795
+                ],
+                [
+                  1.960534,
+                  41.792217
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 6,
+            "elapsed_seconds": 21600,
+            "burn_probability": 0.9
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.978492,
+                  41.792217
+                ],
+                [
+                  1.977935,
+                  41.796943
+                ],
+                [
+                  1.976273,
+                  41.801587
+                ],
+                [
+                  1.973536,
+                  41.806072
+                ],
+                [
+                  1.96977,
+                  41.810319
+                ],
+                [
+                  1.96504,
+                  41.814257
+                ],
+                [
+                  1.959425,
+                  41.817817
+                ],
+                [
+                  1.953024,
+                  41.82094
+                ],
+                [
+                  1.945944,
+                  41.823571
+                ],
+                [
+                  1.938307,
+                  41.825665
+                ],
+                [
+                  1.930244,
+                  41.827187
+                ],
+                [
+                  1.921893,
+                  41.828111
+                ],
+                [
+                  1.913396,
+                  41.828421
+                ],
+                [
+                  1.904899,
+                  41.828111
+                ],
+                [
+                  1.896548,
+                  41.827187
+                ],
+                [
+                  1.888485,
+                  41.825665
+                ],
+                [
+                  1.880848,
+                  41.823571
+                ],
+                [
+                  1.873768,
+                  41.82094
+                ],
+                [
+                  1.867367,
+                  41.817817
+                ],
+                [
+                  1.861752,
+                  41.814257
+                ],
+                [
+                  1.857022,
+                  41.810319
+                ],
+                [
+                  1.853256,
+                  41.806072
+                ],
+                [
+                  1.850519,
+                  41.801587
+                ],
+                [
+                  1.848857,
+                  41.796943
+                ],
+                [
+                  1.8483,
+                  41.792217
+                ],
+                [
+                  1.848857,
+                  41.787491
+                ],
+                [
+                  1.850519,
+                  41.782847
+                ],
+                [
+                  1.853256,
+                  41.778362
+                ],
+                [
+                  1.857022,
+                  41.774115
+                ],
+                [
+                  1.861752,
+                  41.770177
+                ],
+                [
+                  1.867367,
+                  41.766617
+                ],
+                [
+                  1.873768,
+                  41.763494
+                ],
+                [
+                  1.880848,
+                  41.760863
+                ],
+                [
+                  1.888485,
+                  41.758769
+                ],
+                [
+                  1.896548,
+                  41.757247
+                ],
+                [
+                  1.904899,
+                  41.756323
+                ],
+                [
+                  1.913396,
+                  41.756013
+                ],
+                [
+                  1.921893,
+                  41.756323
+                ],
+                [
+                  1.930244,
+                  41.757247
+                ],
+                [
+                  1.938307,
+                  41.758769
+                ],
+                [
+                  1.945944,
+                  41.760863
+                ],
+                [
+                  1.953024,
+                  41.763494
+                ],
+                [
+                  1.959425,
+                  41.766617
+                ],
+                [
+                  1.96504,
+                  41.770177
+                ],
+                [
+                  1.96977,
+                  41.774115
+                ],
+                [
+                  1.973536,
+                  41.778362
+                ],
+                [
+                  1.976273,
+                  41.782847
+                ],
+                [
+                  1.977935,
+                  41.787491
+                ],
+                [
+                  1.978492,
+                  41.792217
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 6,
+            "elapsed_seconds": 21600,
+            "burn_probability": 0.7
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  1.996449,
+                  41.792217
+                ],
+                [
+                  1.995738,
+                  41.798246
+                ],
+                [
+                  1.993619,
+                  41.804172
+                ],
+                [
+                  1.990127,
+                  41.809894
+                ],
+                [
+                  1.985322,
+                  41.815313
+                ],
+                [
+                  1.979286,
+                  41.820337
+                ],
+                [
+                  1.972123,
+                  41.824879
+                ],
+                [
+                  1.963955,
+                  41.828863
+                ],
+                [
+                  1.954922,
+                  41.83222
+                ],
+                [
+                  1.945179,
+                  41.834892
+                ],
+                [
+                  1.934892,
+                  41.836834
+                ],
+                [
+                  1.924237,
+                  41.838013
+                ],
+                [
+                  1.913396,
+                  41.838408
+                ],
+                [
+                  1.902555,
+                  41.838013
+                ],
+                [
+                  1.8919,
+                  41.836834
+                ],
+                [
+                  1.881613,
+                  41.834892
+                ],
+                [
+                  1.87187,
+                  41.83222
+                ],
+                [
+                  1.862837,
+                  41.828863
+                ],
+                [
+                  1.854669,
+                  41.824879
+                ],
+                [
+                  1.847506,
+                  41.820337
+                ],
+                [
+                  1.84147,
+                  41.815313
+                ],
+                [
+                  1.836665,
+                  41.809894
+                ],
+                [
+                  1.833173,
+                  41.804172
+                ],
+                [
+                  1.831054,
+                  41.798246
+                ],
+                [
+                  1.830343,
+                  41.792217
+                ],
+                [
+                  1.831054,
+                  41.786188
+                ],
+                [
+                  1.833173,
+                  41.780262
+                ],
+                [
+                  1.836665,
+                  41.77454
+                ],
+                [
+                  1.84147,
+                  41.769121
+                ],
+                [
+                  1.847506,
+                  41.764097
+                ],
+                [
+                  1.854669,
+                  41.759555
+                ],
+                [
+                  1.862837,
+                  41.755571
+                ],
+                [
+                  1.87187,
+                  41.752214
+                ],
+                [
+                  1.881613,
+                  41.749542
+                ],
+                [
+                  1.8919,
+                  41.7476
+                ],
+                [
+                  1.902555,
+                  41.746421
+                ],
+                [
+                  1.913396,
+                  41.746026
+                ],
+                [
+                  1.924237,
+                  41.746421
+                ],
+                [
+                  1.934892,
+                  41.7476
+                ],
+                [
+                  1.945179,
+                  41.749542
+                ],
+                [
+                  1.954922,
+                  41.752214
+                ],
+                [
+                  1.963955,
+                  41.755571
+                ],
+                [
+                  1.972123,
+                  41.759555
+                ],
+                [
+                  1.979286,
+                  41.764097
+                ],
+                [
+                  1.985322,
+                  41.769121
+                ],
+                [
+                  1.990127,
+                  41.77454
+                ],
+                [
+                  1.993619,
+                  41.780262
+                ],
+                [
+                  1.995738,
+                  41.786188
+                ],
+                [
+                  1.996449,
+                  41.792217
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 6,
+            "elapsed_seconds": 21600,
+            "burn_probability": 0.5
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  2.014406,
+                  41.792217
+                ],
+                [
+                  2.013542,
+                  41.79955
+                ],
+                [
+                  2.010964,
+                  41.806757
+                ],
+                [
+                  2.006717,
+                  41.813716
+                ],
+                [
+                  2.000874,
+                  41.820306
+                ],
+                [
+                  1.993533,
+                  41.826416
+                ],
+                [
+                  1.984821,
+                  41.831941
+                ],
+                [
+                  1.974887,
+                  41.836787
+                ],
+                [
+                  1.963901,
+                  41.840869
+                ],
+                [
+                  1.952051,
+                  41.844119
+                ],
+                [
+                  1.939539,
+                  41.846482
+                ],
+                [
+                  1.92658,
+                  41.847915
+                ],
+                [
+                  1.913396,
+                  41.848396
+                ],
+                [
+                  1.900212,
+                  41.847915
+                ],
+                [
+                  1.887253,
+                  41.846482
+                ],
+                [
+                  1.874741,
+                  41.844119
+                ],
+                [
+                  1.862891,
+                  41.840869
+                ],
+                [
+                  1.851905,
+                  41.836787
+                ],
+                [
+                  1.841971,
+                  41.831941
+                ],
+                [
+                  1.833259,
+                  41.826416
+                ],
+                [
+                  1.825918,
+                  41.820306
+                ],
+                [
+                  1.820075,
+                  41.813716
+                ],
+                [
+                  1.815828,
+                  41.806757
+                ],
+                [
+                  1.81325,
+                  41.79955
+                ],
+                [
+                  1.812386,
+                  41.792217
+                ],
+                [
+                  1.81325,
+                  41.784884
+                ],
+                [
+                  1.815828,
+                  41.777677
+                ],
+                [
+                  1.820075,
+                  41.770718
+                ],
+                [
+                  1.825918,
+                  41.764128
+                ],
+                [
+                  1.833259,
+                  41.758018
+                ],
+                [
+                  1.841971,
+                  41.752493
+                ],
+                [
+                  1.851905,
+                  41.747647
+                ],
+                [
+                  1.862891,
+                  41.743565
+                ],
+                [
+                  1.874741,
+                  41.740315
+                ],
+                [
+                  1.887253,
+                  41.737952
+                ],
+                [
+                  1.900212,
+                  41.736519
+                ],
+                [
+                  1.913396,
+                  41.736038
+                ],
+                [
+                  1.92658,
+                  41.736519
+                ],
+                [
+                  1.939539,
+                  41.737952
+                ],
+                [
+                  1.952051,
+                  41.740315
+                ],
+                [
+                  1.963901,
+                  41.743565
+                ],
+                [
+                  1.974887,
+                  41.747647
+                ],
+                [
+                  1.984821,
+                  41.752493
+                ],
+                [
+                  1.993533,
+                  41.758018
+                ],
+                [
+                  2.000874,
+                  41.764128
+                ],
+                [
+                  2.006717,
+                  41.770718
+                ],
+                [
+                  2.010964,
+                  41.777677
+                ],
+                [
+                  2.013542,
+                  41.784884
+                ],
+                [
+                  2.014406,
+                  41.792217
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 6,
+            "elapsed_seconds": 21600,
+            "burn_probability": 0.3
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  2.02563,
+                  41.792217
+                ],
+                [
+                  2.02467,
+                  41.800365
+                ],
+                [
+                  2.021805,
+                  41.808373
+                ],
+                [
+                  2.017086,
+                  41.816104
+                ],
+                [
+                  2.010593,
+                  41.823427
+                ],
+                [
+                  2.002437,
+                  41.830216
+                ],
+                [
+                  1.992757,
+                  41.836355
+                ],
+                [
+                  1.98172,
+                  41.841739
+                ],
+                [
+                  1.969513,
+                  41.846275
+                ],
+                [
+                  1.956346,
+                  41.849886
+                ],
+                [
+                  1.942444,
+                  41.852511
+                ],
+                [
+                  1.928045,
+                  41.854104
+                ],
+                [
+                  1.913396,
+                  41.854638
+                ],
+                [
+                  1.898747,
+                  41.854104
+                ],
+                [
+                  1.884348,
+                  41.852511
+                ],
+                [
+                  1.870446,
+                  41.849886
+                ],
+                [
+                  1.857279,
+                  41.846275
+                ],
+                [
+                  1.845072,
+                  41.841739
+                ],
+                [
+                  1.834035,
+                  41.836355
+                ],
+                [
+                  1.824355,
+                  41.830216
+                ],
+                [
+                  1.816199,
+                  41.823427
+                ],
+                [
+                  1.809706,
+                  41.816104
+                ],
+                [
+                  1.804987,
+                  41.808373
+                ],
+                [
+                  1.802122,
+                  41.800365
+                ],
+                [
+                  1.801162,
+                  41.792217
+                ],
+                [
+                  1.802122,
+                  41.784069
+                ],
+                [
+                  1.804987,
+                  41.776061
+                ],
+                [
+                  1.809706,
+                  41.76833
+                ],
+                [
+                  1.816199,
+                  41.761007
+                ],
+                [
+                  1.824355,
+                  41.754218
+                ],
+                [
+                  1.834035,
+                  41.748079
+                ],
+                [
+                  1.845072,
+                  41.742695
+                ],
+                [
+                  1.857279,
+                  41.738159
+                ],
+                [
+                  1.870446,
+                  41.734548
+                ],
+                [
+                  1.884348,
+                  41.731923
+                ],
+                [
+                  1.898747,
+                  41.73033
+                ],
+                [
+                  1.913396,
+                  41.729796
+                ],
+                [
+                  1.928045,
+                  41.73033
+                ],
+                [
+                  1.942444,
+                  41.731923
+                ],
+                [
+                  1.956346,
+                  41.734548
+                ],
+                [
+                  1.969513,
+                  41.738159
+                ],
+                [
+                  1.98172,
+                  41.742695
+                ],
+                [
+                  1.992757,
+                  41.748079
+                ],
+                [
+                  2.002437,
+                  41.754218
+                ],
+                [
+                  2.010593,
+                  41.761007
+                ],
+                [
+                  2.017086,
+                  41.76833
+                ],
+                [
+                  2.021805,
+                  41.776061
+                ],
+                [
+                  2.02467,
+                  41.784069
+                ],
+                [
+                  2.02563,
+                  41.792217
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "hour": 6,
+            "elapsed_seconds": 21600,
+            "burn_probability": 0.2
+          }
+        }
+      ]
+    }
+  },
+  "exposure": {
+    "summary": {
+      "asset_count": 9,
+      "people_estimate": 1247,
+      "population_resident": 4820,
+      "total_value_eur": 59625000,
+      "critical_assets": 7,
+      "hazardous_assets": 1,
+      "livestock_units": 340,
+      "coverage_regime": "synthetic demo bundle — not Talaia output"
+    },
+    "bands": [],
+    "assets": [
+      {
+        "id": "demo-care-1",
+        "category": "social_care",
+        "subcategory": "care_home",
+        "name": "Residència Sant Andreu",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            1.894066,
+            41.778213
+          ]
+        },
+        "capacity": {
+          "places": 64,
+          "people": 64,
+          "basis": "registered places",
+          "confidence": 0.7
+        },
+        "contacts": {
+          "phone": [
+            "+34938000000"
+          ],
+          "email": [],
+          "operator": null
+        },
+        "valuation": {
+          "total_eur": 3280000,
+          "method": "default_footprint",
+          "confidence": 0.3,
+          "assumptions": [
+            "class-default footprint",
+            "regional cost index 1.0"
+          ]
+        },
+        "vulnerability": 70,
+        "criticality": 90,
+        "hazardous": false,
+        "response_asset": false,
+        "human_bearing": true,
+        "exposure": {
+          "band": "t+2h",
+          "band_minutes": 120,
+          "inside_aoi": true,
+          "priority_score": 60
+        },
+        "provenance": [
+          {
+            "source_id": "demo.synthetic",
+            "source_ref": "demo-care-1"
+          }
+        ]
+      },
+      {
+        "id": "demo-school-1",
+        "category": "education",
+        "subcategory": "primary_school",
+        "name": "Escola Monsenyor Gibert",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            1.907314,
+            41.784998
+          ]
+        },
+        "capacity": {
+          "places": 312,
+          "people": 312,
+          "basis": "enrolment",
+          "confidence": 0.7
+        },
+        "contacts": {
+          "phone": [
+            "+34938000000"
+          ],
+          "email": [],
+          "operator": null
+        },
+        "valuation": {
+          "total_eur": 14440000,
+          "method": "default_footprint",
+          "confidence": 0.3,
+          "assumptions": [
+            "class-default footprint",
+            "regional cost index 1.0"
+          ]
+        },
+        "vulnerability": 70,
+        "criticality": 90,
+        "hazardous": false,
+        "response_asset": false,
+        "human_bearing": true,
+        "exposure": {
+          "band": "t+3h",
+          "band_minutes": 180,
+          "inside_aoi": true,
+          "priority_score": 60
+        },
+        "provenance": [
+          {
+            "source_id": "demo.synthetic",
+            "source_ref": "demo-school-1"
+          }
+        ]
+      },
+      {
+        "id": "demo-farm-1",
+        "category": "livestock",
+        "subcategory": "livestock_farm",
+        "name": "Mas del Grau",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            1.886839,
+            41.775951
+          ]
+        },
+        "capacity": {
+          "places": 340,
+          "people": 2,
+          "basis": "REGA capacity",
+          "confidence": 0.6,
+          "livestock_units": 340,
+          "species": [
+            {
+              "species": "sheep",
+              "count": 300
+            },
+            {
+              "species": "goat",
+              "count": 40
+            }
+          ]
+        },
+        "contacts": {
+          "phone": [
+            "+34938000000"
+          ],
+          "email": [],
+          "operator": null
+        },
+        "valuation": {
+          "total_eur": 400000,
+          "method": "default_footprint",
+          "confidence": 0.3,
+          "assumptions": [
+            "class-default footprint",
+            "regional cost index 1.0"
+          ]
+        },
+        "vulnerability": 70,
+        "criticality": 55,
+        "hazardous": false,
+        "response_asset": false,
+        "human_bearing": true,
+        "exposure": {
+          "band": "t+2h",
+          "band_minutes": 120,
+          "inside_aoi": true,
+          "priority_score": 60
+        },
+        "provenance": [
+          {
+            "source_id": "demo.synthetic",
+            "source_ref": "demo-farm-1"
+          }
+        ]
+      },
+      {
+        "id": "demo-camp-1",
+        "category": "tourism",
+        "subcategory": "campsite",
+        "name": "Càmping El Solell",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            1.926584,
+            41.780474
+          ]
+        },
+        "capacity": {
+          "places": 180,
+          "people": 180,
+          "basis": "pitches × 3",
+          "confidence": 0.7
+        },
+        "contacts": {
+          "phone": [
+            "+34938000000"
+          ],
+          "email": [],
+          "operator": null
+        },
+        "valuation": {
+          "total_eur": 8500000,
+          "method": "default_footprint",
+          "confidence": 0.3,
+          "assumptions": [
+            "class-default footprint",
+            "regional cost index 1.0"
+          ]
+        },
+        "vulnerability": 70,
+        "criticality": 90,
+        "hazardous": false,
+        "response_asset": false,
+        "human_bearing": true,
+        "exposure": {
+          "band": "t+4h",
+          "band_minutes": 240,
+          "inside_aoi": true,
+          "priority_score": 60
+        },
+        "provenance": [
+          {
+            "source_id": "demo.synthetic",
+            "source_ref": "demo-camp-1"
+          }
+        ]
+      },
+      {
+        "id": "demo-cap-1",
+        "category": "healthcare",
+        "subcategory": "primary_care",
+        "name": "CAP Sant Fruitós",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            1.943445,
+            41.807614
+          ]
+        },
+        "capacity": {
+          "places": 40,
+          "people": 40,
+          "basis": "registered",
+          "confidence": 0.7
+        },
+        "contacts": {
+          "phone": [
+            "+34938000000"
+          ],
+          "email": [],
+          "operator": null
+        },
+        "valuation": {
+          "total_eur": 2200000,
+          "method": "default_footprint",
+          "confidence": 0.3,
+          "assumptions": [
+            "class-default footprint",
+            "regional cost index 1.0"
+          ]
+        },
+        "vulnerability": 70,
+        "criticality": 95,
+        "hazardous": false,
+        "response_asset": true,
+        "human_bearing": true,
+        "exposure": {
+          "band": "t+5h",
+          "band_minutes": 300,
+          "inside_aoi": true,
+          "priority_score": 60
+        },
+        "provenance": [
+          {
+            "source_id": "demo.synthetic",
+            "source_ref": "demo-cap-1"
+          }
+        ]
+      },
+      {
+        "id": "demo-school-2",
+        "category": "education",
+        "subcategory": "secondary_school",
+        "name": "Institut Gallifa",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            1.979577,
+            41.823898
+          ]
+        },
+        "capacity": {
+          "places": 540,
+          "people": 540,
+          "basis": "enrolment",
+          "confidence": 0.7
+        },
+        "contacts": {
+          "phone": [
+            "+34938000000"
+          ],
+          "email": [],
+          "operator": null
+        },
+        "valuation": {
+          "total_eur": 24700000,
+          "method": "default_footprint",
+          "confidence": 0.3,
+          "assumptions": [
+            "class-default footprint",
+            "regional cost index 1.0"
+          ]
+        },
+        "vulnerability": 70,
+        "criticality": 90,
+        "hazardous": false,
+        "response_asset": false,
+        "human_bearing": true,
+        "exposure": {
+          "band": "t+6h",
+          "band_minutes": 360,
+          "inside_aoi": true,
+          "priority_score": 60
+        },
+        "provenance": [
+          {
+            "source_id": "demo.synthetic",
+            "source_ref": "demo-school-2"
+          }
+        ]
+      },
+      {
+        "id": "demo-care-2",
+        "category": "social_care",
+        "subcategory": "care_home",
+        "name": "Residència El Roure",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            2.014503,
+            41.840181
+          ]
+        },
+        "capacity": {
+          "places": 48,
+          "people": 48,
+          "basis": "registered places",
+          "confidence": 0.7
+        },
+        "contacts": {
+          "phone": [
+            "+34938000000"
+          ],
+          "email": [],
+          "operator": null
+        },
+        "valuation": {
+          "total_eur": 2560000,
+          "method": "default_footprint",
+          "confidence": 0.3,
+          "assumptions": [
+            "class-default footprint",
+            "regional cost index 1.0"
+          ]
+        },
+        "vulnerability": 70,
+        "criticality": 90,
+        "hazardous": false,
+        "response_asset": false,
+        "human_bearing": true,
+        "exposure": {
+          "band": "t+6h",
+          "band_minutes": 360,
+          "inside_aoi": true,
+          "priority_score": 60
+        },
+        "provenance": [
+          {
+            "source_id": "demo.synthetic",
+            "source_ref": "demo-care-2"
+          }
+        ]
+      },
+      {
+        "id": "demo-fuel-1",
+        "category": "industry",
+        "subcategory": "fuel_station",
+        "name": "Estació de servei C-16",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            1.889248,
+            41.774142
+          ]
+        },
+        "capacity": {
+          "places": 3,
+          "people": 3,
+          "basis": "staff",
+          "confidence": 0.7
+        },
+        "contacts": {
+          "phone": [
+            "+34938000000"
+          ],
+          "email": [],
+          "operator": null
+        },
+        "valuation": {
+          "total_eur": 535000,
+          "method": "default_footprint",
+          "confidence": 0.3,
+          "assumptions": [
+            "class-default footprint",
+            "regional cost index 1.0"
+          ]
+        },
+        "vulnerability": 90,
+        "criticality": 60,
+        "hazardous": true,
+        "response_asset": false,
+        "human_bearing": false,
+        "exposure": {
+          "band": "t+1h",
+          "band_minutes": 60,
+          "inside_aoi": true,
+          "priority_score": 60
+        },
+        "provenance": [
+          {
+            "source_id": "demo.synthetic",
+            "source_ref": "demo-fuel-1"
+          }
+        ]
+      },
+      {
+        "id": "demo-nursery-1",
+        "category": "education",
+        "subcategory": "nursery",
+        "name": "Llar d'infants Els Pinetons",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            1.900088,
+            41.781379
+          ]
+        },
+        "capacity": {
+          "places": 58,
+          "people": 58,
+          "basis": "places",
+          "confidence": 0.7
+        },
+        "contacts": {
+          "phone": [
+            "+34938000000"
+          ],
+          "email": [],
+          "operator": null
+        },
+        "valuation": {
+          "total_eur": 3010000,
+          "method": "default_footprint",
+          "confidence": 0.3,
+          "assumptions": [
+            "class-default footprint",
+            "regional cost index 1.0"
+          ]
+        },
+        "vulnerability": 70,
+        "criticality": 95,
+        "hazardous": false,
+        "response_asset": false,
+        "human_bearing": true,
+        "exposure": {
+          "band": "t+3h",
+          "band_minutes": 180,
+          "inside_aoi": true,
+          "priority_score": 60
+        },
+        "provenance": [
+          {
+            "source_id": "demo.synthetic",
+            "source_ref": "demo-nursery-1"
+          }
+        ]
+      }
+    ],
+    "warnings": [
+      "This exposure is a synthetic demo fixture, not a Talaia response. Set TALAIA_API_KEY to query real registries."
+    ],
+    "population": {
+      "total": 4820,
+      "cell_count": 6,
+      "peak_density_per_km2": 1900,
+      "cells": []
+    }
+  }
+}

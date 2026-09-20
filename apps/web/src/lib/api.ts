@@ -1,0 +1,277 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  ExposureReport,
+  Incident,
+  RankedSite,
+  RankingDiff,
+  SiteStatus,
+  TimelineEvent,
+} from "@arca/core";
+
+/**
+ * The agent service, from the browser.
+ *
+ * One fetch for the whole screen and one event stream to know when to fetch
+ * again. The alternative — a request per panel — lets the map show one ranking
+ * version while the list shows another, which during an incident is worse than
+ * a slightly slower refresh.
+ */
+
+export const AGENT_URL = (process.env.NEXT_PUBLIC_AGENT_URL ?? "http://localhost:4000").replace(/\/$/, "");
+
+export interface SpreadView {
+  id: string;
+  status: string;
+  simulationId: string | null;
+  bands: GeoJSON.FeatureCollection | null;
+  frames: SpreadFrameView[] | null;
+  windSpeedMs: number | null;
+  windDirectionDeg: number | null;
+  burnedAreaM2: number | null;
+  ensembleMembers: number | null;
+  errorMessage: string | null;
+  synthetic: boolean;
+}
+
+export interface SpreadFrameView {
+  hour: number;
+  minutes: number;
+  contours: Array<{ probability: number; geometry: GeoJSON.MultiPolygon; areaM2: number }>;
+  cumulativeAreaM2: number;
+  expectedAreaM2: number;
+}
+
+export interface HotspotView {
+  id: string;
+  position: [number, number];
+  observedAt: string;
+  source: string;
+  confidence: string;
+  fireRadiativePowerMw: number | null;
+  flags: string[];
+  reason: string | null;
+  staticSourceName: string | null;
+  usable: boolean;
+}
+
+export interface CallView {
+  id: string;
+  siteId: string;
+  status: string;
+  mode: string;
+  phoneMasked: string;
+  webSessionUrl?: string | null;
+  transcript?: string | null;
+  error?: string | null;
+  dispatchedAt: string;
+}
+
+export interface IncidentDetail {
+  incident: Incident;
+  hotspots: HotspotView[];
+  spread: SpreadView | null;
+  exposure: Pick<ExposureReport, "summary" | "bands" | "population" | "warnings"> & {
+    degraded?: unknown;
+  } | null;
+  sites: RankedSite[];
+  calls: CallView[];
+  timeline: TimelineEvent[];
+  diffs: Array<RankingDiff & { at: string }>;
+}
+
+export interface IncidentSummary extends Incident {
+  counts: { ranked: number; evacuateNow: number; shelterCandidates: number; people: number };
+}
+
+function opsHeaders(): HeadersInit {
+  const token = typeof window === "undefined" ? "" : window.localStorage.getItem("arca:ops-token");
+  return {
+    "content-type": "application/json",
+    ...(token ? { "x-ops-token": token } : {}),
+  };
+}
+
+async function get<T>(path: string): Promise<T> {
+  const response = await fetch(`${AGENT_URL}${path}`, { headers: opsHeaders(), cache: "no-store" });
+  if (!response.ok) throw new Error(`${response.status} ${await response.text().catch(() => "")}`);
+  return (await response.json()) as T;
+}
+
+async function post<T>(path: string, body?: unknown): Promise<T> {
+  const response = await fetch(`${AGENT_URL}${path}`, {
+    method: "POST",
+    headers: opsHeaders(),
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!response.ok) throw new Error(`${response.status} ${await response.text().catch(() => "")}`);
+  return (await response.json()) as T;
+}
+
+export const api = {
+  health: () => get<{ status: string; capabilities: Record<string, boolean>; storage: string }>("/api/health"),
+  incidents: () => get<{ incidents: IncidentSummary[] }>("/api/incidents"),
+  incident: (id: string) => get<IncidentDetail>(`/api/incidents/${id}`),
+  replayBundles: () => get<{ bundles: string[] }>("/api/replay"),
+  startReplay: (name: string, asOf?: string) =>
+    post<{ incidentId: string }>(`/api/replay/${name}${asOf ? `?asOf=${encodeURIComponent(asOf)}` : ""}`),
+  refresh: (id: string, force = false) => post<unknown>(`/api/incidents/${id}/refresh?force=${force}`),
+  tick: () => post<unknown>("/api/watch/tick"),
+  decide: (
+    id: string,
+    body: { kind: "approve_call" | "deny" | "set_status" | "note"; assetId?: string; status?: SiteStatus; actor?: string; note?: string },
+  ) => post<{ ok: boolean; message?: string }>(`/api/incidents/${id}/decisions`, body),
+  transcript: (id: string, assetId: string, transcript: string) =>
+    post<{ summary: string; reranked: boolean }>(`/api/incidents/${id}/transcript`, { assetId, transcript }),
+  chat: (message: string, history: Array<{ role: "user" | "assistant"; content: string }>) =>
+    post<{ text: string; toolsUsed: string[] }>("/api/chat", { message, history }),
+};
+
+/** Poll-free refresh: the stream says when something changed, then we refetch. */
+export function useIncident(incidentId: string | null) {
+  const [data, setData] = useState<IncidentDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [live, setLive] = useState(false);
+  const pending = useRef(false);
+
+  const load = useCallback(async () => {
+    if (!incidentId || pending.current) return;
+    pending.current = true;
+    try {
+      const detail = await api.incident(incidentId);
+      setData(detail);
+      setError(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      pending.current = false;
+      setLoading(false);
+    }
+  }, [incidentId]);
+
+  useEffect(() => {
+    if (!incidentId) {
+      setData(null);
+      return;
+    }
+    setLoading(true);
+    void load();
+  }, [incidentId, load]);
+
+  useEffect(() => {
+    if (!incidentId) return;
+    const token = typeof window === "undefined" ? "" : window.localStorage.getItem("arca:ops-token");
+    const url = `${AGENT_URL}/api/events?incident=${encodeURIComponent(incidentId)}${token ? `&token=${encodeURIComponent(token)}` : ""}`;
+    const source = new EventSource(url);
+
+    // Any of these means the payload we are holding is stale. Coalesced by the
+    // pending guard, so a burst of events costs one refetch, not twenty.
+    const refresh = () => void load();
+    source.addEventListener("timeline", refresh);
+    source.addEventListener("ranking", refresh);
+    source.addEventListener("call", refresh);
+    source.addEventListener("incident", refresh);
+    source.addEventListener("ready", () => setLive(true));
+    source.onerror = () => setLive(false);
+
+    return () => {
+      source.close();
+      setLive(false);
+    };
+  }, [incidentId, load]);
+
+  return { data, error, loading, live, reload: load };
+}
+
+export function useIncidentList(pollMs = 20_000) {
+  const [incidents, setIncidents] = useState<IncidentSummary[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const result = await api.incidents();
+      setIncidents(result.incidents);
+      setError(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const timer = setInterval(() => void load(), pollMs);
+    return () => clearInterval(timer);
+  }, [load, pollMs]);
+
+  return { incidents, error, reload: load };
+}
+
+/**
+ * Count a number up when it changes.
+ *
+ * Used only for the impact figures. A number that lands instantly reads as a
+ * new fact; a number that counts reads as a consequence unfolding, which is
+ * what the scrubber is showing. Respects reduced-motion by jumping.
+ */
+export function useCountUp(target: number, durationMs = 650): number {
+  const [value, setValue] = useState(target);
+  const fromRef = useRef(target);
+  const frameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced || Math.abs(target - fromRef.current) < 1) {
+      fromRef.current = target;
+      setValue(target);
+      return;
+    }
+
+    const from = fromRef.current;
+    const startedAt = performance.now();
+
+    const step = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / durationMs);
+      // Ease-out cubic: fast enough to feel responsive, settled enough to read.
+      const eased = 1 - (1 - progress) ** 3;
+      setValue(from + (target - from) * eased);
+      if (progress < 1) frameRef.current = requestAnimationFrame(step);
+      else fromRef.current = target;
+    };
+
+    frameRef.current = requestAnimationFrame(step);
+    return () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      fromRef.current = target;
+    };
+  }, [target, durationMs]);
+
+  return value;
+}
+
+/** Sites reachable by a given hour, for the scrubber's impact figures. */
+export function useExposureByHour(sites: RankedSite[], hour: number | null) {
+  return useMemo(() => {
+    const within =
+      hour === null
+        ? sites
+        : sites.filter(
+            (site) => site.arrivalMinutes !== null && site.arrivalMinutes <= hour * 60,
+          );
+
+    return {
+      sites: within,
+      count: within.length,
+      people: within.reduce((sum, site) => sum + site.peopleEstimate, 0),
+      livestock: within.reduce((sum, site) => sum + (site.livestockUnits ?? 0), 0),
+      value: within.reduce((sum, site) => sum + (site.valueEur ?? 0), 0),
+      critical: within.filter((site) => (site.priorityScore ?? 0) >= 70).length,
+      hazardous: within.filter((site) => site.hazardous).length,
+      evacuate: within.filter((site) => site.action === "EVACUATE_NOW").length,
+      shelter: within.filter((site) => site.action === "SHELTER_CANDIDATE").length,
+    };
+  }, [sites, hour]);
+}

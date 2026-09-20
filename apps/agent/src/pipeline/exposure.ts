@@ -33,7 +33,18 @@ export interface RankOutcome {
 }
 
 export class ExposureService {
-  constructor(private readonly ctx: Context) {}
+  /**
+   * `offlineExposure` supplies a bundled exposure report for replay incidents.
+   *
+   * Without it, replay only works when Talaia is reachable — which would make
+   * the one feature that exists to survive a missing upstream depend on an
+   * upstream. A replay bundle carries its own exposure so the whole pipeline
+   * runs on a laptop with no credentials at all.
+   */
+  constructor(
+    private readonly ctx: Context,
+    private readonly offlineExposure?: (incident: Incident) => Promise<ExposureReport | null>,
+  ) {}
 
   async rankIncident(
     incident: Incident,
@@ -41,14 +52,26 @@ export class ExposureService {
     simulation: Simulation | null,
     options: { spreadRunId?: string | null; reason?: string } = {},
   ): Promise<RankOutcome> {
-    if (!this.ctx.talaia) {
-      return { exposure: null, ranking: null, version: 0, degraded: "Talaia is not configured." };
-    }
     if (bands.features.length === 0) {
       return { exposure: null, ranking: null, version: 0, degraded: "No arrival bands to query." };
     }
 
     let exposure: ExposureReport;
+
+    if (!this.ctx.talaia) {
+      const bundled = await this.offlineExposure?.(incident).catch(() => null);
+      if (!bundled) {
+        return { exposure: null, ranking: null, version: 0, degraded: "Talaia is not configured." };
+      }
+      await this.ctx.timeline(
+        incident.id,
+        "exposure_degraded",
+        "Talaia is not configured. Using the exposure bundled with this replay, which is fixture data rather than a live registry query.",
+      );
+      exposure = { ...bundled, degraded: { mode: "fixture", reason: "Talaia not configured.", name: incident.name } };
+      return this.rankFrom(incident, exposure, simulation, options, "fixture");
+    }
+
     try {
       exposure = await this.ctx.talaia.exposure(
         {
@@ -72,9 +95,20 @@ export class ExposureService {
       return { exposure: null, ranking: null, version: 0, degraded: message };
     }
 
-    const degradedMode = exposure.degraded?.mode ?? "full";
-    if (degradedMode !== "full") {
-      const reason = "reason" in (exposure.degraded ?? {}) ? (exposure.degraded as { reason: string }).reason : "";
+    return this.rankFrom(incident, exposure, simulation, options, exposure.degraded?.mode ?? "full");
+  }
+
+  /** Rank an exposure report, whatever produced it. */
+  private async rankFrom(
+    incident: Incident,
+    exposure: ExposureReport,
+    simulation: Simulation | null,
+    options: { spreadRunId?: string | null; reason?: string },
+    degradedMode: string,
+  ): Promise<RankOutcome> {
+    if (degradedMode !== "full" && degradedMode !== "fixture") {
+      const reason =
+        "reason" in (exposure.degraded ?? {}) ? (exposure.degraded as { reason: string }).reason : "";
       await this.ctx.timeline(
         incident.id,
         "exposure_degraded",

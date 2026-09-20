@@ -48,9 +48,10 @@ export class IncidentService {
   constructor(
     private readonly ctx: Context,
     private readonly notify?: (incident: Incident, text: string, ranking: RankingResult | null) => Promise<void>,
+    offlineExposure?: (incident: Incident) => Promise<import("@arca/core").ExposureReport | null>,
   ) {
     this.spread = new SpreadService(ctx);
-    this.exposure = new ExposureService(ctx);
+    this.exposure = new ExposureService(ctx, offlineExposure);
     this.voice = new VoiceService(ctx);
     this.extraction = new ExtractionService(ctx);
   }
