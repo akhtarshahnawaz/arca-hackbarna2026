@@ -387,6 +387,19 @@ pnpm --filter @arca/agent slng:create-agent
 
 The Railway route below is for doing it without a terminal.
 
+Three of SLNG's constraints are not obvious from their errors, and the script
+now defaults to values that satisfy all three:
+
+| | Value | Why |
+|---|---|---|
+| `SLNG_REGION` | `eu-west` | **No model is served in `eu-central`.** An agent created there is refused at voice selection |
+| `SLNG_LLM_MODEL` | `bedrock-mantle/nvidia.nemotron-super-3-120b:latest` | Agent model ids are a different namespace from the transcription API; a wrong one gives "not available for agents" |
+| `SLNG_TTS_VOICE` | `3f065d66…` (Carmen) | **The voice must match `language`.** The ids in SLNG's own API examples are English, and a Spanish agent refuses them |
+
+Spanish voices: [docs.slng.ai/models/voices/fish-audio](https://docs.slng.ai/models/voices/fish-audio).
+Models: [docs.slng.ai/models/catalog/all-models](https://docs.slng.ai/models/catalog/all-models).
+Override any of them with the environment variable named above.
+
 **Borrow the Pre-deploy slot.** It runs exactly once per deployment, its output
 lands in the deploy log, and nothing lingers afterwards.
 
@@ -445,6 +458,17 @@ SLNG agent.** If you take this route, delete the service the moment you have the
 id.
 
 </details>
+
+### Testing it without dialling anyone
+
+`POST /v1/agents/{id}/web-sessions` opens a browser voice session with the same
+agent and script, which is what every approval falls back to while
+`CALL_ALLOWLIST` is empty.
+
+One thing to know: SLNG returns a **LiveKit room and a token**, not a URL a
+person can open. ARCA records both and says so rather than claiming a session
+is open with nothing to click. To actually hear it, use the **Test agent** panel
+in the SLNG dashboard.
 
 ## 9. Outbound calls, last
 

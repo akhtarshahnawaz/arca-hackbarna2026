@@ -84,6 +84,14 @@ export interface CallRecord {
   status: "dispatched" | "ringing" | "answered" | "completed" | "failed" | "web_session";
   mode: "phone" | "web";
   webSessionUrl?: string | null;
+  /**
+   * The LiveKit room SLNG opens for a browser session.
+   *
+   * Stored rather than discarded because it is the only handle on a session
+   * that has no joinable URL — without it the record says a session exists and
+   * gives no way to find it.
+   */
+  room?: { url: string; token: string; name: string | null } | null;
   transcript?: string | null;
   extracted?: SiteReport | null;
   extractionModel?: string | null;

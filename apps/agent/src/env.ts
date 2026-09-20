@@ -67,7 +67,9 @@ export const env = {
     agentsUrl: str("SLNG_AGENTS_URL", "https://api.agents.slng.ai"),
     mediaUrl: str("SLNG_MEDIA_URL", "https://eu-west.api.slng.ai"),
     agentId: str("SLNG_AGENT_ID"),
-    region: str("SLNG_REGION", "eu-central"),
+    // eu-west, not eu-central: no SLNG model is served in eu-central, so an
+    // agent created there is refused at the voice-selection step.
+    region: str("SLNG_REGION", "eu-west"),
   },
 
   telegram: {

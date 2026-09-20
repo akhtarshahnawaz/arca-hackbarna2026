@@ -43,11 +43,24 @@ interface SlngCallResponse {
   message?: string;
 }
 
+/**
+ * What SLNG actually returns for a browser session.
+ *
+ * Not a URL a person can open: a LiveKit room plus a token for it. An earlier
+ * version looked for `url` / `session_url` / `room_url`, found none of them,
+ * and reported a session was open with nothing to click — which is the failure
+ * this fallback exists to prevent, reproduced one level down.
+ */
 interface SlngWebSessionResponse {
+  call_id?: string;
+  room_name?: string;
+  livekit_url?: string;
+  livekit_token?: string;
+  max_session_seconds?: string | number;
+  /** Kept in case a hosted joining page is added later. */
   url?: string;
   session_url?: string;
   room_url?: string;
-  token?: string;
   [key: string]: unknown;
 }
 
@@ -212,25 +225,40 @@ export class VoiceService {
       );
 
       const url = response.url ?? response.session_url ?? response.room_url ?? null;
+      const room = response.livekit_url && response.livekit_token
+        ? { url: response.livekit_url, token: response.livekit_token, name: response.room_name ?? null }
+        : null;
+
       const call: CallRecord = {
         ...base,
         status: "web_session",
         mode: "web",
+        providerCallId: response.call_id ?? null,
         webSessionUrl: url,
+        room,
         error: reason,
       };
       await this.ctx.store.saveCall(call);
+
+      // Say which of the two happened. "A session is open" with no way in is
+      // worse than saying plainly that it needs the SLNG dashboard.
+      const howToJoin = url
+        ? `Open it here: ${url}`
+        : room
+          ? "Join it from the SLNG dashboard's Test agent panel; the room is live for five minutes."
+          : "SLNG returned no way to join it.";
+
       await this.ctx.timeline(
         input.incidentId,
         "call_dispatched",
-        `${reason} Opened a browser voice session for ${input.site.name} instead.`,
-        { actor: input.approvedBy, data: { callId: base.id, url } },
+        `${reason} Opened a browser voice session for ${input.site.name} instead. ${howToJoin}`,
+        { actor: input.approvedBy, data: { callId: base.id, url, room: room?.name ?? null } },
       );
       bus.publish({ type: "call", incidentId: input.incidentId, callId: base.id, status: "web_session" });
       return {
         call,
         mode: "web",
-        message: `${reason} A browser voice session is open instead${url ? `: ${url}` : ""}.`,
+        message: `${reason} A browser voice session is open instead. ${howToJoin}`,
       };
     } catch (error) {
       return this.failed(base, `${reason} A browser session could not be opened either: ${describeError(error)}`);
