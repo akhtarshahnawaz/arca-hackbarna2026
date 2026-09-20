@@ -1,69 +1,36 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+node_modules/
+.pnpm-store/
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files — never commit secrets
+# secrets — never commit
 .env
-.env*
+.env.*
 !.env.example
 
-# Vonage private key (PEM). Never commit.
-.vonage/
-
-# Archived demo evidence (may include last4 / transcripts)
-data/demo-keeps/*
-!data/demo-keeps/.gitkeep
-
-# mastra local storage
-mastra.db
-mastra.db-*
-
-# ARCA LibSQL / SQLite
-arca.db
-arca.db-*
-
-# Generated SLNG / Vonage audio (not secrets, but binary noise)
-.arca-audio/
-mastra/public/*.db
-mastra/public/*.db-*
-mastra/public/*.duckdb
-mastra/public/*.duckdb.wal
+# builds
+dist/
+build/
+.next/
+out/
 .mastra/
-
-# vercel
-.vercel
-
-# typescript
 *.tsbuildinfo
-next-env.d.ts
 
-# Python data importer cache
-__pycache__/
+# runtime
+*.log
+*.db
+*.db-journal
+*.sqlite
+
+# caches
+.turbo/
+.cache/
+coverage/
+
+# os
+.DS_Store
+Thumbs.db
+
+# editors
+.idea/
+.vscode/*
+!.vscode/extensions.json

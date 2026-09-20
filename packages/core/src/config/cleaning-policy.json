@@ -1,0 +1,35 @@
+{
+  "$comment": "Hackathon assumptions, not operational doctrine. Every threshold here is shown in the UI so a coordinator can argue with it. Edit this file, not the code.",
+  "staticSourceBufferMeters": {
+    "landsat": 200,
+    "viirs": 750,
+    "modis_class": 1500,
+    "geostationary": 3000,
+    "unknown": 1000
+  },
+  "staticSourceBufferNote": "A detection is masked when its pixel centre falls inside a known persistent heat source, or within roughly one pixel footprint of it. A 30 m Landsat pixel and a 3 km Meteosat pixel cannot share one radius.",
+  "duplicateWindowMinutes": 5,
+  "staleHours": 12,
+  "lowConfidenceNeedsCorroboration": true,
+  "confirmation": {
+    "multiSourcePoints": 40,
+    "multiSourceMinimum": 2,
+    "temporalPersistencePoints": 25,
+    "temporalPersistenceMinutes": 20,
+    "highConfidencePoints": 15,
+    "frpModeratePoints": 10,
+    "frpModerateMw": 20,
+    "frpStrongPoints": 20,
+    "frpStrongMw": 50,
+    "perimeterPoints": 10,
+    "geostationaryOnlyPenalty": -30,
+    "allMaskedPenalty": -100,
+    "confirmedAt": 60,
+    "candidateAt": 30,
+    "credibleDetectionPoints": 20,
+    "credibleDetectionNote": "A single polar-orbit pixel graded MEDIUM or better is already a credible fire signature. Without this floor the score only rewarded corroboration, so a real fire seen once by one satellite scored 10 and was filed as noise."
+  },
+  "duplicateRadiusFractionOfPixel": 0.5,
+  "duplicateRadiusMinMeters": 60,
+  "duplicateNote": "A duplicate is the SAME sensor re-reporting the SAME pixel, so the radius scales with that sensor's pixel: half a footprint, floored at 60 m. A fixed radius would be wrong in both directions \u2014 375 m collapses adjacent VIIRS pixels of one large fire into a single detection and shrinks the ignition set, while the same 375 m is a fifth of a Meteosat pixel and lets genuine re-reports through."
+}

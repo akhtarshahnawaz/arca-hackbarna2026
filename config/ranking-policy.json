@@ -1,4 +1,0 @@
-{
-  "watchIfFewerThanRuns": 3,
-  "note": "A site stays off the ranked list when the fire reaches it in fewer than this many ensemble runs. With 10 runs, fewer than 3 means 0, 1, or 2. Three of ten still ranks. One number, used by the ranking and the screen."
-}

@@ -1,0 +1,18 @@
+{
+  "$comment": "Hackathon assumptions, not operational doctrine. Validate with Bombers before anyone acts on them.",
+  "horizonHours": 6,
+  "ensembleMembers": 10,
+  "probabilityFloor": 0.2,
+  "probabilityFloorNote": "A band's footprint is cut at this burn probability. With 10 members it means at least 2 of 10 runs burned that ground by that hour. Also the threshold for the conservative arrival time.",
+  "majorityProbability": 0.5,
+  "watchBelowProbability": 0.3,
+  "likelyAtProbability": 0.7,
+  "actions": {
+    "prepareAboveSpareMinutes": 180,
+    "exclusionZoneWithinMinutes": 60
+  },
+  "scoring": {
+    "$comment": "Talaia already computes a life-safety-weighted priority_score. ARCA orders by spare time first and uses that score only to break ties.",
+    "tieBreaker": "talaia_priority_score"
+  }
+}

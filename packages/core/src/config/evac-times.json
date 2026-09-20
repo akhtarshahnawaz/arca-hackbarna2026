@@ -1,0 +1,42 @@
+{
+  "$comment": "Minutes to move everyone out. base = fixed overhead (muster, transport arrival, sweep). perPerson scales with occupancy. Hackathon assumptions — the UI shows them and the agent repeats the caveat.",
+  "default": { "base": 45, "perPerson": 0.5 },
+  "bySubcategory": {
+    "care_home":        { "base": 90,  "perPerson": 2.0,  "note": "Low mobility, high dependency, 24 h occupancy." },
+    "nursing_home":     { "base": 90,  "perPerson": 2.0 },
+    "hospital":         { "base": 120, "perPerson": 1.5,  "note": "Also a response asset: losing it removes capacity mid-incident." },
+    "clinic":           { "base": 45,  "perPerson": 0.5 },
+    "primary_care":     { "base": 45,  "perPerson": 0.5 },
+    "nursery":          { "base": 40,  "perPerson": 0.3,  "note": "Occupants have no independent evacuation capability." },
+    "primary_school":   { "base": 40,  "perPerson": 0.3 },
+    "secondary_school": { "base": 45,  "perPerson": 0.2 },
+    "school":           { "base": 40,  "perPerson": 0.3 },
+    "university":       { "base": 45,  "perPerson": 0.15 },
+    "vocational":       { "base": 45,  "perPerson": 0.2 },
+    "campsite":         { "base": 60,  "perPerson": 0.5,  "note": "Tourists do not know the roads." },
+    "hotel":            { "base": 60,  "perPerson": 0.4 },
+    "prison":           { "base": 180, "perPerson": 3.0 },
+    "livestock_farm":   { "base": 60,  "perPerson": 0.0 },
+    "farm":             { "base": 60,  "perPerson": 0.0 },
+    "population_cell":  { "base": 30,  "perPerson": 0.05, "note": "Informational only. Households are not ranked as sites." }
+  },
+  "livestock": {
+    "$comment": "Animals cannot self-evacuate, so lead time is the whole problem. Minutes per 100 livestock units by species group.",
+    "per100Default": 45,
+    "per100BySpecies": {
+      "sheep": 45,
+      "goat": 36,
+      "cattle": 75,
+      "bovine": 75,
+      "pig": 150,
+      "swine": 150,
+      "horse": 120,
+      "equine": 120,
+      "poultry": 20,
+      "rabbit": 20
+    },
+    "maxMinutes": 720,
+    "maxMinutesNote": "Beyond twelve hours the answer is not evacuation, it is defend-in-place with Bombers. Capping keeps the ranking honest."
+  },
+  "maxMinutes": 1440
+}
