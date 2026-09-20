@@ -9,6 +9,163 @@ values-at-risk track.
 
 ---
 
+## How it works, from the coordinator's chair
+
+One person on duty. A screen in front of them, a phone in their pocket. What
+follows is every point at which ARCA does something, and what a human has to do
+about it.
+
+### The screen is three columns
+
+| Left | Centre | Right |
+|---|---|---|
+| **What is burning** — every active cluster, scored | **Where this one is going** | **Who to call about it** |
+
+The switch at the top centre says which world you are in — **Live** or
+**Synthetic** — and it is the only control that changes where the data comes
+from. A `synthetic` badge follows a scenario everywhere it appears, so a
+generated fire can never be mistaken for a real one.
+
+### 1. ARCA notices something
+
+Every five minutes it asks DeepFire what is burning in the area of interest,
+cleans the detections, and scores each cluster out of 100. The left rail shows
+all of them with the reason attached:
+
+> **Lavegadas** · 134 of 325 det · 3 sat · 620 MW · 21:40Z
+> 3 satellites agree, perimeter fitted, 9.5 km across.
+> `CONFIRMED` `PERIMETER`
+
+> **la Pobla de Mafumet** · 0 of 151 det · 2 sat · 19:08Z
+> All 151 dropped: known heat source.
+> `NOISE` `151 MASKED`
+
+The second is the Tarragona petrochemical complex. **Most of the list is noise
+most of the time, and that is the system working.** Showing the rejects with
+the reason is the only way you can tell that from a system that has died.
+
+Above 60/100 ARCA opens an incident on its own. Below it, you can still click
+any cluster and say "work that one" — the timeline records that a human asked
+and what the score was.
+
+### 2. It works out who is in the way
+
+Selecting a fire runs the pipeline. **You get an answer in seconds, not
+minutes**: ARCA first draws a rough ring at a blunt 1.4 km/h, asks Talaia what
+is inside it, and ranks that — labelled **provisional** in the map caption, the
+legend and the timeline. When DeepFire's real ensemble lands, the ranking is
+recomputed and the diff says what the model changed.
+
+The ranking answers one question: **who has the least time left.**
+
+```
+spare time  =  when the fire arrives  −  how long it takes to get them out
+```
+
+Not who is closest. A care home 2 km away with sixty-four residents and one
+minibus is in more trouble than a school 800 m away that can walk out in twenty
+minutes. Sorting by distance gets that backwards, every time.
+
+### 3. You read the screen
+
+**The map.** The fire is a probability gradient — pale amber where two runs in
+ten reach, deep red where nine do — with one outline for the furthest extent.
+Play the scrubber underneath and the figures beside it recount as the hours
+pass. Colour on a site says *what to do*; the white glyph on it says *what the
+place is* — a cross is a hospital, a tent a campsite, a fence a livestock
+holding. Click any site for its full record: people and where that figure came
+from, arrival, evacuation time, replacement value, phone number, and which
+registry each number came from.
+
+**The right column.** One decision pinned at the top — **Call first** — then
+everything else by spare time. Click a row and it lights up on the map. Each
+row carries the one number that decides its position, with the arithmetic one
+click away.
+
+**Ask ARCA**, bottom right of the map. "Why is the care home first?" "What does
+the model assume about schools?" It answers from the ranking, never from
+memory. It can raise an approval card. **It cannot place a call.**
+
+### 4. Your phone buzzes
+
+If Telegram is configured, ARCA sends the briefing to every coordinator without
+being asked — the point being that you find out about a fire without watching a
+screen. It arrives with buttons:
+
+```
+Sant Fruitós de Bages — 8 sites, 1,247 people at risk
+Residència Sant Andreu: 64 residents, fire in 68 min,
+evacuation needs 3.6 h. Shelter-in-place candidate.
+
+[ Call Residència Sant Andreu ]
+[ Call Escola Monsenyor Gibert ]
+[ Show the full list ]
+```
+
+Anyone can message the bot; only chat ids in `COORDINATOR_TELEGRAM_CHAT_IDS`
+get an answer or can press a button. A stranger gets one sentence explaining
+what ARCA is, and their own chat id so you can enrol them.
+
+**Brief coordinator** in the top bar sends it on demand — useful for a demo,
+since the automatic briefing only fires when a live cluster clears the bar.
+
+### 5. You approve a call
+
+Either button — the web one or the Telegram one — lands on the same endpoint
+and writes the same decision record. Then:
+
+```
+decision recorded (who, when, from where)
+  → site status: calling
+  → script built in Spanish with that site's numbers
+  → SLNG calls the site
+       "…llamada automática del centro de coordinación…"
+       How many people are there now?
+       How many cannot walk unaided?
+       What vehicles do you have?
+       Do you need help evacuating?
+  → transcript → extraction → the list re-ranks
+```
+
+**The call goes to the site** — the care home's own switchboard, from Talaia's
+registry. Telegram is how ARCA reaches *you*; SLNG is how it reaches *them*.
+
+If the site says forty people rather than the sixty-four on the register, and
+twelve of them cannot walk, the evacuation estimate grows, spare time drops,
+and the row moves — with the diff naming the phone call as the cause.
+
+### 6. What is deliberately switched off
+
+Out of the box, **ARCA will not ring anybody**:
+
+| | Default | What it means |
+|---|---|---|
+| `CALL_ALLOWLIST` | empty | No outbound call, ever. Approvals open a browser voice session with the identical script instead |
+| `EXERCISE_MODE` | `true` | Every call and message opens by saying **SIMULACRO** — this is a drill |
+
+Both fail safe and neither can be talked around: there is no path from the
+language model to a ringing phone that does not pass through a stored human
+decision.
+
+To arm it, one line on the agent — your own number first:
+
+```dotenv
+CALL_ALLOWLIST=+34600000000
+```
+
+Leave `EXERCISE_MODE=true` until the drill is over. The badge in the top bar
+reads **DRILL** while it is on.
+
+### What it never does
+
+- It never calls anyone without a recorded human approval.
+- It never presents a drawn ring as a forecast, or a class default as a
+  registry figure, or a recorded fixture as a live query.
+- It never silently drops a detection: everything excluded keeps its reason and
+  stays on the map, hollow.
+
+---
+
 ## Testing this app
 
 ### 1. Get it running

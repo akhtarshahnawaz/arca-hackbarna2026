@@ -6,7 +6,6 @@ import type { CallView } from "@/lib/api";
 import { NextAction } from "./NextAction";
 import { RankedList } from "./RankedList";
 import { EventFeed } from "./EventFeed";
-import { ChatPanel } from "./ChatPanel";
 
 /**
  * The side panel.
@@ -20,15 +19,15 @@ import { ChatPanel } from "./ChatPanel";
  *
  * Now: one decision pinned to the top, and one body that answers exactly one
  * question at a time. The impact figures moved under the map, where the
- * scrubber that changes them lives.
+ * scrubber that changes them lives, and the assistant moved out to a button of
+ * its own — buried as a third tab, nobody found it.
  */
 
-type Tab = "risk" | "activity" | "ask";
+type Tab = "risk" | "activity";
 
 const TABS: Array<{ id: Tab; label: string }> = [
   { id: "risk", label: "At risk" },
   { id: "activity", label: "Activity" },
-  { id: "ask", label: "Ask ARCA" },
 ];
 
 export interface SidePanelProps {
@@ -36,11 +35,9 @@ export interface SidePanelProps {
   leadSite: RankedSite | null;
   calls: CallView[];
   timeline: TimelineEvent[];
-  incidentName: string | null;
   selectedSiteId: string | null;
   busyId: string | null;
   canCall: boolean;
-  canAsk: boolean;
   onSelect: (assetId: string | null) => void;
   onApprove: (site: RankedSite) => void;
   onDeny: (site: RankedSite) => void;
@@ -53,7 +50,11 @@ export function SidePanel(props: SidePanelProps) {
   const ranked = props.sites.filter((site) => site.rank > 0);
 
   return (
-    <aside className="min-w-0 min-h-0 flex flex-col gap-2">
+    <aside className="h-full min-w-0 min-h-0 flex flex-col gap-2">
+      {/* shrink-0 is load-bearing: without it a lead card carrying a call
+          record and a transcript box grows until the ranked list below has no
+          room left to scroll in. */}
+      <div className="shrink-0 max-h-[48%] overflow-y-auto">
       <NextAction
         site={props.leadSite}
         totalRanked={ranked.length}
@@ -65,6 +66,7 @@ export function SidePanel(props: SidePanelProps) {
         busy={props.busyId === props.leadSite?.assetId}
         canCall={props.canCall}
       />
+      </div>
 
       <div className="flex-1 min-h-0 flex flex-col panel overflow-hidden">
         <div className="flex items-center gap-0.5 px-2 pt-2 pb-1.5 border-b hairline">
@@ -115,13 +117,9 @@ export function SidePanel(props: SidePanelProps) {
                 canCall={props.canCall}
               />
             </div>
-          ) : tab === "activity" ? (
+          ) : (
             <div className="h-full overflow-y-auto p-2 pr-1.5">
               <EventFeed events={props.timeline} />
-            </div>
-          ) : (
-            <div className="h-full p-2">
-              <ChatPanel incidentName={props.incidentName} available={props.canAsk} />
             </div>
           )}
         </div>

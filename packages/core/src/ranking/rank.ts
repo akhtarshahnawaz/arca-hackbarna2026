@@ -175,6 +175,7 @@ export function rankSites(
       category: asset.category,
       subcategory: asset.subcategory,
       position,
+      geometry: asset.geometry ?? null,
       band: asset.exposure?.band ?? null,
       bandMinutes: asset.exposure?.band_minutes ?? null,
       distanceToFrontM: asset.exposure?.distance_to_front_m ?? null,

@@ -335,14 +335,16 @@ function ClusterCard(props: {
           <span className="ml-auto num">{timeOfDay(cluster.lastObserved)}Z</span>
         </div>
 
-        {/* A bare "0 detections" invites the conclusion that the system is
-            broken. The reason it kept none is the useful half. */}
-        {cluster.detections === 0 && cluster.dropped.length > 0 ? (
-          <div className="mt-1 text-[9.5px] leading-snug text-[var(--color-ink-faint)]">
-            All {cluster.rawDetections} dropped: {cluster.dropped[0]!.reason}
-            {cluster.dropped.length > 1 ? ` (+${cluster.dropped.length - 1} other)` : ""}.
-          </div>
-        ) : null}
+
+
+        {/* Why this score, without leaving the list.
+            The evidence used to live only behind a hover on the header badge —
+            which meant you had to open a fire before you could see the reason
+            ARCA believed in it, and the reason is exactly what you want when
+            deciding whether to open it. */}
+        <div className="mt-1 text-[9.5px] leading-snug text-[var(--color-ink-faint)]">
+          {scoreReason(cluster)}
+        </div>
 
         <div className="mt-1.5 flex items-center gap-1 flex-wrap">
           {cluster.incidentId ? (
@@ -406,6 +408,40 @@ function ScenarioCard(props: {
       </div>
     </button>
   );
+}
+
+/**
+ * One sentence on why a cluster scored what it did.
+ *
+ * Reads off the same fields the confirmation score used, in the order that
+ * decides it: what corroborates it, how big and how hot, or — when nothing
+ * survived — what threw it all away. This is the difference between a list of
+ * numbers and a list you can act on.
+ */
+function scoreReason(cluster: ClusterSummary): string {
+  if (cluster.detections === 0) {
+    const first = cluster.dropped[0];
+    if (!first) return "No usable detections.";
+    return `All ${cluster.rawDetections} dropped: ${first.reason}${
+      cluster.dropped.length > 1 ? `, +${cluster.dropped.length - 1} other reason` : ""
+    }.`;
+  }
+
+  const parts: string[] = [];
+  const sats = cluster.corroboratingSources.length;
+  parts.push(
+    sats >= 2
+      ? `${sats} satellites agree`
+      : sats === 1
+        ? "one satellite only, nothing corroborating"
+        : "no corroboration",
+  );
+  if (cluster.hasPerimeter) parts.push("perimeter fitted");
+  if (cluster.spanM >= 1_000) parts.push(`${(cluster.spanM / 1_000).toFixed(1)} km across`);
+  if (cluster.maxFrpMw && cluster.maxFrpMw >= 50) parts.push(`${Math.round(cluster.maxFrpMw)} MW peak`);
+  if (cluster.maskedDetections > 0) parts.push(`${cluster.maskedDetections} masked`);
+
+  return `${parts.join(", ")}.`;
 }
 
 function Tag(props: { children: React.ReactNode; colour?: string; help?: string }) {

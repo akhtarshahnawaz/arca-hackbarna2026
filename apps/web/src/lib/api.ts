@@ -195,6 +195,7 @@ export const api = {
   startReplay: (name: string, asOf?: string) =>
     post<{ incidentId: string }>(`/api/replay/${name}${asOf ? `?asOf=${encodeURIComponent(asOf)}` : ""}`),
   refresh: (id: string, force = false) => post<unknown>(`/api/incidents/${id}/refresh?force=${force}`),
+  brief: (id: string) => post<{ message: string; sentTo: number }>(`/api/incidents/${id}/brief`),
   tick: () => post<unknown>("/api/watch/tick"),
   decide: (
     id: string,

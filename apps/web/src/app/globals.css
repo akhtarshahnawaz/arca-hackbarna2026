@@ -189,6 +189,22 @@ body {
   font-size: 12px !important;
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.5) !important;
 }
+/* The click-opened site record: roomier than the hover card, and it stays. */
+.arca-detail .maplibregl-popup-content {
+  padding: 12px 14px !important;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.arca-detail .maplibregl-popup-close-button {
+  color: var(--color-ink-faint) !important;
+  font-size: 17px !important;
+  padding: 2px 7px !important;
+}
+.arca-detail .maplibregl-popup-close-button:hover {
+  color: var(--color-ink) !important;
+  background: transparent !important;
+}
+
 .maplibregl-popup-tip {
   border-top-color: var(--color-surface-2) !important;
   border-bottom-color: var(--color-surface-2) !important;

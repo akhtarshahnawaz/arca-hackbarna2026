@@ -30,6 +30,9 @@ export interface TopBarProps {
   exerciseMode: boolean;
   onRefresh: () => void;
   refreshing: boolean;
+  onBrief: () => void;
+  briefing: boolean;
+  canBrief: boolean;
 }
 
 export function TopBar(props: TopBarProps) {
@@ -61,8 +64,16 @@ export function TopBar(props: TopBarProps) {
                 </span>
               ) : null}
               {props.exerciseMode ? (
-                <span className="shrink-0 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-[var(--color-warn)]/40 text-[var(--color-warn)]">
-                  exercise
+                <span
+                  className="shrink-0 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-[var(--color-warn)]/40 text-[var(--color-warn)] cursor-help"
+                  title={
+                    "EXERCISE_MODE is on, which is the default. Every call and every message " +
+                    "ARCA sends opens by saying SIMULACRO — this is a drill — so nobody can " +
+                    "mistake a test for a real evacuation order. Set EXERCISE_MODE=false on the " +
+                    "agent only when you mean it."
+                  }
+                >
+                  drill
                 </span>
               ) : null}
             </div>
@@ -92,6 +103,17 @@ export function TopBar(props: TopBarProps) {
           />
           <span className="text-[var(--color-ink-faint)]">{props.live ? "live" : "offline"}</span>
         </span>
+        {incident && props.canBrief ? (
+          <button
+            type="button"
+            onClick={props.onBrief}
+            disabled={props.briefing}
+            className="text-[11px] px-2.5 py-1 rounded border border-[var(--color-line-bright)] bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] transition-colors disabled:opacity-40"
+            title="Send the briefing to the coordinators on Telegram, with approval buttons for the top sites"
+          >
+            {props.briefing ? "Sending…" : "Brief coordinator"}
+          </button>
+        ) : null}
         {incident ? (
           <button
             type="button"

@@ -145,6 +145,59 @@ export class IncidentService {
     });
   }
 
+  /**
+   * Brief the coordinator on an incident that is already worked up.
+   *
+   * Uses whatever the last ranking produced rather than re-running anything —
+   * this is a send, not a recompute, and a button labelled "brief the
+   * coordinator" that silently costs a simulation would be a trap.
+   */
+  async brief(incident: Incident): Promise<{ briefing: string }> {
+    const sites = await this.ctx.store.getSites(incident.id);
+    const ranked = sites
+      .filter((site) => site.rank > 0)
+      .sort((a, b) => a.rank - b.rank)
+      .map((site) => site.payload);
+
+    if (ranked.length === 0) {
+      throw new Error(
+        "Nothing is ranked on this incident yet, so there is nothing to brief. Wait for the exposure query to finish.",
+      );
+    }
+
+    const spread = await this.ctx.store.latestSpreadRun(incident.id).catch(() => null);
+    const ranking: RankingResult = {
+        version: sites.reduce((max, site) => Math.max(max, site.rankingVersion), 0),
+        computedAt: new Date().toISOString(),
+        ranked,
+        watch: sites.filter((site) => site.rank === 0).map((site) => site.payload),
+        totals: {
+          sites: ranked.length,
+          peopleAtFacilities: ranked.reduce((sum, site) => sum + site.peopleEstimate, 0),
+          populationResident: 0,
+          livestockUnits: ranked.reduce((sum, site) => sum + (site.livestockUnits ?? 0), 0),
+          valueEur: ranked.reduce((sum, site) => sum + (site.valueEur ?? 0), 0),
+          evacuateNow: ranked.filter((site) => site.action === "EVACUATE_NOW").length,
+          shelterCandidates: ranked.filter((site) => site.action === "SHELTER_CANDIDATE").length,
+          hazardous: ranked.filter((site) => site.hazardous).length,
+      },
+    };
+
+    const briefing = await buildBriefing({
+      incident,
+      ranking,
+      degraded: null,
+      synthetic: spread ? spread.status !== "COMPLETED" : true,
+    });
+
+    await this.notify?.(incident, briefing.text, ranking);
+    await this.ctx.timeline(incident.id, "briefed", `Briefing sent to the coordinator on request.`, {
+      actor: "ops-ui",
+    });
+
+    return { briefing: briefing.text };
+  }
+
   async getIncidentOrThrow(incidentId: string): Promise<Incident> {
     const incident = await this.ctx.store.getIncident(incidentId);
     if (!incident) throw new Error(`No incident ${incidentId}`);

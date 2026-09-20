@@ -10,6 +10,7 @@ import { SidePanel } from "@/components/SidePanel";
 import { TimelineScrubber } from "@/components/TimelineScrubber";
 import { Legend } from "@/components/Legend";
 import { EmptyStage } from "@/components/EmptyStage";
+import { AssistantDock } from "@/components/AssistantDock";
 import { TokenGate } from "@/components/TokenGate";
 import { describeSpread } from "@/components/IncidentMap";
 
@@ -53,6 +54,7 @@ export default function OperationsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [briefing, setBriefing] = useState(false);
   const [capabilities, setCapabilities] = useState<Record<string, boolean>>({});
 
   // Any 401 anywhere puts the door up, rather than leaving the operator with a
@@ -242,6 +244,20 @@ export default function OperationsPage() {
     [incidentId, act],
   );
 
+  const onBrief = useCallback(async () => {
+    if (!incidentId) return;
+    setBriefing(true);
+    try {
+      const result = await api.brief(incidentId);
+      setToast(result.message);
+      await reload();
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBriefing(false);
+    }
+  }, [incidentId, reload]);
+
   const onRefresh = useCallback(async () => {
     if (!incidentId) return;
     setRefreshing(true);
@@ -284,6 +300,9 @@ export default function OperationsPage() {
         exerciseMode={Boolean(capabilities.exerciseMode)}
         onRefresh={() => void onRefresh()}
         refreshing={refreshing}
+        onBrief={() => void onBrief()}
+        briefing={briefing}
+        canBrief={Boolean(capabilities.telegram)}
       />
 
       <div className="flex-1 min-h-0 flex gap-2">
@@ -373,6 +392,11 @@ export default function OperationsPage() {
                   </div>
                 ) : null}
 
+                <AssistantDock
+                  incidentName={data.incident.name}
+                  available={Boolean(capabilities.nebius)}
+                />
+
                 {data.exposure?.warnings && data.exposure.warnings.length > 0 ? (
                   <div className="absolute right-3 top-3 z-10 max-w-[310px] panel bg-[var(--color-surface)]/92 backdrop-blur px-2.5 py-2">
                     <div className="text-[10px] uppercase tracking-wider text-[var(--color-warn)] mb-1">
@@ -416,11 +440,9 @@ export default function OperationsPage() {
               leadSite={leadSite}
               calls={data.calls}
               timeline={data.timeline}
-              incidentName={data.incident.name}
               selectedSiteId={selectedSiteId}
               busyId={busyId}
               canCall={Boolean(capabilities.slng)}
-              canAsk={Boolean(capabilities.nebius)}
               onSelect={setSelectedSiteId}
               onApprove={onApprove}
               onDeny={onDeny}

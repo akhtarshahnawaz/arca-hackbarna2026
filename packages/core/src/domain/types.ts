@@ -448,6 +448,16 @@ export interface RankedSite {
   category: string;
   subcategory: string;
   position: Position | null;
+  /**
+   * The asset's own footprint, when the registry has one.
+   *
+   * A school is a building, not a dot, and at the zoom a coordinator works at
+   * the difference between the two is the difference between "the fire is at
+   * the fence" and "the fire is in the playground". Kept alongside `position`
+   * rather than replacing it, because every distance and arrival calculation
+   * wants a single representative point.
+   */
+  geometry: Geometry | null;
   band: string | null;
   bandMinutes: number | null;
   distanceToFrontM: number | null;

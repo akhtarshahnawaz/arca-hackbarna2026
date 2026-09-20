@@ -232,6 +232,51 @@ export function createApp(deps: ServerDeps) {
     });
   });
 
+  /**
+   * Send the briefing to the coordinator, now.
+   *
+   * The pipeline briefs on its own when the watcher confirms a fire, and every
+   * route a human drives passes `notify: false` — the reasoning being that
+   * somebody already looking at the screen does not need their phone buzzing
+   * about what is in front of them.
+   *
+   * Correct, and it left the Telegram half of the product with no way to be
+   * shown at all: nothing you click in the UI ever reaches a phone, and the one
+   * path that does requires a real fire to clear the confirmation bar. So there
+   * is an explicit button. It sends the same briefing, built the same way, to
+   * the same coordinators.
+   */
+  app.post("/api/incidents/:id/brief", async (c) => {
+    const incident = await ctx.store.getIncident(c.req.param("id"));
+    if (!incident) return c.json({ error: "not found" }, 404);
+    if (!telegram?.configured) {
+      return c.json(
+        { error: "Telegram is not configured on this deployment, so there is nobody to brief." },
+        400,
+      );
+    }
+    if (env.telegram.coordinatorChatIds.length === 0) {
+      return c.json(
+        { error: "COORDINATOR_TELEGRAM_CHAT_IDS is empty. Message the bot to get your chat id." },
+        400,
+      );
+    }
+
+    try {
+      const result = await incidents.brief(incident);
+      return c.json({
+        ok: true,
+        sentTo: env.telegram.coordinatorChatIds.length,
+        message: `Briefing sent to ${env.telegram.coordinatorChatIds.length} coordinator${
+          env.telegram.coordinatorChatIds.length === 1 ? "" : "s"
+        } on Telegram, with approval buttons for the top sites.`,
+        briefing: result.briefing,
+      });
+    } catch (error) {
+      return c.json({ error: describeError(error) }, 500);
+    }
+  });
+
   app.post("/api/incidents/:id/refresh", async (c) => {
     const incident = await ctx.store.getIncident(c.req.param("id"));
     if (!incident) return c.json({ error: "not found" }, 404);
