@@ -149,6 +149,32 @@ body {
   animation: sweep 1.6s ease-in-out infinite;
 }
 
+/**
+ * The assistant button.
+ *
+ * It sits in the corner of a map that is already carrying a fire, a legend and
+ * several hundred markers, and in that company a quiet button is invisible —
+ * which was the complaint. A slow breathing ring reads as "something here is
+ * awake" without the urgency of the one pulse on this screen that means a site
+ * has run out of time. Two and a half seconds is deliberately slower than the
+ * urgent pulse, so the two can never be confused.
+ */
+@keyframes assistant-breathe {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 color-mix(in oklab, var(--color-prepare) 42%, transparent),
+      0 8px 22px rgb(0 0 0 / 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 7px color-mix(in oklab, var(--color-prepare) 0%, transparent),
+      0 8px 22px rgb(0 0 0 / 0.45);
+  }
+}
+.assistant-call {
+  animation: assistant-breathe 2.6s ease-out infinite;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -165,6 +191,7 @@ body {
   .urgent,
   .sweep::after,
   .enter,
+  .assistant-call,
   [style*="spin"] {
     animation: none;
   }

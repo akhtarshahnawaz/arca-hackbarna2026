@@ -337,6 +337,7 @@ function SiteRow(props: {
               <CallState
                 calls={props.calls}
                 assetId={site.assetId}
+                siteName={site.name}
                 busy={props.busy}
                 onTranscript={props.onTranscript}
               />

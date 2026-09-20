@@ -69,6 +69,13 @@ export interface CallView {
   mode: string;
   phoneMasked: string;
   webSessionUrl?: string | null;
+  /**
+   * The LiveKit room SLNG opens when it cannot dial.
+   *
+   * A URL and a five-minute token, not a web page — which is why the browser
+   * has to join it itself rather than following a link.
+   */
+  room?: { url: string; token: string; name: string | null } | null;
   transcript?: string | null;
   error?: string | null;
   dispatchedAt: string;

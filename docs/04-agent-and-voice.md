@@ -108,6 +108,46 @@ the site.
 What never happens is a silent success. A call that did not happen is reported
 as a call that did not happen, on the timeline and to the agent.
 
+#### What LiveKit is, and why you have to join a room
+
+SLNG runs its voice agents on **LiveKit** — the real-time audio layer that
+carries the conversation. A **room** is one conversation, and the **token** is
+a five-minute pass into it.
+
+So `POST /v1/agents/{id}/web-sessions` does not return a web page you can open.
+It returns this:
+
+```json
+{
+  "call_id": "879a2a0a-…",
+  "room_name": "agent-879a2a0a-…",
+  "livekit_url": "wss://slng-ire31kqr.livekit.cloud",
+  "livekit_token": "eyJhbGciOiJIUzI1NiIs…",
+  "max_session_seconds": "300"
+}
+```
+
+A URL and a credential. The agent is already in that room waiting; something
+has to connect and talk to it. For a while ARCA stored those two fields and
+told the operator to "join it from the SLNG dashboard", which is a failsafe
+nobody can use — and the whole point of falling back to a browser session is
+that the conversation still happens.
+
+The web app now joins the room itself, with `livekit-client`: connect with the
+url and token, publish the microphone, and attach the agent's audio track so
+you can hear it.
+
+**You take the part of the site.** You are the person who picked up the phone
+at the care home. The agent reads the same script, asks the same four
+questions, and what you say is transcribed and re-ranks the list exactly as a
+real call would. It is the fastest way to show the whole voice loop without
+dialling anyone, and it is what an empty `CALL_ALLOWLIST` gives you by design.
+
+Two things that go wrong: the browser will ask for microphone permission, and
+refusing it means the agent talks and cannot hear you — the panel says so
+rather than sitting silent. And the token expires after five minutes, so a room
+left open goes stale and needs a fresh approval.
+
 ### Where the voice leg appears on screen
 
 An earlier build dispatched calls, polled them, transcribed them and fed the

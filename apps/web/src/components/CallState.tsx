@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { CallView } from "@/lib/api";
+import { VoiceSession } from "./VoiceSession";
 import { timeOfDay } from "@/lib/format";
 
 /**
@@ -23,8 +24,12 @@ export interface CallStateProps {
   calls: CallView[];
   onTranscript: (assetId: string, transcript: string) => Promise<void>;
   assetId: string;
+  siteName: string;
   busy: boolean;
 }
+
+/** SLNG hands out a five-minute token with each web session. */
+const ROOM_TTL_MS = 5 * 60_000;
 
 const TONE: Record<string, { colour: string; label: string }> = {
   dispatched: { colour: "var(--color-warn)", label: "Dialling" },
@@ -80,6 +85,23 @@ export function CallState(props: CallStateProps) {
             >
               Open the voice session →
             </a>
+          ) : null}
+
+          {/* The failsafe, actually usable. See VoiceSession for why this is a
+              room to join rather than a link to follow.
+
+              Keyed to the token's life rather than the call status: ARCA polls
+              SLNG for a transcript as soon as a session opens, and a room
+              nobody has joined yet reports as ended — which flipped this to
+              `failed` and took the join button away seconds after it appeared.
+              The room is good for five minutes whatever the status says. */}
+          {latest.room && Date.now() - Date.parse(latest.dispatchedAt) < ROOM_TTL_MS ? (
+            <VoiceSession room={latest.room} siteName={props.siteName} />
+          ) : latest.room ? (
+            <p className="mt-1.5 text-[9.5px] leading-relaxed text-[var(--color-ink-faint)]">
+              That voice session has expired — a room is good for five minutes. Approve again for a
+              fresh one.
+            </p>
           ) : null}
 
           {latest.transcript ? (

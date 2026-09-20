@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import type { RankedSite, SiteStatus, TimelineEvent } from "@arca/core";
+import { useEffect, useState } from "react";
+import type { RankedSite, RankingDiff, SiteStatus, TimelineEvent } from "@arca/core";
 import type { CallView } from "@/lib/api";
 import { NextAction } from "./NextAction";
 import { RankedList } from "./RankedList";
 import { EventFeed } from "./EventFeed";
+import { SiteHistory } from "./SiteHistory";
 
 /**
  * The side panel.
@@ -35,6 +36,7 @@ export interface SidePanelProps {
   leadSite: RankedSite | null;
   calls: CallView[];
   timeline: TimelineEvent[];
+  diffs: Array<RankingDiff & { at: string }>;
   selectedSiteId: string | null;
   busyId: string | null;
   canCall: boolean;
@@ -49,7 +51,24 @@ export interface SidePanelProps {
 
 export function SidePanel(props: SidePanelProps) {
   const [tab, setTab] = useState<Tab>("risk");
+  const [scopeToSite, setScopeToSite] = useState(true);
   const ranked = props.sites.filter((site) => site.rank > 0);
+
+  // With a site selected, Activity narrows to that site: its calls, what it
+  // told us, how its position moved, and every timeline line naming it. That
+  // is the question you have just before picking up a phone — "what have we
+  // already said to these people" — and it used to need four places to answer.
+  const selected = props.selectedSiteId
+    ? (props.sites.find((site) => site.assetId === props.selectedSiteId) ?? null)
+    : null;
+  const showSiteHistory = tab === "activity" && selected !== null && scopeToSite;
+
+  // Picking a different site re-scopes. Having widened to the whole incident
+  // once and then had every later selection silently ignored is the kind of
+  // stickiness that makes a control feel broken.
+  useEffect(() => {
+    if (props.selectedSiteId) setScopeToSite(true);
+  }, [props.selectedSiteId]);
 
   return (
     <aside className="h-full min-w-0 min-h-0 flex flex-col gap-2">
@@ -94,6 +113,13 @@ export function SidePanel(props: SidePanelProps) {
                     {ranked.length}
                   </span>
                 ) : null}
+                {entry.id === "activity" && selected ? (
+                  <span
+                    className="ml-1.5 w-1.5 h-1.5 rounded-full inline-block align-middle"
+                    style={{ background: "var(--color-resource)" }}
+                    title={`Scoped to ${selected.name}`}
+                  />
+                ) : null}
               </button>
             );
           })}
@@ -101,6 +127,15 @@ export function SidePanel(props: SidePanelProps) {
             <span className="ml-auto pr-1 text-[9.5px] text-[var(--color-ink-faint)]">
               by spare time
             </span>
+          ) : null}
+          {tab === "activity" && selected ? (
+            <button
+              type="button"
+              onClick={() => setScopeToSite(!scopeToSite)}
+              className="ml-auto pr-1 text-[9.5px] text-[var(--color-ink-faint)] hover:text-[var(--color-ink-dim)] transition-colors"
+            >
+              {scopeToSite ? "this site" : "whole incident"}
+            </button>
           ) : null}
         </div>
 
@@ -125,7 +160,17 @@ export function SidePanel(props: SidePanelProps) {
             </div>
           ) : (
             <div className="h-full overflow-y-auto p-2 pr-1.5">
-              <EventFeed events={props.timeline} />
+              {showSiteHistory && selected ? (
+                <SiteHistory
+                  site={selected}
+                  calls={props.calls}
+                  timeline={props.timeline}
+                  diffs={props.diffs}
+                  onShowAll={() => setScopeToSite(false)}
+                />
+              ) : (
+                <EventFeed events={props.timeline} />
+              )}
             </div>
           )}
         </div>

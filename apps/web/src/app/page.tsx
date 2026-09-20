@@ -440,6 +440,7 @@ export default function OperationsPage() {
               leadSite={leadSite}
               calls={data.calls}
               timeline={data.timeline}
+              diffs={data.diffs}
               selectedSiteId={selectedSiteId}
               busyId={busyId}
               canCall={Boolean(capabilities.slng)}

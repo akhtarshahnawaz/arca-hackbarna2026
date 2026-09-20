@@ -39,13 +39,27 @@ export function AssistantDock(props: { incidentName: string | null; available: b
             ? "Ask about this fire — why a site is first, what the model assumed, who to call"
             : "The assistant needs NEBIUS_API_KEY on the agent"
         }
-        className="absolute right-3 bottom-3 z-20 group flex items-center gap-2 rounded-full pl-3 pr-4 py-2.5 border border-[var(--color-line-bright)] bg-[var(--color-surface-2)]/95 backdrop-blur shadow-xl hover:bg-[var(--color-surface-3)] transition-colors"
+        className={`absolute right-3 bottom-3 z-20 flex items-center gap-2 rounded-full pl-3.5 pr-4 py-2.5 transition-transform hover:scale-[1.03] active:scale-[0.99] ${
+          props.available ? "assistant-call" : ""
+        }`}
+        style={{
+          // Solid, warm and lit from inside, against a map that is mostly ash
+          // and fire. A bordered dark pill in this corner was competing with a
+          // legend, a caption and several hundred markers, and losing.
+          background:
+            "linear-gradient(135deg, color-mix(in oklab, var(--color-prepare) 92%, #fff 8%), var(--color-prepare))",
+          color: "#1a1207",
+          border: "1px solid color-mix(in oklab, var(--color-prepare) 70%, #fff 30%)",
+          opacity: props.available ? 1 : 0.55,
+        }}
       >
-        <SparkIcon available={props.available} />
-        <span className="text-[12px] text-[var(--color-ink)]">Ask ARCA</span>
-        {!props.available ? (
-          <span className="text-[9px] uppercase tracking-wider text-[var(--color-ink-faint)]">off</span>
-        ) : null}
+        <SparkIcon available={props.available} onDark />
+        <span className="text-[12.5px] font-medium">Ask ARCA</span>
+        {props.available ? (
+          <span className="text-[9.5px] opacity-70">why is this first?</span>
+        ) : (
+          <span className="text-[9px] uppercase tracking-wider opacity-70">off</span>
+        )}
       </button>
     );
   }
@@ -83,8 +97,12 @@ export function AssistantDock(props: { incidentName: string | null; available: b
   );
 }
 
-function SparkIcon(props: { available: boolean }) {
-  const colour = props.available ? "var(--color-prepare)" : "var(--color-ink-faint)";
+function SparkIcon(props: { available: boolean; onDark?: boolean }) {
+  const colour = props.onDark
+    ? "#1a1207"
+    : props.available
+      ? "var(--color-prepare)"
+      : "var(--color-ink-faint)";
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true" className="shrink-0">
       <path
