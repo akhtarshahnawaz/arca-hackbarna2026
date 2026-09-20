@@ -166,6 +166,33 @@ describe("animation frames", () => {
       expect(frames[i]!.cumulativeAreaM2).toBeGreaterThanOrEqual(frames[i - 1]!.cumulativeAreaM2);
     }
   });
+
+  it("makes each frame a complete picture, so one frame can be drawn alone", () => {
+    // The map draws exactly one frame. If a frame were only that hour's delta,
+    // drawing it alone would show a ring with a hole where the fire already is.
+    const frames = spreadFrames(ensembleSimulation());
+    const last = frames.at(-1)!;
+    const first = frames[0]!;
+
+    for (const early of first.contours) {
+      const later = last.contours.find((c) => c.probability === early.probability);
+      expect(later, `probability ${early.probability} lost by the last frame`).toBeDefined();
+      expect(later!.areaM2).toBeGreaterThanOrEqual(early.areaM2);
+    }
+  });
+
+  it("never lets a contour shrink between frames", () => {
+    // A fire does not un-burn ground. Each hour is fitted independently, so
+    // without the forward union the playback pulses.
+    const frames = spreadFrames(ensembleSimulation());
+    for (let i = 1; i < frames.length; i++) {
+      for (const contour of frames[i - 1]!.contours) {
+        const next = frames[i]!.contours.find((c) => c.probability === contour.probability);
+        expect(next).toBeDefined();
+        expect(next!.areaM2).toBeGreaterThanOrEqual(contour.areaM2);
+      }
+    }
+  });
 });
 
 describe("fallback bands", () => {

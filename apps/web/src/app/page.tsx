@@ -38,9 +38,10 @@ export default function OperationsPage() {
   const [incidentId, setIncidentId] = useState<string | null>(null);
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [area, setArea] = useState<string | null>(null);
 
   const { incidents, reload: reloadList } = useIncidentList();
-  const feed = useFeed(mode);
+  const feed = useFeed(mode, area);
   const { data, error, live, reload } = useIncident(incidentId);
 
   const [hour, setHour] = useState<number | null>(null);
@@ -272,6 +273,10 @@ export default function OperationsPage() {
           error={feed.error}
           feedError={feed.feedError}
           at={feed.at}
+          areas={feed.areas}
+          area={area}
+          coverage={feed.coverage}
+          onAreaChange={setArea}
           selectedIncidentId={incidentId}
           selectedClusterId={selectedCluster}
           busyId={openingId}
@@ -313,16 +318,36 @@ export default function OperationsPage() {
                 </div>
 
                 {data.spread ? (
-                  <div className="absolute left-3 top-3 z-10 panel bg-[var(--color-surface)]/92 backdrop-blur px-2.5 py-1.5 text-[10px] text-[var(--color-ink-dim)]">
-                    <span className="text-[var(--color-ink)]">
-                      {hour === null
-                        ? `Where the fire may reach in ${frames.length || 6} h`
-                        : `Where the fire may reach by +${hour} h`}
-                    </span>
-                    <span className="text-[var(--color-ink-faint)]">
-                      {" "}
-                      · {describeSpread(data.spread, frames)}
-                    </span>
+                  <div
+                    className="absolute left-3 top-3 z-10 panel bg-[var(--color-surface)]/92 backdrop-blur px-2.5 py-1.5 text-[10px] text-[var(--color-ink-dim)]"
+                    style={
+                      data.spread.provisional
+                        ? { borderColor: "color-mix(in oklab, var(--color-warn) 45%, transparent)" }
+                        : undefined
+                    }
+                  >
+                    {data.spread.provisional ? (
+                      <>
+                        <span className="text-[var(--color-warn)]">Provisional footprint</span>
+                        <span className="text-[var(--color-ink-faint)]">
+                          {" "}
+                          · a ring drawn around the fire while the model runs. The list below is
+                          ranked on it and will be recomputed.
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-[var(--color-ink)]">
+                          {hour === null
+                            ? `Where the fire may reach in ${frames.length || 6} h`
+                            : `Where the fire may reach by +${hour} h`}
+                        </span>
+                        <span className="text-[var(--color-ink-faint)]">
+                          {" "}
+                          · {describeSpread(data.spread, frames)}
+                        </span>
+                      </>
+                    )}
                   </div>
                 ) : null}
 

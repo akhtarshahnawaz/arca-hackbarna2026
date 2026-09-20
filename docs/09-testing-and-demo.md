@@ -3,7 +3,7 @@
 ## Running the tests
 
 ```bash
-pnpm test          # 90 tests, no network, no database
+pnpm test          # 122 tests, no network, no database
 pnpm typecheck
 ```
 

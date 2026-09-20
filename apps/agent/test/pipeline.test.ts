@@ -372,3 +372,61 @@ describe("honesty about what happened", () => {
     expect(stored!.reported?.peoplePresent).toBe(12);
   });
 });
+
+describe("the first look, before the model", () => {
+  it("ranks a drawn footprint so the screen is not blank while the model runs", async () => {
+    const harness = makeContext();
+    const incidents = new IncidentService(harness.ctx);
+    await harness.store.upsertIncident(incident());
+
+    // No DeepFire in this context, so `ensure` degrades immediately — what is
+    // under test is that a ranking exists before it ever gets that far.
+    await incidents.process(incident(), { notify: false });
+
+    const run = await harness.store.latestSpreadRun("inc-1");
+    expect(run).toBeTruthy();
+    const sites = await harness.store.getSites("inc-1");
+    expect(sites.length).toBeGreaterThan(0);
+  });
+
+  it("labels the provisional pass everywhere it is recorded", async () => {
+    const harness = makeContext();
+    const incidents = new IncidentService(harness.ctx);
+    await harness.store.upsertIncident(incident());
+
+    await incidents.process(incident(), { notify: false });
+
+    // A drawn ring presented as a forecast is the one thing this must not do.
+    const timeline = await harness.store.getTimeline("inc-1", 50);
+    expect(timeline.some((event) => /provisional/i.test(event.message))).toBe(true);
+  });
+
+  it("does not run a provisional pass for a replay, which already has geometry", async () => {
+    const harness = makeContext();
+    const incidents = new IncidentService(harness.ctx);
+    const replayIncident = { ...incident(), replay: true };
+    await harness.store.upsertIncident(replayIncident);
+
+    await incidents.process(replayIncident, { notify: false });
+
+    const timeline = await harness.store.getTimeline("inc-1", 50);
+    expect(timeline.some((event) => /provisional/i.test(event.message))).toBe(false);
+  });
+
+  it("does not repeat the provisional pass once a model run is stored", async () => {
+    const harness = makeContext();
+    const incidents = new IncidentService(harness.ctx);
+    const simulation = ensembleSimulation();
+    const bands = bandsFromSimulation(simulation, { horizonHours: 6 });
+    await harness.store.upsertIncident(incident());
+    await harness.store.saveSpreadRun({
+      id: "run-1", incidentId: "inc-1", simulationId: "sim-test", status: "COMPLETED",
+      result: simulation, bands, requestedAt: new Date().toISOString(),
+    });
+
+    await incidents.process(incident(), { notify: false });
+
+    const timeline = await harness.store.getTimeline("inc-1", 50);
+    expect(timeline.some((event) => /provisional/i.test(event.message))).toBe(false);
+  });
+});

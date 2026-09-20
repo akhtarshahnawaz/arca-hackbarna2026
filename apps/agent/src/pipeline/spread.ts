@@ -33,6 +33,15 @@ export interface SpreadOutcome {
 
 const MIN_REFRESH_MS = 30 * 60_000;
 
+/**
+ * Rate for the drawn footprint, in metres per hour.
+ *
+ * Deliberately brisk. A provisional ring that under-reaches gives a coordinator
+ * a shorter list than the truth, and a site missing from the list is worse than
+ * a site on it that turns out to be fine.
+ */
+const PROVISIONAL_METRES_PER_HOUR = 1_400;
+
 export class SpreadService {
   /** Clusters with a run in flight, so two ticks cannot double-submit. */
   private readonly inFlight = new Set<string>();
@@ -217,6 +226,44 @@ export class SpreadService {
    * they carry a zero probability floor, the flag every consumer reads to label
    * them a circle drawn around a fire rather than a prediction.
    */
+  /**
+   * A footprint to work with while the model is still running.
+   *
+   * DeepFire queues simulations and a run takes minutes. For those minutes an
+   * earlier build showed a detection and nothing else — no footprint, no ranked
+   * list, no indication anything was happening — which reads as broken rather
+   * than busy, and wastes the part of an incident where minutes are worth most.
+   *
+   * So the fire is first given a drawn footprint: concentric rings from the
+   * ignition at a blunt constant rate. It is not a prediction and every surface
+   * that shows it says so. What it buys is a ranked list of who is nearby,
+   * within seconds, which is a far better starting point than an empty screen —
+   * and when the real run lands the ranking is recomputed and the diff says
+   * exactly what the model changed.
+   *
+   * Cheap on purpose: no network call, no model, just geometry.
+   */
+  async provisional(incident: Incident): Promise<SpreadOutcome> {
+    const bands = fallbackBands(incident.position, {
+      horizonHours: env.watch.horizonHours,
+      metersPerHour: PROVISIONAL_METRES_PER_HOUR,
+    });
+
+    const run: SpreadRunRecord = {
+      id: randomUUID(),
+      incidentId: incident.id,
+      simulationId: null,
+      status: "PROVISIONAL",
+      bands,
+      frames: bandsToFrames(bands),
+      errorMessage: "Drawn footprint. The model run has not finished yet.",
+      requestedAt: new Date().toISOString(),
+    };
+    await this.ctx.store.saveSpreadRun(run);
+
+    return { run, simulation: null, bands, synthetic: true };
+  }
+
   private async degrade(
     incident: Incident,
     _failed: SpreadRunRecord | null,
@@ -249,4 +296,31 @@ export class SpreadService {
     };
     return { run: { ...run, bands }, simulation: null, bands, synthetic: true };
   }
+}
+
+/**
+ * Drawn rings as playback frames.
+ *
+ * The scrubber and the map both take frames, and a provisional footprint should
+ * animate like a real one — the alternative is a dead control beside a live map
+ * for the minutes the model takes. Each ring carries the fallback's zero
+ * probability floor, which is what every surface reads to label it as drawn.
+ */
+function bandsToFrames(bands: BandFeatureCollection) {
+  return bands.features.map((feature) => ({
+    hour: feature.properties.hour,
+    minutes: feature.properties.minutes,
+    contours: [
+      {
+        probability: 0.2,
+        geometry:
+          feature.geometry.type === "MultiPolygon"
+            ? feature.geometry
+            : ({ type: "MultiPolygon", coordinates: [feature.geometry.coordinates] } as const),
+        areaM2: feature.properties.areaM2,
+      },
+    ],
+    cumulativeAreaM2: feature.properties.areaM2,
+    expectedAreaM2: Math.round(feature.properties.areaM2 * 0.5),
+  }));
 }

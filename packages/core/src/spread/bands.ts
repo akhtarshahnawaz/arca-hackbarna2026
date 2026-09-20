@@ -147,11 +147,20 @@ export function bandsFromSimulation(
 }
 
 /**
- * Per-hour footprints, not cumulative, for the map's playback animation.
+ * The footprint as it stands at each hour, for the map's playback animation.
  *
- * The UI needs both: cumulative for "what is exposed by t+3h", per-hour with
- * probability preserved for the colour ramp that makes the fire look like it is
- * growing rather than blinking.
+ * Contours are cumulative *through* that hour at each probability level, so a
+ * frame is a complete picture of the fire at that moment and the map can draw
+ * exactly one frame rather than stacking six of them. Two reasons that matters:
+ *
+ *   - A fire does not shrink. If the model emits a slightly smaller polygon at
+ *     hour 4 than at hour 3 — which happens, because each hour is fitted
+ *     independently — playing the frames back makes the fire pulse. Unioning
+ *     forward removes that without inventing anything: a cell that could burn
+ *     by hour 3 can still burn by hour 4.
+ *   - Drawing every hour at once is what made the map unreadable. Six hours by
+ *     five probability levels is thirty nested rings; at the end of the horizon
+ *     they crowd into a dartboard. One frame is five.
  */
 export interface SpreadFrame {
   hour: number;
@@ -181,20 +190,23 @@ export function spreadFrames(
   const accumulated: Array<Polygon | MultiPolygon> = [];
   const frames: SpreadFrame[] = [];
 
+  // Geometry seen so far at each probability level, carried forward hour by
+  // hour. This is what makes a frame a complete picture rather than a delta.
+  const carried = new Map<number, Array<Polygon | MultiPolygon>>();
+
   for (const hour of [...byHour.keys()].sort((a, b) => a - b)) {
     const atHour = byHour.get(hour) ?? [];
-    const byProbability = new Map<number, Array<Polygon | MultiPolygon>>();
 
     for (const feature of atHour) {
       if (!feature.geometry) continue;
       const p = Math.round(probabilityOf(feature) * 100) / 100;
-      const bucket = byProbability.get(p);
+      const bucket = carried.get(p);
       if (bucket) bucket.push(feature.geometry);
-      else byProbability.set(p, [feature.geometry]);
+      else carried.set(p, [feature.geometry]);
       accumulated.push(feature.geometry);
     }
 
-    const contours = [...byProbability.entries()]
+    const contours = [...carried.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([probability, geometries]) => {
         const geometry = unionGeometries(geometries);

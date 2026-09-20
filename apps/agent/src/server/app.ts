@@ -105,12 +105,22 @@ export function createApp(deps: ServerDeps) {
       return c.json({
         clusters: [],
         bbox: env.watch.bbox,
+        areaId: null,
+        areaLabel: null,
+        coverage: "osm",
         at: new Date().toISOString(),
         error: "DeepFire is not configured, so there is no live feed. Use a synthetic scenario.",
         maskIncomplete: true,
+        areas: [],
       });
     }
-    return c.json(await watcher.survey({ force: c.req.query("force") === "true" }));
+    const survey = await watcher.survey({
+      force: c.req.query("force") === "true",
+      area: c.req.query("area"),
+    });
+    // The areas ride along with the feed so the picker cannot offer one the
+    // agent would not accept.
+    return c.json({ ...survey, areas: watcher.areas() });
   });
 
   /**
@@ -201,6 +211,9 @@ export function createApp(deps: ServerDeps) {
             errorMessage: run.errorMessage,
             // A drawn-circle fallback must be labelled wherever it is consumed.
             synthetic: run.status !== "COMPLETED",
+            // And "the model has not answered yet" is a different thing to say
+            // than "the model failed": one resolves itself, the other does not.
+            provisional: run.status === "PROVISIONAL",
           }
         : null,
       exposure: exposure

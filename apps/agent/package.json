@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "slng:create-agent": "tsx scripts/slng-create-agent.ts",
-    "demo:bundle": "tsx scripts/make-demo-bundle.ts",
+    "demo:bundle": "tsx scripts/make-scenarios.ts",
     "prebuild": "pnpm --filter @arca/core --filter @arca/db build"
   },
   "dependencies": {

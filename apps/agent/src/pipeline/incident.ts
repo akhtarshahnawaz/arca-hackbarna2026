@@ -65,6 +65,22 @@ export class IncidentService {
    * the diff can describe what moved.
    */
   async process(incident: Incident, options: { force?: boolean; notify?: boolean } = {}): Promise<BriefResult> {
+    // A first look, before the model.
+    //
+    // DeepFire queues simulations and a run takes minutes; for those minutes
+    // there is nothing on screen but a dot. Ranking a drawn footprint first
+    // costs one exposure query and turns that dead time into a working list of
+    // who is nearby, labelled as provisional everywhere it appears. When the
+    // real run lands the ranking is recomputed and the diff says what moved.
+    //
+    // Only on the way in. A re-run already has geometry to show.
+    await this.rankProvisionally(incident).catch((error) =>
+      this.ctx.log.warn("Provisional ranking failed; waiting for the model instead.", {
+        incidentId: incident.id,
+        error: describeError(error),
+      }),
+    );
+
     const spread = await this.spread.ensure(incident, { force: options.force });
     const { ranking, degraded } = await this.exposure.rankIncident(
       incident,
@@ -99,6 +115,34 @@ export class IncidentService {
     }
 
     return { incident, ranking, briefing: briefing.text, degraded, synthetic: spread.synthetic };
+  }
+
+  /**
+   * Rank on a drawn footprint, when there is nothing better yet.
+   *
+   * Skipped for a replay (its geometry is already recorded) and for any
+   * incident that already has a completed run, so this only ever runs on the
+   * one open that would otherwise be a blank screen.
+   */
+  private async rankProvisionally(incident: Incident): Promise<void> {
+    if (incident.replay) return;
+
+    const cached = await this.ctx.store.latestSpreadRun(incident.id).catch(() => null);
+    if (cached?.status === "COMPLETED" && cached.bands) return;
+    if (cached?.status === "PROVISIONAL") return;
+
+    const provisional = await this.spread.provisional(incident);
+    await this.ctx.timeline(
+      incident.id,
+      "note",
+      "Ranking on a drawn footprint while the model runs. These figures are provisional and will be recomputed when the simulation lands.",
+      { data: { provisional: true } },
+    );
+
+    await this.exposure.rankIncident(incident, provisional.bands, null, {
+      spreadRunId: provisional.run.id,
+      reason: "provisional footprint",
+    });
   }
 
   async getIncidentOrThrow(incidentId: string): Promise<Incident> {

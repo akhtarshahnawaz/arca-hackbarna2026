@@ -228,13 +228,13 @@
       "id": "demo-cluster-bages-h000",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.867654,
-        41.765104
+        1.874563,
+        41.76818
       ],
       "observedAt": "2026-09-19T11:40:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 42,
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 18.6,
       "country": "ES",
       "active": true
     },
@@ -242,13 +242,13 @@
       "id": "demo-cluster-bages-h001",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.873615,
-        41.765744
+        1.875502,
+        41.768981
       ],
       "observedAt": "2026-09-19T11:40:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 51,
+      "fireRadiativePowerMw": 33.2,
       "country": "ES",
       "active": true
     },
@@ -256,13 +256,13 @@
       "id": "demo-cluster-bages-h002",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.879577,
-        41.766384
+        1.877822,
+        41.768958
       ],
       "observedAt": "2026-09-19T11:40:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 60,
+      "fireRadiativePowerMw": 48.5,
       "country": "ES",
       "active": true
     },
@@ -270,13 +270,13 @@
       "id": "demo-cluster-bages-h003",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.885538,
-        41.767023
+        1.879372,
+        41.768212
       ],
       "observedAt": "2026-09-19T11:40:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 69,
+      "fireRadiativePowerMw": 55,
       "country": "ES",
       "active": true
     },
@@ -284,13 +284,13 @@
       "id": "demo-cluster-bages-h004",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.8915,
-        41.767663
+        1.879942,
+        41.767244
       ],
       "observedAt": "2026-09-19T11:40:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 78,
+      "fireRadiativePowerMw": 48.5,
       "country": "ES",
       "active": true
     },
@@ -298,13 +298,13 @@
       "id": "demo-cluster-bages-h005",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.897461,
-        41.768303
+        1.880004,
+        41.765702
       ],
       "observedAt": "2026-09-19T11:40:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 87,
+      "fireRadiativePowerMw": 33.2,
       "country": "ES",
       "active": true
     },
@@ -312,13 +312,13 @@
       "id": "demo-cluster-bages-h006",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.874808,
-        41.764593
+        1.878691,
+        41.764993
       ],
-      "observedAt": "2026-09-19T12:02:00.000Z",
-      "source": "MTG_I1",
+      "observedAt": "2026-09-19T11:40:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
       "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 60,
+      "fireRadiativePowerMw": 18.6,
       "country": "ES",
       "active": true
     },
@@ -326,13 +326,13 @@
       "id": "demo-cluster-bages-h007",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.878725,
-        41.766
+        1.87481,
+        41.769515
       ],
       "observedAt": "2026-09-19T12:02:00.000Z",
       "source": "MTG_I1",
       "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 74,
+      "fireRadiativePowerMw": 23.6,
       "country": "ES",
       "active": true
     },
@@ -340,13 +340,13 @@
       "id": "demo-cluster-bages-h008",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.882643,
-        41.767407
+        1.877759,
+        41.770277
       ],
       "observedAt": "2026-09-19T12:02:00.000Z",
       "source": "MTG_I1",
       "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 88,
+      "fireRadiativePowerMw": 61.8,
       "country": "ES",
       "active": true
     },
@@ -354,8 +354,36 @@
       "id": "demo-cluster-bages-h009",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.874893,
-        41.764593
+        1.882438,
+        41.768501
+      ],
+      "observedAt": "2026-09-19T12:02:00.000Z",
+      "source": "MTG_I1",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 61.8,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-cluster-bages-h010",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.879626,
+        41.76418
+      ],
+      "observedAt": "2026-09-19T12:02:00.000Z",
+      "source": "MTG_I1",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 23.6,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-cluster-bages-h011",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.880026,
+        41.764480000000006
       ],
       "observedAt": "2026-09-19T12:04:00.000Z",
       "source": "MTG_I1",
@@ -365,44 +393,16 @@
       "active": true
     },
     {
-      "id": "demo-cluster-bages-h010",
+      "id": "demo-cluster-bages-h012",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.86561,
-        41.764849
+        1.872667,
+        41.770583
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
       "source": "VIIRS_SNPP_NRT",
       "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 70,
-      "country": "ES",
-      "active": true
-    },
-    {
-      "id": "demo-cluster-bages-h011",
-      "clusterId": "demo-cluster-bages",
-      "position": [
-        1.871997,
-        41.765424
-      ],
-      "observedAt": "2026-09-19T12:34:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 81,
-      "country": "ES",
-      "active": true
-    },
-    {
-      "id": "demo-cluster-bages-h012",
-      "clusterId": "demo-cluster-bages",
-      "position": [
-        1.878385,
-        41.766
-      ],
-      "observedAt": "2026-09-19T12:34:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 92,
+      "fireRadiativePowerMw": 62.5,
       "country": "ES",
       "active": true
     },
@@ -410,13 +410,13 @@
       "id": "demo-cluster-bages-h013",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.884772,
-        41.766576
+        1.874372,
+        41.772678
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
       "source": "VIIRS_SNPP_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 103,
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 84.5,
       "country": "ES",
       "active": true
     },
@@ -424,13 +424,13 @@
       "id": "demo-cluster-bages-h014",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.891159,
-        41.767151
+        1.875088,
+        41.774709
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
+      "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 114,
+      "fireRadiativePowerMw": 111.6,
       "country": "ES",
       "active": true
     },
@@ -438,13 +438,13 @@
       "id": "demo-cluster-bages-h015",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.897546,
-        41.767727
+        1.879032,
+        41.774496
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
-      "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 125,
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 139.4,
       "country": "ES",
       "active": true
     },
@@ -452,13 +452,13 @@
       "id": "demo-cluster-bages-h016",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.903933,
-        41.768303
+        1.880698,
+        41.774962
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
       "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 136,
+      "fireRadiativePowerMw": 163.2,
       "country": "ES",
       "active": true
     },
@@ -466,13 +466,13 @@
       "id": "demo-cluster-bages-h017",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.91032,
-        41.768879
+        1.884016,
+        41.773874
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
+      "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 147,
+      "fireRadiativePowerMw": 179.3,
       "country": "ES",
       "active": true
     },
@@ -480,13 +480,13 @@
       "id": "demo-cluster-bages-h018",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.916708,
-        41.769454
+        1.88634,
+        41.772708
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
+      "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 158,
+      "fireRadiativePowerMw": 185,
       "country": "ES",
       "active": true
     },
@@ -494,13 +494,13 @@
       "id": "demo-cluster-bages-h019",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.923095,
-        41.77003
+        1.887082,
+        41.771207
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
       "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 169,
+      "fireRadiativePowerMw": 179.3,
       "country": "ES",
       "active": true
     },
@@ -508,13 +508,13 @@
       "id": "demo-cluster-bages-h020",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.929482,
-        41.770606
+        1.887643,
+        41.769114
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
-      "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 180,
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 163.2,
       "country": "ES",
       "active": true
     },
@@ -522,13 +522,13 @@
       "id": "demo-cluster-bages-h021",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.935869,
-        41.771181
+        1.887646,
+        41.768069
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
+      "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 191,
+      "fireRadiativePowerMw": 139.4,
       "country": "ES",
       "active": true
     },
@@ -536,13 +536,13 @@
       "id": "demo-cluster-bages-h022",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.942256,
-        41.771757
+        1.885803,
+        41.765396
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
       "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 202,
+      "fireRadiativePowerMw": 111.6,
       "country": "ES",
       "active": true
     },
@@ -550,13 +550,13 @@
       "id": "demo-cluster-bages-h023",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.948644,
-        41.772333
+        1.886142,
+        41.764449
       ],
       "observedAt": "2026-09-19T12:34:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 213,
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 84.5,
       "country": "ES",
       "active": true
     },
@@ -564,13 +564,13 @@
       "id": "demo-cluster-bages-h024",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.893458,
-        41.779114
+        1.882701,
+        41.763827
       ],
-      "observedAt": "2026-09-19T12:41:00.000Z",
-      "source": "LANDSAT_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 180,
+      "observedAt": "2026-09-19T12:34:00.000Z",
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 62.5,
       "country": "ES",
       "active": true
     },
@@ -578,8 +578,8 @@
       "id": "demo-cluster-bages-h025",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.895417,
-        41.779177
+        1.883179,
+        41.775614
       ],
       "observedAt": "2026-09-19T12:41:00.000Z",
       "source": "LANDSAT_NRT",
@@ -592,13 +592,13 @@
       "id": "demo-cluster-bages-h026",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.897376,
-        41.779241
+        1.885053,
+        41.774207
       ],
       "observedAt": "2026-09-19T12:41:00.000Z",
       "source": "LANDSAT_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 240,
+      "fireRadiativePowerMw": 236,
       "country": "ES",
       "active": true
     },
@@ -606,18 +606,60 @@
       "id": "demo-cluster-bages-h027",
       "clusterId": "demo-cluster-bages",
       "position": [
-        1.899334,
-        41.779305
+        1.886926,
+        41.7728
       ],
       "observedAt": "2026-09-19T12:41:00.000Z",
       "source": "LANDSAT_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 270,
+      "fireRadiativePowerMw": 262,
       "country": "ES",
       "active": true
     },
     {
       "id": "demo-cluster-bages-h028",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.8888,
+        41.771393
+      ],
+      "observedAt": "2026-09-19T12:41:00.000Z",
+      "source": "LANDSAT_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 288,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-cluster-bages-h029",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.885432,
+        41.780249
+      ],
+      "observedAt": "2026-09-19T12:38:00.000Z",
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 38,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-cluster-bages-h030",
+      "clusterId": "demo-cluster-bages",
+      "position": [
+        1.894906,
+        41.775339
+      ],
+      "observedAt": "2026-09-19T12:41:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 31,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-cluster-bages-h031",
       "clusterId": "demo-cluster-bages",
       "position": [
         1.767606,
@@ -631,7 +673,7 @@
       "active": true
     },
     {
-      "id": "demo-cluster-bages-h029",
+      "id": "demo-cluster-bages-h032",
       "clusterId": "demo-cluster-bages",
       "position": [
         1.767907,
@@ -645,7 +687,7 @@
       "active": true
     },
     {
-      "id": "demo-cluster-bages-h030",
+      "id": "demo-cluster-bages-h033",
       "clusterId": "demo-cluster-bages-stray",
       "position": [
         1.879406,

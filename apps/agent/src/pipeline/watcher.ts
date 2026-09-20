@@ -20,6 +20,9 @@ import {
   type Incident,
   type StaticHeatSource,
   type StaticHeatSourceProperties,
+  type WatchArea,
+  watchArea,
+  WATCH_AREAS,
 } from "@arca/core";
 import type { Context } from "../context.js";
 import { env } from "../env.js";
@@ -60,6 +63,28 @@ const SURVEY_TTL_MS = 60_000;
 
 const CONFIDENCE_ORDER: Confidence[] = ["LOW", "MEDIUM", "HIGH"];
 
+/**
+ * How many cluster ids will fit in a filter before the URL does.
+ *
+ * `cluster_id IN (…)` is the cheap way to ask for the detections belonging to a
+ * known set — until the set is a few hundred UUIDs, at which point the query
+ * string is seven kilobytes and DeepFire answers 414. Above this the bounding
+ * box and the time window do the filtering instead, and the results are bucketed
+ * by cluster here. Same detections, shorter URL.
+ */
+const MAX_IDS_IN_FILTER = 60;
+
+/**
+ * How many clusters get a place name per survey.
+ *
+ * Nominatim's one-request-per-second policy makes naming unbounded lists
+ * impossible, and naming the bottom of a 185-cluster list is pointless anyway:
+ * it is collapsed behind a "scored as noise" toggle. The cache is shared across
+ * surveys, so a cluster that stays in the top slice for two polls is named on
+ * the first and free on the second.
+ */
+const NAMED_CLUSTER_LIMIT = 30;
+
 export interface TickResult {
   clustersSeen: number;
   confirmed: string[];
@@ -81,14 +106,23 @@ interface ScoredCluster {
 
 export class Watcher {
   private staticIndex: StaticSourceIndex | null = null;
+  private staticIndexBbox = "";
   private staticIndexFetchedAt = 0;
   private running = false;
   private places: PlaceResolver;
 
-  private cachedSurvey: ClusterSurvey | null = null;
-  private cachedScored: ScoredCluster[] = [];
-  private surveyedAt = 0;
-  private inFlightSurvey: Promise<ClusterSurvey> | null = null;
+  /**
+   * One cache entry per watch area.
+   *
+   * Keyed by bounding box rather than area id so an ad-hoc box gets the same
+   * treatment as a named one, and so switching back to Catalonia after looking
+   * at Iberia is instant rather than another round trip.
+   */
+  private readonly surveys = new Map<
+    string,
+    { survey: ClusterSurvey; scored: ScoredCluster[]; at: number }
+  >();
+  private readonly inFlight = new Map<string, Promise<ClusterSurvey>>();
 
   constructor(
     private readonly ctx: Context,
@@ -105,14 +139,16 @@ export class Watcher {
    * a few thousand polygons on every five-minute tick would be the single
    * largest thing ARCA asks of DeepFire, for no benefit.
    */
-  private async ensureStaticMask(): Promise<StaticSourceIndex | null> {
+  private async ensureStaticMask(area: WatchArea): Promise<StaticSourceIndex | null> {
     if (!this.ctx.deepfire) return null;
     const fresh = Date.now() - this.staticIndexFetchedAt < STATIC_MASK_TTL_MS;
-    if (this.staticIndex && fresh) return this.staticIndex;
+    // A Catalan mask says nothing about a flare stack in Huelva, so widening
+    // the area has to refetch it. Masking blind would be worse than not masking.
+    if (this.staticIndex && fresh && this.staticIndexBbox === area.bbox) return this.staticIndex;
 
     try {
       const features = await this.ctx.deepfire.staticHeatSources({
-        bbox: env.watch.bbox,
+        bbox: area.bbox,
         limit: 10_000,
         maxPages: 3,
       });
@@ -128,6 +164,7 @@ export class Watcher {
           };
         });
       this.staticIndex = new StaticSourceIndex(sources);
+      this.staticIndexBbox = area.bbox;
       this.staticIndexFetchedAt = Date.now();
       this.ctx.log.info(`Static heat-source mask loaded: ${sources.length} polygons.`);
       return this.staticIndex;
@@ -152,35 +189,91 @@ export class Watcher {
    * Served from a short cache so that an operations screen polling this costs
    * nothing. `force` is what the "scan now" button sends.
    */
-  async survey(options: { force?: boolean } = {}): Promise<ClusterSurvey> {
-    const fresh = Date.now() - this.surveyedAt < SURVEY_TTL_MS;
-    if (!options.force && this.cachedSurvey && fresh) return this.cachedSurvey;
-    if (this.inFlightSurvey) return this.inFlightSurvey;
+  async survey(options: { force?: boolean; area?: string | null } = {}): Promise<ClusterSurvey> {
+    const area = this.resolveArea(options.area);
+    const key = area.bbox;
 
-    this.inFlightSurvey = this.runSurvey().finally(() => {
-      this.inFlightSurvey = null;
-    });
-    return this.inFlightSurvey;
+    const cached = this.surveys.get(key);
+    if (!options.force && cached && Date.now() - cached.at < SURVEY_TTL_MS) return cached.survey;
+
+    const running = this.inFlight.get(key);
+    if (running) return running;
+
+    const run = this.runSurvey(area).finally(() => this.inFlight.delete(key));
+    this.inFlight.set(key, run);
+    return run;
   }
 
-  /** The scored clusters behind the last survey, for adoption. */
+  /** The watch areas this deployment offers, default first. */
+  areas(): WatchArea[] {
+    const configured = this.resolveArea(null);
+    const rest = WATCH_AREAS.filter((area) => area.bbox !== configured.bbox);
+    return [configured, ...rest];
+  }
+
+  /**
+   * A named area, an explicit bounding box, or the configured default.
+   *
+   * `AOI_BBOX` wins when it does not match a named area, so a deployment
+   * watching one valley keeps watching that valley.
+   */
+  private resolveArea(id: string | null | undefined): WatchArea {
+    const named = watchArea(id);
+    if (named) return named;
+
+    const configured = WATCH_AREAS.find((area) => area.bbox === env.watch.bbox);
+    if (configured) return configured;
+    return {
+      id: "configured",
+      label: "Area of interest",
+      bbox: env.watch.bbox,
+      coverage: "osm",
+      note: "Custom area from AOI_BBOX.",
+    };
+  }
+
+  /** The scored clusters behind a recent survey, for adoption. */
   private async scoredFor(clusterId: string): Promise<ScoredCluster | null> {
-    if (Date.now() - this.surveyedAt >= SURVEY_TTL_MS) await this.survey();
-    return this.cachedScored.find((entry) => entry.clusterId === clusterId) ?? null;
+    for (const entry of this.surveys.values()) {
+      const hit = entry.scored.find((scored) => scored.clusterId === clusterId);
+      if (hit && Date.now() - entry.at < SURVEY_TTL_MS) return hit;
+    }
+    // Nothing fresh holds it. Re-read the areas we have looked at, newest first,
+    // rather than guessing: a cluster adopted from Iberia is not in Catalonia.
+    const keys = [...this.surveys.entries()]
+      .sort((a, b) => b[1].at - a[1].at)
+      .map(([key]) => key);
+    for (const bbox of keys.length > 0 ? keys : [env.watch.bbox]) {
+      await this.survey({ force: true, area: this.areaIdForBbox(bbox) });
+      const hit = this.surveys.get(bbox)?.scored.find((scored) => scored.clusterId === clusterId);
+      if (hit) return hit;
+    }
+    return null;
   }
 
-  private async runSurvey(): Promise<ClusterSurvey> {
+  private areaIdForBbox(bbox: string): string | null {
+    return WATCH_AREAS.find((area) => area.bbox === bbox)?.id ?? null;
+  }
+
+  private async runSurvey(area: WatchArea): Promise<ClusterSurvey> {
     const at = new Date().toISOString();
+    const base = {
+      bbox: area.bbox,
+      areaId: area.id,
+      areaLabel: area.label,
+      coverage: area.coverage,
+      at,
+    };
 
     if (!this.ctx.deepfire) {
-      return { clusters: [], bbox: env.watch.bbox, at, error: "DeepFire is not configured.", maskIncomplete: true };
+      return { ...base, clusters: [], error: "DeepFire is not configured.", maskIncomplete: true };
     }
 
     try {
-      const staticIndex = await this.ensureStaticMask();
+      const staticIndex = await this.ensureStaticMask(area);
 
       const clusterFeatures = await this.ctx.deepfire.clusters({
-        bbox: env.watch.bbox,
+        bbox: area.bbox,
         filter: cql.activeClustersRecent(env.watch.clusterLookbackHours),
         limit: 2_000,
         maxPages: 3,
@@ -191,16 +284,8 @@ export class Watcher {
         .filter(Boolean);
 
       if (clusterIds.length === 0) {
-        const empty: ClusterSurvey = {
-          clusters: [],
-          bbox: env.watch.bbox,
-          at,
-          error: null,
-          maskIncomplete: !staticIndex,
-        };
-        this.cachedSurvey = empty;
-        this.cachedScored = [];
-        this.surveyedAt = Date.now();
+        const empty: ClusterSurvey = { ...base, clusters: [], error: null, maskIncomplete: !staticIndex };
+        this.surveys.set(area.bbox, { survey: empty, scored: [], at: Date.now() });
         return empty;
       }
 
@@ -208,15 +293,23 @@ export class Watcher {
       // the API charges by request shape, and a single IN filter over a bounded
       // set is far cheaper than fifty round trips. The same applies to
       // perimeters, which used to be fetched one cluster at a time.
+      const narrow = clusterIds.length <= MAX_IDS_IN_FILTER;
       const [hotspotFeatures, perimeterClusterIds] = await Promise.all([
         this.ctx.deepfire.hotspots({
-          bbox: env.watch.bbox,
-          filter: cql.and(cql.hotspotsForClusters(clusterIds), cql.since("observed_at", cql.hoursAgo(24))),
+          bbox: area.bbox,
+          filter: cql.and(
+            narrow ? cql.hotspotsForClusters(clusterIds) : null,
+            cql.since("observed_at", cql.hoursAgo(24)),
+          ),
           limit: 10_000,
           maxPages: 5,
         }),
-        this.perimeterClusterIds(clusterIds),
+        this.perimeterClusterIds(clusterIds, narrow, area.bbox),
       ]);
+
+      // Without the IN filter the bbox returns detections from clusters that
+      // are no longer active too. Only the ones we asked about are kept.
+      const wanted = new Set(clusterIds);
 
       const byCluster = new Map<string, Hotspot[]>();
       for (const feature of hotspotFeatures) {
@@ -225,7 +318,7 @@ export class Watcher {
         if (!geometry || geometry.type !== "Point") continue;
         const [lon, lat] = geometry.coordinates as [number, number];
         const clusterId = props.cluster_id ?? "";
-        if (!clusterId) continue;
+        if (!clusterId || !wanted.has(clusterId)) continue;
 
         const hotspot: Hotspot = {
           id: String(feature.id ?? randomUUID()).replace(/^hotspots\./, ""),
@@ -273,16 +366,8 @@ export class Watcher {
 
       const clusters = await this.describe(scored);
 
-      const survey: ClusterSurvey = {
-        clusters,
-        bbox: env.watch.bbox,
-        at,
-        error: null,
-        maskIncomplete: !staticIndex,
-      };
-      this.cachedSurvey = survey;
-      this.cachedScored = scored;
-      this.surveyedAt = Date.now();
+      const survey: ClusterSurvey = { ...base, clusters, error: null, maskIncomplete: !staticIndex };
+      this.surveys.set(area.bbox, { survey, scored, at: Date.now() });
       return survey;
     } catch (error) {
       const message = describeError(error);
@@ -290,9 +375,8 @@ export class Watcher {
       // A failed poll must not blank a screen that was working a minute ago.
       // Serve the last good survey, labelled with the failure.
       return {
-        clusters: this.cachedSurvey?.clusters ?? [],
-        bbox: env.watch.bbox,
-        at,
+        ...base,
+        clusters: this.surveys.get(area.bbox)?.survey.clusters ?? [],
         error: message,
         maskIncomplete: !this.staticIndex,
       };
@@ -300,18 +384,25 @@ export class Watcher {
   }
 
   /** Which of these clusters DeepFire has fitted a perimeter to. One query. */
-  private async perimeterClusterIds(clusterIds: string[]): Promise<Set<string>> {
+  private async perimeterClusterIds(
+    clusterIds: string[],
+    narrow: boolean,
+    bbox: string,
+  ): Promise<Set<string>> {
     if (!this.ctx.deepfire || clusterIds.length === 0) return new Set();
     try {
+      const wanted = new Set(clusterIds);
       const features = await this.ctx.deepfire.perimeters({
-        filter: cql.inList("cluster_id", clusterIds),
+        // Same URL-length problem as the hotspot query; same answer.
+        filter: narrow ? cql.inList("cluster_id", clusterIds) : undefined,
+        bbox: narrow ? undefined : bbox,
         limit: 2_000,
         maxPages: 2,
       });
       return new Set(
         features
           .map((feature) => String((feature.properties as { cluster_id?: string })?.cluster_id ?? ""))
-          .filter(Boolean),
+          .filter((id) => id && wanted.has(id)),
       );
     } catch {
       // Absence of evidence: score without the perimeter bonus rather than
@@ -327,12 +418,32 @@ export class Watcher {
       .catch(() => [] as Incident[]);
     const byCluster = new Map(incidents.map((incident) => [incident.clusterId, incident]));
 
-    // Names are a nicety on a 3-second budget: whatever resolves, resolves, and
-    // the rest are filled from cache on the next poll.
-    const names = await this.places.resolveMany(
-      scored.map((entry) => entry.position),
+    /**
+     * Names, for the clusters anyone is going to read.
+     *
+     * Nominatim allows one request a second, so naming all 185 clusters of an
+     * Iberia-wide survey would take three minutes of queue for a list whose
+     * bottom nine tenths is collapsed behind "scored as noise". The ones worth
+     * naming are the ones at the top: already being worked, then above the bar,
+     * then by score. The rest fall back to coordinates, which are always
+     * correct if less friendly.
+     */
+    const order = scored
+      .map((entry, index) => ({ index, entry }))
+      .sort(
+        (a, b) =>
+          Number(Boolean(byCluster.get(b.entry.clusterId))) -
+            Number(Boolean(byCluster.get(a.entry.clusterId))) ||
+          b.entry.confirmation.score - a.entry.confirmation.score,
+      )
+      .slice(0, NAMED_CLUSTER_LIMIT);
+
+    const names = new Map<number, string | null>();
+    const resolved = await this.places.resolveMany(
+      order.map((item) => item.entry.position),
       { budgetMs: 3_000 },
     );
+    order.forEach((item, i) => names.set(item.index, resolved[i] ?? null));
 
     return scored.map((entry, index) => {
       const usable = entry.cleaned.usable;
@@ -344,7 +455,7 @@ export class Watcher {
       return {
         clusterId: entry.clusterId,
         position: entry.position,
-        place: names[index] ?? null,
+        place: names.get(index) ?? null,
         firstObserved: entry.props.first_observed,
         lastObserved: entry.props.last_observed,
         detections: usable.length,
@@ -382,16 +493,18 @@ export class Watcher {
     const result: TickResult = { clustersSeen: 0, confirmed: [], candidates: [], noise: 0, skipped: 0 };
 
     try {
-      const survey = await this.survey({ force: true });
+      const area = this.resolveArea(null);
+      const survey = await this.survey({ force: true, area: area.id });
       result.clustersSeen = survey.clusters.length;
       if (survey.error) return { ...result, error: survey.error };
 
-      if (this.cachedScored.length === 0) {
+      const scored = this.surveys.get(area.bbox)?.scored ?? [];
+      if (scored.length === 0) {
         this.ctx.log.info("No active clusters in the area of interest.");
         return result;
       }
 
-      for (const entry of this.cachedScored) {
+      for (const entry of scored) {
         if (entry.confirmation.classification === "NOISE") {
           result.noise++;
           await this.closeIfOpen(entry.clusterId, entry.confirmation.components[0]?.detail ?? "Scored as noise.");

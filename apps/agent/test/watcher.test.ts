@@ -190,6 +190,78 @@ describe("cluster survey", () => {
   });
 });
 
+describe("watch areas", () => {
+  it("offers the configured area first", async () => {
+    const { ctx } = makeContext();
+    const watcher = new Watcher(ctx, async () => {}, offlinePlaces());
+
+    const areas = watcher.areas();
+    expect(areas[0]!.id).toBe("catalonia");
+    expect(areas.map((a) => a.id)).toContain("iberia");
+    // Registry depth is not uniform, and the picker has to say so.
+    expect(areas.find((a) => a.id === "catalonia")!.coverage).toBe("deep");
+    expect(areas.find((a) => a.id === "iberia")!.coverage).toBe("osm");
+  });
+
+  it("caches each area separately", async () => {
+    const { ctx, deepfire } = makeContext();
+    const watcher = new Watcher(ctx, async () => {}, offlinePlaces());
+
+    await watcher.survey({ area: "catalonia" });
+    await watcher.survey({ area: "iberia" });
+    await watcher.survey({ area: "catalonia" });
+
+    // Two queries, not three: switching back is free.
+    expect(deepfire.clusters).toHaveBeenCalledTimes(2);
+  });
+
+  it("labels the survey with the area and its coverage", async () => {
+    const { ctx } = makeContext();
+    const watcher = new Watcher(ctx, async () => {}, offlinePlaces());
+
+    const survey = await watcher.survey({ area: "iberia" });
+    expect(survey.areaId).toBe("iberia");
+    expect(survey.coverage).toBe("osm");
+    expect(survey.bbox).toBe("-10.00,30.00,5.00,45.00");
+  });
+
+  it("drops the id filter once the list would overflow a URL", async () => {
+    // A cluster_id IN (...) filter over a few hundred UUIDs is seven kilobytes
+    // of query string and a 414 from DeepFire. Past the threshold the bounding
+    // box and the time window have to do the filtering instead.
+    const { ctx, deepfire } = makeContext();
+    const many = Array.from({ length: 120 }, (_, i) =>
+      feature(`clusters.c${i}`, 1 + i * 0.01, 41 + i * 0.005),
+    );
+    deepfire.clusters.mockResolvedValueOnce(many as never);
+
+    const watcher = new Watcher(ctx, async () => {}, offlinePlaces());
+    await watcher.survey({ force: true });
+
+    const filter = deepfire.hotspots.mock.calls.at(-1)?.[0]?.filter ?? "";
+    expect(filter).not.toMatch(/cluster_id IN/);
+    expect(filter).toMatch(/observed_at/);
+  });
+
+  it("keeps only the clusters it asked about when the filter is dropped", async () => {
+    const { ctx, deepfire } = makeContext();
+    const many = Array.from({ length: 120 }, (_, i) =>
+      feature(`clusters.c${i}`, 1 + i * 0.01, 41 + i * 0.005),
+    );
+    deepfire.clusters.mockResolvedValueOnce(many as never);
+    // A bbox query returns detections from clusters that are no longer active.
+    deepfire.hotspots.mockResolvedValueOnce([
+      hotspot("x0", "c0", 1, 41, "VIIRS_NOAA20_NRT", "HIGH"),
+      hotspot("x1", "not-in-the-list", 1.2, 41.2, "VIIRS_NOAA20_NRT", "HIGH"),
+    ] as never);
+
+    const watcher = new Watcher(ctx, async () => {}, offlinePlaces());
+    const survey = await watcher.survey({ force: true });
+
+    expect(survey.clusters.map((c) => c.clusterId)).toEqual(["c0"]);
+  });
+});
+
 describe("adopting a cluster", () => {
   it("opens one the watcher rejected, and records that a human asked", async () => {
     const { ctx, store, events } = makeContext();

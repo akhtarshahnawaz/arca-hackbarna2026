@@ -228,13 +228,13 @@
       "id": "demo-cluster-emporda-h000",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.067101,
-        42.303066
+        3.066305,
+        42.296917
       ],
       "observedAt": "2026-09-19T09:15:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 42,
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 18.6,
       "country": "ES",
       "active": true
     },
@@ -242,13 +242,13 @@
       "id": "demo-cluster-emporda-h001",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.063457,
-        42.299447
+        3.066432,
+        42.295436
       ],
       "observedAt": "2026-09-19T09:15:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 51,
+      "fireRadiativePowerMw": 33.2,
       "country": "ES",
       "active": true
     },
@@ -256,13 +256,13 @@
       "id": "demo-cluster-emporda-h002",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.059814,
-        42.295829
+        3.064099,
+        42.293743
       ],
       "observedAt": "2026-09-19T09:15:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 60,
+      "fireRadiativePowerMw": 48.5,
       "country": "ES",
       "active": true
     },
@@ -270,13 +270,13 @@
       "id": "demo-cluster-emporda-h003",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.05617,
-        42.29221
+        3.061576,
+        42.293332
       ],
       "observedAt": "2026-09-19T09:15:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 69,
+      "fireRadiativePowerMw": 55,
       "country": "ES",
       "active": true
     },
@@ -284,13 +284,13 @@
       "id": "demo-cluster-emporda-h004",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.052527,
-        42.288592
+        3.059732,
+        42.293863
       ],
       "observedAt": "2026-09-19T09:15:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 78,
+      "fireRadiativePowerMw": 48.5,
       "country": "ES",
       "active": true
     },
@@ -298,13 +298,13 @@
       "id": "demo-cluster-emporda-h005",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.048883,
-        42.284973
+        3.057633,
+        42.295335
       ],
       "observedAt": "2026-09-19T09:15:00.000Z",
       "source": "VIIRS_NOAA20_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 87,
+      "fireRadiativePowerMw": 33.2,
       "country": "ES",
       "active": true
     },
@@ -312,13 +312,13 @@
       "id": "demo-cluster-emporda-h006",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.061514,
-        42.299628
+        3.058,
+        42.297002
       ],
-      "observedAt": "2026-09-19T09:37:00.000Z",
-      "source": "MTG_I1",
+      "observedAt": "2026-09-19T09:15:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
       "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 60,
+      "fireRadiativePowerMw": 18.6,
       "country": "ES",
       "active": true
     },
@@ -326,13 +326,13 @@
       "id": "demo-cluster-emporda-h007",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.060057,
-        42.296553
+        3.067824,
+        42.295421
       ],
       "observedAt": "2026-09-19T09:37:00.000Z",
       "source": "MTG_I1",
       "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 74,
+      "fireRadiativePowerMw": 23.6,
       "country": "ES",
       "active": true
     },
@@ -340,13 +340,13 @@
       "id": "demo-cluster-emporda-h008",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.058599,
-        42.293477
+        3.065905,
+        42.292492
       ],
       "observedAt": "2026-09-19T09:37:00.000Z",
       "source": "MTG_I1",
       "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 88,
+      "fireRadiativePowerMw": 61.8,
       "country": "ES",
       "active": true
     },
@@ -354,8 +354,36 @@
       "id": "demo-cluster-emporda-h009",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.061453,
-        42.299583
+        3.058916,
+        42.290783
+      ],
+      "observedAt": "2026-09-19T09:37:00.000Z",
+      "source": "MTG_I1",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 61.8,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-cluster-emporda-h010",
+      "clusterId": "demo-cluster-emporda",
+      "position": [
+        3.055999,
+        42.297111
+      ],
+      "observedAt": "2026-09-19T09:37:00.000Z",
+      "source": "MTG_I1",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 23.6,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-cluster-emporda-h011",
+      "clusterId": "demo-cluster-emporda",
+      "position": [
+        3.056399,
+        42.297411000000004
       ],
       "observedAt": "2026-09-19T09:39:00.000Z",
       "source": "MTG_I1",
@@ -365,44 +393,16 @@
       "active": true
     },
     {
-      "id": "demo-cluster-emporda-h010",
+      "id": "demo-cluster-emporda-h012",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.068315,
-        42.304333
+        3.07136,
+        42.295954
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
       "source": "VIIRS_SNPP_NRT",
       "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 70,
-      "country": "ES",
-      "active": true
-    },
-    {
-      "id": "demo-cluster-emporda-h011",
-      "clusterId": "demo-cluster-emporda",
-      "position": [
-        3.064308,
-        42.300533
-      ],
-      "observedAt": "2026-09-19T10:09:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 81,
-      "country": "ES",
-      "active": true
-    },
-    {
-      "id": "demo-cluster-emporda-h012",
-      "clusterId": "demo-cluster-emporda",
-      "position": [
-        3.0603,
-        42.296733
-      ],
-      "observedAt": "2026-09-19T10:09:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 92,
+      "fireRadiativePowerMw": 62.5,
       "country": "ES",
       "active": true
     },
@@ -410,13 +410,13 @@
       "id": "demo-cluster-emporda-h013",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.056292,
-        42.292934
+        3.072436,
+        42.292633
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
       "source": "VIIRS_SNPP_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 103,
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 84.5,
       "country": "ES",
       "active": true
     },
@@ -424,13 +424,13 @@
       "id": "demo-cluster-emporda-h014",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.052284,
-        42.289134
+        3.074407,
+        42.290107
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
+      "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 114,
+      "fireRadiativePowerMw": 111.6,
       "country": "ES",
       "active": true
     },
@@ -438,13 +438,13 @@
       "id": "demo-cluster-emporda-h015",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.048276,
-        42.285335
+        3.070214,
+        42.287401
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
-      "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 125,
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 139.4,
       "country": "ES",
       "active": true
     },
@@ -452,13 +452,13 @@
       "id": "demo-cluster-emporda-h016",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.044268,
-        42.281535
+        3.069176,
+        42.285711
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
       "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 136,
+      "fireRadiativePowerMw": 163.2,
       "country": "ES",
       "active": true
     },
@@ -466,13 +466,13 @@
       "id": "demo-cluster-emporda-h017",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.04026,
-        42.277736
+        3.064447,
+        42.284331
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
+      "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 147,
+      "fireRadiativePowerMw": 179.3,
       "country": "ES",
       "active": true
     },
@@ -480,13 +480,13 @@
       "id": "demo-cluster-emporda-h018",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.036253,
-        42.273936
+        3.060602,
+        42.28376
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
+      "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 158,
+      "fireRadiativePowerMw": 185,
       "country": "ES",
       "active": true
     },
@@ -494,13 +494,13 @@
       "id": "demo-cluster-emporda-h019",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.032245,
-        42.270137
+        3.057883,
+        42.284688
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
       "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 169,
+      "fireRadiativePowerMw": 179.3,
       "country": "ES",
       "active": true
     },
@@ -508,13 +508,13 @@
       "id": "demo-cluster-emporda-h020",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.028237,
-        42.266337
+        3.054562,
+        42.286333
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
-      "confidence": "MEDIUM",
-      "fireRadiativePowerMw": 180,
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 163.2,
       "country": "ES",
       "active": true
     },
@@ -522,13 +522,13 @@
       "id": "demo-cluster-emporda-h021",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.024229,
-        42.262538
+        3.05318,
+        42.287358
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
+      "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 191,
+      "fireRadiativePowerMw": 139.4,
       "country": "ES",
       "active": true
     },
@@ -536,13 +536,13 @@
       "id": "demo-cluster-emporda-h022",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.020221,
-        42.258738
+        3.051477,
+        42.29135
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
       "source": "VIIRS_SNPP_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 202,
+      "fireRadiativePowerMw": 111.6,
       "country": "ES",
       "active": true
     },
@@ -550,13 +550,13 @@
       "id": "demo-cluster-emporda-h023",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.016213,
-        42.254939
+        3.04989,
+        42.292032
       ],
       "observedAt": "2026-09-19T10:09:00.000Z",
-      "source": "VIIRS_NOAA20_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 213,
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 84.5,
       "country": "ES",
       "active": true
     },
@@ -564,13 +564,13 @@
       "id": "demo-cluster-emporda-h024",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.062,
-        42.279455
+        3.052482,
+        42.295186
       ],
-      "observedAt": "2026-09-19T10:16:00.000Z",
-      "source": "LANDSAT_NRT",
-      "confidence": "HIGH",
-      "fireRadiativePowerMw": 180,
+      "observedAt": "2026-09-19T10:09:00.000Z",
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 62.5,
       "country": "ES",
       "active": true
     },
@@ -578,8 +578,8 @@
       "id": "demo-cluster-emporda-h025",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.060664,
-        42.278369
+        3.066008,
+        42.283236
       ],
       "observedAt": "2026-09-19T10:16:00.000Z",
       "source": "LANDSAT_NRT",
@@ -592,13 +592,13 @@
       "id": "demo-cluster-emporda-h026",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.059328,
-        42.277284
+        3.063336,
+        42.283236
       ],
       "observedAt": "2026-09-19T10:16:00.000Z",
       "source": "LANDSAT_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 240,
+      "fireRadiativePowerMw": 236,
       "country": "ES",
       "active": true
     },
@@ -606,18 +606,60 @@
       "id": "demo-cluster-emporda-h027",
       "clusterId": "demo-cluster-emporda",
       "position": [
-        3.057992,
-        42.276198
+        3.060664,
+        42.283236
       ],
       "observedAt": "2026-09-19T10:16:00.000Z",
       "source": "LANDSAT_NRT",
       "confidence": "HIGH",
-      "fireRadiativePowerMw": 270,
+      "fireRadiativePowerMw": 262,
       "country": "ES",
       "active": true
     },
     {
       "id": "demo-cluster-emporda-h028",
+      "clusterId": "demo-cluster-emporda",
+      "position": [
+        3.057992,
+        42.283236
+      ],
+      "observedAt": "2026-09-19T10:16:00.000Z",
+      "source": "LANDSAT_NRT",
+      "confidence": "HIGH",
+      "fireRadiativePowerMw": 288,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-cluster-emporda-h029",
+      "clusterId": "demo-cluster-emporda",
+      "position": [
+        3.068801,
+        42.277012
+      ],
+      "observedAt": "2026-09-19T10:13:00.000Z",
+      "source": "VIIRS_SNPP_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 38,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-cluster-emporda-h030",
+      "clusterId": "demo-cluster-emporda",
+      "position": [
+        3.057385,
+        42.274841
+      ],
+      "observedAt": "2026-09-19T10:16:00.000Z",
+      "source": "VIIRS_NOAA20_NRT",
+      "confidence": "MEDIUM",
+      "fireRadiativePowerMw": 31,
+      "country": "ES",
+      "active": true
+    },
+    {
+      "id": "demo-cluster-emporda-h031",
       "clusterId": "demo-cluster-emporda",
       "position": [
         2.979414,
@@ -631,7 +673,7 @@
       "active": true
     },
     {
-      "id": "demo-cluster-emporda-h029",
+      "id": "demo-cluster-emporda-h032",
       "clusterId": "demo-cluster-emporda",
       "position": [
         2.979718,
@@ -645,7 +687,7 @@
       "active": true
     },
     {
-      "id": "demo-cluster-emporda-h030",
+      "id": "demo-cluster-emporda-h033",
       "clusterId": "demo-cluster-emporda-stray",
       "position": [
         2.998846,

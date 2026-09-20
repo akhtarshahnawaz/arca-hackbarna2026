@@ -159,9 +159,10 @@ without dialling anyone.
 ./start.sh --check     # or: pnpm test && pnpm typecheck
 ```
 
-90 tests, no network and no database, in about two seconds. They cover the
+122 tests, no network and no database, in about two seconds. They cover the
 cleaning rules, the confirmation score, band construction from an ensemble, the
-evacuation model, the action table, ranking order and the pipeline end to end.
+evacuation model, the action table, ranking order, the cluster survey and the
+pipeline end to end.
 [docs/09-testing-and-demo.md](docs/09-testing-and-demo.md) lists the six real
 bugs they caught while being written.
 
@@ -169,22 +170,18 @@ bugs they caught while being written.
 
 ## Deploying
 
-Two services. **The agent must run on a platform that keeps a process alive** —
-it polls DeepFire every five minutes, holds an in-process event bus, and streams
-server-sent events to open browsers. Vercel's serverless functions cannot do
-that, so the agent goes on Railway (or Fly, Render, or any VPS).
+Everything on Railway: three services in one project — `arca-agent`, `arca-web`
+and Postgres. About twenty minutes from an empty project to a coordinator
+getting a briefing on their phone. Full walkthrough with every variable:
+[docs/07-deployment-railway.md](docs/07-deployment-railway.md).
 
-The web app is a normal Next.js app and can go on either.
+**The agent has to run on a platform that keeps a process alive.** It polls
+DeepFire on a timer, holds an in-process event bus, and streams server-sent
+events to open browsers. Serverless functions cannot do any of that, which is
+why Railway rather than Vercel for that half — and once the agent is there,
+keeping the web app beside it means one platform, one log stream, one bill.
 
-| Service | Where | Why |
-|---|---|---|
-| `arca-agent` | Railway | Long-running watcher, in-process bus, SSE |
-| `arca-web` | Vercel **or** Railway | Static-ish Next app, talks only to the agent |
-| Postgres | Railway | Optional. Unset runs in memory |
-
-Deploy the agent first: the web app needs its URL at build time.
-
-### The agent, on Railway
+### 1. Project and database
 
 ```bash
 npm i -g @railway/cli && railway login
@@ -192,98 +189,96 @@ railway init --name arca
 railway add --database postgres
 ```
 
-No PostGIS image is needed — ARCA never asks the database a spatial question,
-which [docs/01-architecture.md](docs/01-architecture.md) explains.
+No PostGIS image. ARCA never asks the database a spatial question.
 
-In the dashboard: **New → GitHub Repo → this repository**, name it
-`arca-agent`, and set:
+### 2. The agent service
+
+**New → GitHub Repo → this repository**, name it `arca-agent`:
 
 | Setting | Value |
 |---|---|
-| Root directory | `/` — the monorepo root, which pnpm workspaces need |
+| Root directory | `/` — the monorepo root, because pnpm workspaces need it |
 | Build command | `pnpm install --frozen-lockfile && pnpm --filter @arca/agent build` |
 | Start command | `pnpm --filter @arca/agent start` |
-| Healthcheck path | `/api/health` |
 | Watch paths | `apps/agent/**`, `packages/**` |
 
-Paste your variables into the Raw Editor, using the same keys as your local
-`.env`, plus:
+Variables — everything is optional and ARCA tells you at boot what each missing
+one costs:
 
 ```bash
 NODE_ENV=production
 DATABASE_URL=${{Postgres.DATABASE_URL}}
+
+DEEPFIRE_CLIENT_ID=...
+DEEPFIRE_CLIENT_SECRET=...
+TALAIA_API_KEY=...
+NEBIUS_API_KEY=...
+SLNG_API_KEY=...
+SLNG_AGENT_ID=...
+
+OPS_TOKEN=<a long random string>
+
+# Safety rails. Leave the allowlist empty until you mean it.
+CALL_ALLOWLIST=
+EXERCISE_MODE=true
 ```
 
-`${{Postgres.DATABASE_URL}}` is a Railway reference that resolves at deploy time
-and follows the database if it is ever recreated.
-
-Generate a domain under **Settings → Networking**, then add one more variable
-pointing the service at itself:
+Generate a domain, then set `AGENT_PUBLIC_URL` to it — the agent needs to know
+its own address to register a Telegram webhook. Then create the schema:
 
 ```bash
-AGENT_PUBLIC_URL=https://arca-agent-production.up.railway.app
+railway run --service arca-agent pnpm db:push
 ```
 
-That matters: an `https://` non-localhost value is what switches Telegram from
-long-polling to webhook mode, and polling does not survive a platform that
-sleeps idle containers.
+### 3. The web service
 
-Create the schema, then check it:
-
-```bash
-railway run --service arca-agent pnpm --filter @arca/db push
-curl -s https://arca-agent-production.up.railway.app/api/health
-```
-
-Anything `false` under `capabilities` is a missing variable, and the deploy log
-names each one with what it costs.
-
-### The web app, on Vercel
-
-**New Project → import this repository**, then:
-
-| Setting | Value |
-|---|---|
-| Framework preset | Next.js |
-| Root directory | `apps/web` |
-| Build command | `pnpm --filter @arca/web build` |
-| Install command | `pnpm install` |
-| Node version | 20 or newer |
-
-One environment variable:
-
-```bash
-NEXT_PUBLIC_AGENT_URL=https://arca-agent-production.up.railway.app
-```
-
-Two things worth knowing. `NEXT_PUBLIC_*` values are **baked in at build time**,
-so changing that URL needs a redeploy rather than a restart. And the build
-config drops `output: "standalone"` when it detects Vercel, since Vercel uses
-its own adapter and standalone is for self-hosted targets.
-
-The agent already sends permissive CORS headers, so the browser can reach it
-from a different origin.
-
-### The web app, on Railway instead
-
-If you would rather keep both on one platform, add a second Railway service from
-the same repository:
+**New → GitHub Repo → same repository**, name it `arca-web`:
 
 | Setting | Value |
 |---|---|
 | Root directory | `/` |
 | Build command | `pnpm install --frozen-lockfile && pnpm --filter @arca/web build` |
 | Start command | `pnpm --filter @arca/web start` |
+| Watch paths | `apps/web/**`, `packages/core/**` |
 
 ```bash
 NODE_ENV=production
 NEXT_PUBLIC_AGENT_URL=https://arca-agent-production.up.railway.app
 ```
 
+`NEXT_PUBLIC_*` is **baked in at build time**, so changing that URL needs a
+redeploy rather than a restart. Both services bind `PORT`, which Railway injects
+separately for each — there is nothing to configure.
+
+Generate a domain for this service too. The agent sends permissive CORS headers,
+so the browser reaches it from a different origin without further setup.
+
+### 4. Check it
+
+```bash
+curl -s https://arca-agent-production.up.railway.app/api/health | jq
+```
+
+`capabilities` is what this deployment can actually do; anything false is a
+missing variable, and the deploy log names each one with the consequence.
+
+Then open the web domain.
+
+<details>
+<summary>Putting the web app on Vercel instead</summary>
+
+It works and the build config already handles it — `output: "standalone"` is
+dropped when Vercel is detected. Root directory `apps/web`, build command
+`pnpm --filter @arca/web build`, and the same `NEXT_PUBLIC_AGENT_URL`. The agent
+still has to live somewhere that keeps a process alive.
+
+</details>
+
 ### After deploying
 
 1. Open the web domain. With no live fire — the normal state — you get the
-   incident picker and the replay bundle.
+   feed of active clusters on the left, every one of them scored, and the
+   synthetic scenarios one switch away.
 2. Message the Telegram bot from the coordinator's phone. It replies with that
    chat's id. Put the id in `COORDINATOR_TELEGRAM_CHAT_IDS` and redeploy.
 3. Message it from a phone that has never touched it. It should explain what
@@ -370,7 +365,7 @@ means an instruction about people, and red is the single crossover because
 pnpm install
 pnpm dev:agent              # :4000  — pipeline, agent, HTTP API, Telegram
 pnpm dev:web                # :3000  — operations screen
-pnpm test                   # 90 tests, no network, no database
+pnpm test                   # 122 tests, no network, no database
 ```
 
 The agent reads `.env` itself through node's `--env-file-if-exists`, so it
@@ -400,7 +395,8 @@ docs/             How and why it works.
 | [Deploying to Railway](docs/07-deployment-railway.md) | Empty project to a briefing on a phone |
 | [Extending](docs/08-extending.md) | Regions, rules, sources, tools, stores |
 | [Testing and the demo](docs/09-testing-and-demo.md) | Scenarios, the three-minute script, manual checks |
-| [Modes and the feed](docs/10-modes-and-the-feed.md) | Live vs synthetic, the cluster survey, working a cluster |
+| [Modes and the feed](docs/10-modes-and-the-feed.md) | Live vs synthetic, watch areas, working a cluster, waiting for the model |
+| [Reading the map](docs/11-reading-the-map.md) | The probability gradient, detections, site glyphs |
 
 ## Design decisions worth knowing
 

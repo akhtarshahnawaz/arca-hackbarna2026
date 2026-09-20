@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ClusterSummary,
   ClusterSurvey,
+  WatchArea,
   ExposureReport,
   Incident,
   ScenarioSummary,
@@ -36,6 +37,8 @@ export interface SpreadView {
   ensembleMembers: number | null;
   errorMessage: string | null;
   synthetic: boolean;
+  /** Drawn rings standing in while the model run is still queued. */
+  provisional?: boolean;
 }
 
 export interface SpreadFrameView {
@@ -87,6 +90,11 @@ export interface IncidentDetail {
 /** Live or synthetic. The one control that changes where data comes from. */
 export type Mode = "live" | "synthetic";
 
+/** The feed, plus the areas this deployment is willing to look at. */
+export interface SurveyResponse extends ClusterSurvey {
+  areas: WatchArea[];
+}
+
 export interface IncidentSummary extends Incident {
   counts: { ranked: number; evacuateNow: number; shelterCandidates: number; people: number };
 }
@@ -118,7 +126,13 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 export const api = {
   health: () => get<{ status: string; capabilities: Record<string, boolean>; storage: string }>("/api/health"),
   incidents: () => get<{ incidents: IncidentSummary[] }>("/api/incidents"),
-  clusters: (force = false) => get<ClusterSurvey>(`/api/clusters${force ? "?force=true" : ""}`),
+  clusters: (options: { force?: boolean; area?: string | null } = {}) => {
+    const params = new URLSearchParams();
+    if (options.force) params.set("force", "true");
+    if (options.area) params.set("area", options.area);
+    const query = params.toString();
+    return get<SurveyResponse>(`/api/clusters${query ? `?${query}` : ""}`);
+  },
   adopt: (clusterId: string) =>
     post<{ incidentId: string }>(`/api/clusters/${encodeURIComponent(clusterId)}/adopt`),
   scenarios: () => get<{ scenarios: ScenarioSummary[] }>("/api/scenarios"),
@@ -148,9 +162,11 @@ export const api = {
  * ARCA does something. The agent serves it from a one-minute cache, so polling
  * costs nothing upstream.
  */
-export function useFeed(mode: Mode, pollMs = 60_000) {
+export function useFeed(mode: Mode, area: string | null, pollMs = 60_000) {
   const [clusters, setClusters] = useState<ClusterSummary[]>([]);
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
+  const [areas, setAreas] = useState<WatchArea[]>([]);
+  const [coverage, setCoverage] = useState<ClusterSurvey["coverage"]>("deep");
   const [error, setError] = useState<string | null>(null);
   const [feedError, setFeedError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -160,8 +176,10 @@ export function useFeed(mode: Mode, pollMs = 60_000) {
     async (force = false) => {
       try {
         if (mode === "live") {
-          const survey = await api.clusters(force);
+          const survey = await api.clusters({ force, area });
           setClusters(survey.clusters);
+          setAreas(survey.areas ?? []);
+          setCoverage(survey.coverage);
           setAt(survey.at);
           // A survey error is not a fetch error: the payload is the last good
           // feed, and saying so is more useful than blanking the list.
@@ -179,7 +197,7 @@ export function useFeed(mode: Mode, pollMs = 60_000) {
         setLoading(false);
       }
     },
-    [mode],
+    [mode, area],
   );
 
   useEffect(() => {
@@ -190,7 +208,7 @@ export function useFeed(mode: Mode, pollMs = 60_000) {
     return () => clearInterval(timer);
   }, [load, mode, pollMs]);
 
-  return { clusters, scenarios, error, feedError, loading, at, reload: load };
+  return { clusters, scenarios, areas, coverage, error, feedError, loading, at, reload: load };
 }
 
 /** Poll-free refresh: the stream says when something changed, then we refetch. */

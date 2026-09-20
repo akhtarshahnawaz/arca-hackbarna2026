@@ -9,7 +9,7 @@ fire".
 
 | | Live | Synthetic |
 |---|---|---|
-| Left rail lists | Active DeepFire clusters in the area of interest | Generated scenario bundles |
+| Left rail lists | Active DeepFire clusters in the chosen area | Generated scenario bundles |
 | Detections | DeepFire, now | Recorded in the bundle |
 | Fire spread | DeepFire simulation, requested on selection | Recorded in the bundle |
 | Exposure | Talaia, live | Talaia if it answers; the bundle's own exposure otherwise |
@@ -133,6 +133,95 @@ It also drove the ordering change in
 [Ranking](./03-ranking.md#why-spare-time-is-not-compared-minute-by-minute):
 sorted strictly by minute, unnamed field parcels filled the top of the list
 ahead of the care homes.
+
+## Where to look
+
+Catalonia is the default because that is where Talaia's registry coverage is
+deep. It is also, for most of the year, empty.
+
+On the afternoon this was written the Catalan feed held nine active clusters and
+ARCA scored every one as noise. That was correct: eight were single pixels of
+1–13 MW seen by one satellite, and the ninth was 197 detections over 52 hours at
+la Pobla de Mafumet — the Repsol Tarragona petrochemical complex, masked. There
+was genuinely no wildfire in Catalonia.
+
+There were three in Iberia. Widening the area to `iberia` found them:
+
+| | Detections | Satellites | Peak FRP | Across | Score |
+|---|---|---|---|---|---|
+| Vila Nova de Poiares, Coimbra | 134 of 325 | 3 | 620 MW | 9.5 km | 100 CONFIRMED |
+| Villablanca, Huelva | 327 | 6 | 861 MW | 5.7 km | CONFIRMED |
+| A Lama, Pontevedra | 132 | 4 | 142 MW | 10.0 km | CONFIRMED |
+
+So the picker offers three areas, and says what each costs:
+
+| Area | Bounding box | Exposure |
+|---|---|---|
+| Catalonia | `0.15,40.50,3.35,42.90` | Full registries: capacities, contacts, REGA livestock |
+| Spain and the Balearics | `-9.50,35.90,4.40,43.90` | Catalan registries only; OpenStreetMap elsewhere |
+| Iberia and the Maghreb | `-10.00,30.00,5.00,45.00` | OpenStreetMap outside Catalonia |
+
+`AOI_BBOX` still sets the default and still drives the background watcher; the
+picker only changes what the screen is looking at.
+
+### Two things a wide area breaks, and how
+
+**URL length.** The hotspot query filters by `cluster_id IN (…)`, which is cheap
+for nine clusters and a 414 for a hundred and eighty — seven kilobytes of UUIDs
+in a query string. Above sixty ids the filter is dropped and the bounding box
+and time window do the work instead, with the results bucketed by cluster
+locally. Same detections, shorter URL.
+
+**Nominatim's one request per second.** Naming 185 clusters would take three
+minutes of queue for a list whose bottom nine tenths is collapsed behind "scored
+as noise". Only the top thirty are named — already being worked first, then by
+score — and the rest fall back to coordinates. The cache is shared across
+surveys, so anything that stays near the top is named once and free after that.
+
+**The static mask is per-area too.** A Catalan mask says nothing about a flare
+stack in Huelva, so widening refetches it. Masking blind would be worse than not
+masking.
+
+## Waiting for the model
+
+A DeepFire simulation queues and takes minutes. An earlier build showed a
+detection and then nothing at all for those minutes — no footprint, no ranked
+list, no sign anything was happening — which reads as broken rather than busy,
+and wastes the part of an incident where minutes are worth most.
+
+So opening a fire now happens in two passes:
+
+1. **Immediately.** Concentric rings are drawn from the ignition at a blunt
+   1.4 km/h and Talaia is asked what is inside them. A ranked list of who is
+   nearby appears in seconds. The map caption, the legend and the spread record
+   all say `provisional`, and the timeline records that the figures will be
+   recomputed.
+2. **When the model lands.** The real ensemble replaces the rings, the ranking
+   is recomputed, and the [diff](./03-ranking.md#the-diff) says exactly what the
+   model changed about the order.
+
+It costs one extra exposure query, and only on the first open of an incident
+that has no completed run — a re-open uses the cached one, and a replay skips
+the pass entirely because its geometry is already recorded.
+
+### What caching does and does not fix
+
+Worth being straight about, because "add a cache" is the obvious suggestion and
+it does not solve the slow case:
+
+| | Cached | For how long |
+|---|---|---|
+| Cluster survey | yes, per area | 60 s |
+| Static heat-source mask | yes, per area | 24 h |
+| DeepFire token | yes, in the store | 180 days |
+| Completed simulation | yes, per incident | 30 min before a re-run is considered |
+| Talaia exposure | yes, per incident | for the incident's life |
+| Place names | yes | 7 days |
+
+Every one of those makes the *second* open fast. None of them helps the first,
+because the first is a model run that has never been computed. The provisional
+pass is what addresses that, and running ARCA with `DATABASE_URL` set is what
+stops every restart from throwing the caches away.
 
 ## Place names
 

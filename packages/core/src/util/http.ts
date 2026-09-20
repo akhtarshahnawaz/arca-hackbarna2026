@@ -10,6 +10,14 @@
  * ones that would.
  */
 
+/** Keep the endpoint and the shape of the query; drop the bulk. */
+function shortenUrl(url: string, max = 240): string {
+  if (url.length <= max) return url;
+  const cut = url.indexOf("?");
+  const base = cut === -1 ? url : url.slice(0, cut);
+  return `${base}?… (${url.length - base.length - 1} chars of query elided)`;
+}
+
 export class HttpError extends Error {
   readonly status: number;
   readonly body: string;
@@ -23,7 +31,10 @@ export class HttpError extends Error {
     retryAfterMs?: number | null;
     message?: string;
   }) {
-    super(opts.message ?? `HTTP ${opts.status} from ${opts.url}: ${opts.body.slice(0, 300)}`);
+    // A CQL2 filter over a few hundred cluster ids makes a URL thousands of
+    // characters long, and putting that in an Error message buries the actual
+    // failure under a wall of UUIDs in every log line that touches it.
+    super(opts.message ?? `HTTP ${opts.status} from ${shortenUrl(opts.url)}: ${opts.body.slice(0, 300)}`);
     this.name = "HttpError";
     this.status = opts.status;
     this.body = opts.body;

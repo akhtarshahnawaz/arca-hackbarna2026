@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ClusterSummary, ScenarioSummary } from "@arca/core";
+import { describePosition, type ClusterSummary, type ScenarioSummary, type WatchArea } from "@arca/core";
 import type { Mode } from "@/lib/api";
 import { compact, timeOfDay } from "@/lib/format";
 
@@ -29,6 +29,10 @@ export interface FeedRailProps {
   /** A survey that failed upstream; the list below it is the last good one. */
   feedError: string | null;
   at: string | null;
+  areas: WatchArea[];
+  area: string | null;
+  coverage: "deep" | "osm";
+  onAreaChange: (area: string) => void;
   selectedIncidentId: string | null;
   selectedClusterId: string | null;
   busyId: string | null;
@@ -118,6 +122,37 @@ export function FeedRail(props: FeedRailProps) {
           <ChevronIcon direction="left" />
         </button>
       </header>
+
+      {/* Where to look.
+          A wildfire system pointed at one comarca spends most of the year
+          looking at nothing: Catalonia can be quiet while Huelva and Coimbra
+          are burning. Widening the area is the difference between "no fires"
+          and "no fires here" — at the cost of registry depth, which is said
+          plainly below rather than discovered later. */}
+      {props.mode === "live" && props.areas.length > 1 ? (
+        <div className="px-3 py-2 border-b hairline">
+          <label className="sr-only" htmlFor="watch-area">
+            Area to watch
+          </label>
+          <select
+            id="watch-area"
+            value={props.area ?? props.areas[0]!.id}
+            onChange={(event) => props.onAreaChange(event.target.value)}
+            className="w-full rounded border border-[var(--color-line-bright)] bg-[var(--color-surface-2)] px-2 py-1 text-[11px] text-[var(--color-ink)] focus:outline-none focus:border-[var(--color-ink-faint)]"
+          >
+            {props.areas.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-[9.5px] leading-snug text-[var(--color-ink-faint)]">
+            {props.coverage === "deep"
+              ? "Full registry coverage here: capacities, contacts, livestock."
+              : "Outside Catalonia, sites come from OpenStreetMap with class-default occupancies."}
+          </p>
+        </div>
+      ) : null}
 
       {props.error || props.feedError ? (
         <p className="px-3 py-2 text-[10px] leading-relaxed text-[var(--color-warn)] border-b hairline">
@@ -258,7 +293,7 @@ function ClusterCard(props: {
       onClick={() => props.onPick(cluster)}
       disabled={props.busy}
       aria-current={props.selected}
-      aria-label={`${cluster.place ?? "Unnamed cluster"}, scored ${cluster.score} of 100, ${cluster.classification.toLowerCase()}, ${cluster.detections} usable detection${cluster.detections === 1 ? "" : "s"}`}
+      aria-label={`${cluster.place ?? describePosition(cluster.position)}, scored ${cluster.score} of 100, ${cluster.classification.toLowerCase()}, ${cluster.detections} usable detection${cluster.detections === 1 ? "" : "s"}`}
       className={`group relative w-full text-left rounded-lg border px-2.5 py-2 transition-colors disabled:opacity-60 ${
         props.selected
           ? "bg-[var(--color-surface-2)] border-[var(--color-line-bright)]"
@@ -275,7 +310,7 @@ function ClusterCard(props: {
           <span
             className={`text-[12.5px] truncate ${noise ? "text-[var(--color-ink-faint)]" : "text-[var(--color-ink)]"}`}
           >
-            {cluster.place ?? "Unnamed cluster"}
+            {cluster.place ?? describePosition(cluster.position)}
           </span>
           <span className="num ml-auto shrink-0 text-[11px]" style={{ color: tone }}>
             {cluster.score}

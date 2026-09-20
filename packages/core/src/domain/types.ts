@@ -152,6 +152,11 @@ export interface ScenarioSummary {
 export interface ClusterSurvey {
   clusters: ClusterSummary[];
   bbox: string;
+  /** Which named watch area this is, when it is one. */
+  areaId: string | null;
+  areaLabel: string | null;
+  /** What Talaia will be able to say about anything found here. */
+  coverage: "deep" | "osm";
   at: string;
   /** Set when the feed could not be read; `clusters` is then whatever is cached. */
   error: string | null;

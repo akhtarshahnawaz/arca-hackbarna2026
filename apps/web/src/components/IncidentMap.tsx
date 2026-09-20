@@ -8,6 +8,7 @@ import {
   NavigationControl,
   Popup,
   ScaleControl,
+  type DataDrivenPropertyValueSpecification,
   type FilterSpecification,
   type LayerSpecification,
   type MapLayerMouseEvent,
@@ -17,6 +18,7 @@ import {
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { RankedSite } from "@arca/core";
 import type { HotspotView, SpreadFrameView, SpreadView } from "@/lib/api";
+import { iconImageId, iconKeyFor, registerSiteIcons } from "./siteIcons";
 import { ACTION_STYLE, areaKm2, minutes } from "@/lib/format";
 
 /**
@@ -135,6 +137,14 @@ export function IncidentMap(props: IncidentMapProps) {
             evac: site.evac.minutes,
             subcategory: site.subcategory,
             basis: site.evac.basis,
+            // The disc says what to do; this says what the place is.
+            icon: iconImageId(
+              iconKeyFor({
+                category: site.category,
+                subcategory: site.subcategory,
+                responseAsset: site.responseAsset,
+              }),
+            ),
             runs: `${site.reach.runsReaching}/${site.reach.runsTotal}`,
             // Ranked sites draw above watch-list ones, and the most urgent
             // above everything: overlapping marks must not hide the top row.
@@ -154,6 +164,14 @@ export function IncidentMap(props: IncidentMapProps) {
 
   const hourRef = useRef<number | null>(props.hour);
   hourRef.current = props.hour;
+
+  /** The last frame, which is what "whole horizon" means on the map. */
+  const maxHour = useMemo(
+    () => (props.spread?.frames ?? []).reduce((max, frame) => Math.max(max, frame.hour), 0),
+    [props.spread],
+  );
+  const maxHourRef = useRef(maxHour);
+  maxHourRef.current = maxHour;
 
   // --- map lifecycle -------------------------------------------------------
 
@@ -187,6 +205,10 @@ export function IncidentMap(props: IncidentMapProps) {
       mapRef.current = map;
       readyRef.current = true;
 
+      // Glyphs must exist before the symbol layer that references them, or
+      // MapLibre logs a missing-image warning for every feature on screen.
+      registerSiteIcons(map);
+
       map.addControl(new NavigationControl({ showCompass: false }), "top-right");
       map.addControl(new ScaleControl({ unit: "metric" }), "bottom-left");
 
@@ -209,7 +231,7 @@ export function IncidentMap(props: IncidentMapProps) {
         }
       });
 
-      applyHourFilter(map, hourRef.current);
+      applyHourFilter(map, hourRef.current, maxHourRef.current);
 
 
       const hover = (layer: string, build: (properties: Record<string, unknown>) => string) => {
@@ -275,8 +297,8 @@ export function IncidentMap(props: IncidentMapProps) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    applyHourFilter(map, props.hour);
-  }, [props.hour, spreadGeoJson, basemapOk]);
+    applyHourFilter(map, props.hour, maxHour);
+  }, [props.hour, maxHour, spreadGeoJson, basemapOk]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -397,42 +419,88 @@ function composeStyle(data: {
   };
 }
 
+/**
+ * Burn probability to colour, in DeepFire's own ramp.
+ *
+ * Shared by the fill and the feather so a boundary is over-drawn in exactly the
+ * colour it already had; any difference would show up as a halo.
+ */
+const FIRE_RAMP = [
+  "interpolate", ["linear"], ["get", "probability"],
+  0.2, "#fde68a",
+  0.4, "#fbbf24",
+  0.6, "#f97316",
+  0.8, "#dc2626",
+  1, "#7f1d1d",
+] as unknown as DataDrivenPropertyValueSpecification<string>;
+
 function arcaLayers(canLabel: boolean): LayerSpecification[] {
   const layers: LayerSpecification[] = [
-    // Fire first, as a faint field with a bright edge.
+    /**
+     * The fire, as one surface rather than a stack of rings.
+     *
+     * Only ever one hour is on screen — see `applyHourFilter` — and that hour's
+     * contours nest, so five translucent fills composite outward-in into a
+     * gradient: pale amber at the edge where two runs in ten reach, deep red in
+     * the core where nine do. Each fill is weak enough on its own to keep the
+     * towns underneath readable, and the accumulation does the work.
+     *
+     * An earlier version drew every hour at once. Six hours by five levels is
+     * thirty rings, and by the end of the horizon the map was a dartboard.
+     */
     {
       id: "spread-fill",
       type: "fill",
       source: "spread",
       paint: {
-        "fill-color": [
-          "interpolate", ["linear"], ["get", "probability"],
-          0.2, "#fbbf24", 0.5, "#f97316", 0.8, "#dc2626", 1, "#991b1b",
-        ],
-        // Very faint, because these contours are nested: five stacked fills at
-        // a readable opacity compound into an opaque blob that hides the map
-        // underneath. The outline below carries the shape instead.
+        "fill-color": FIRE_RAMP,
+        // Weak on its own; five nested contours composite outward-in into the
+        // falloff. Any stronger and the villages underneath stop being legible,
+        // which is the one thing this map may not do.
         "fill-opacity": [
           "interpolate", ["linear"], ["get", "probability"],
-          0.2, 0.05, 0.5, 0.09, 1, 0.16,
+          0.2, 0.1, 0.5, 0.14, 0.8, 0.18, 1, 0.22,
         ],
+        "fill-antialias": true,
       },
     },
     {
-      id: "spread-line",
+      /**
+       * The join between one contour and the next, blurred away.
+       *
+       * Five stacked fills give five visible steps, and a stepped fire reads as
+       * five separate fires. MapLibre cannot blur a fill, so each contour's
+       * boundary is over-drawn with a wide, heavily blurred line in its own
+       * colour: the steps feather into each other and what is left is a
+       * gradient. Purely cosmetic — it sits exactly on a boundary the fill
+       * already drew, so it adds no area and claims nothing new.
+       */
+      id: "spread-feather",
       type: "line",
       source: "spread",
       paint: {
-        "line-color": [
-          "interpolate", ["linear"], ["get", "probability"],
-          0.2, "#fcd34d", 0.5, "#fb923c", 0.8, "#f87171", 1, "#ef4444",
-        ],
-        // A contour reads as a front; a filled blob reads as a stain.
-        "line-width": [
-          "interpolate", ["linear"], ["get", "probability"],
-          0.2, 1, 0.5, 1.6, 1, 2.4,
-        ],
-        "line-opacity": ["interpolate", ["linear"], ["get", "probability"], 0.2, 0.5, 1, 0.95],
+        "line-color": FIRE_RAMP,
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 16, 11, 30, 14, 52],
+        "line-opacity": 0.1,
+        "line-blur": ["interpolate", ["linear"], ["zoom"], 8, 16, 11, 30, 14, 52],
+      },
+    },
+    {
+      /**
+       * One line, on the outermost contour only.
+       *
+       * "How far it might get" is a single question with a single answer, and
+       * an edge drawn on every level turns the gradient back into rings.
+       */
+      id: "spread-edge",
+      type: "line",
+      source: "spread",
+      filter: ["==", ["get", "outer"], 1],
+      paint: {
+        "line-color": "#fde68a",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.9, 13, 1.6],
+        "line-opacity": 0.55,
+        "line-blur": 0.6,
       },
     },
 
@@ -513,6 +581,31 @@ function arcaLayers(canLabel: boolean): LayerSpecification[] {
         "circle-stroke-width": 1.5,
       },
     },
+    {
+      /**
+       * What kind of place it is.
+       *
+       * Colour is already spoken for — it carries the instruction — so the kind
+       * is carried by shape. `icon-allow-overlap` is deliberate: a hospital
+       * that vanishes because a campsite is nearby is worse than two marks
+       * touching.
+       */
+      id: "sites-icon",
+      type: "symbol",
+      source: "sites",
+      minzoom: 9.5,
+      layout: {
+        "icon-image": ["get", "icon"],
+        "icon-size": [
+          "interpolate", ["linear"], ["zoom"],
+          9.5, 0.42,
+          12, ["interpolate", ["linear"], ["get", "weight"], 0, 0.5, 1000, 0.66],
+          15, ["interpolate", ["linear"], ["get", "weight"], 0, 0.62, 1000, 0.82],
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+    },
   ];
 
   if (canLabel) {
@@ -558,12 +651,21 @@ function setData(map: MapLibreMap, id: string, data: GeoJSON.FeatureCollection):
 }
 
 /** Scrubbing an hour is a filter change: a repaint, not a re-upload. */
-function applyHourFilter(map: MapLibreMap, hour: number | null): void {
-  const filter =
-    hour === null
-      ? (["all"] as unknown as FilterSpecification)
-      : (["<=", ["get", "hour"], hour] as unknown as FilterSpecification);
-  for (const layer of ["spread-fill", "spread-line"]) {
+/**
+ * Show exactly one hour.
+ *
+ * Every frame is a complete picture of the fire at that moment — the contours
+ * are unioned forward in `spreadFrames` — so one hour is the whole footprint at
+ * that hour, not a slice of it. With no hour selected the last frame is shown,
+ * which is the full horizon.
+ *
+ * The previous `<=` filter drew every hour up to the selection on top of each
+ * other, which is where the crowding came from.
+ */
+function applyHourFilter(map: MapLibreMap, hour: number | null, maxHour: number): void {
+  const wanted = hour ?? maxHour;
+  const filter = ["==", ["get", "hour"], wanted] as unknown as FilterSpecification;
+  for (const layer of ["spread-fill", "spread-feather", "spread-edge"]) {
     try {
       if (map.getLayer(layer)) map.setFilter(layer, filter);
     } catch {
@@ -594,8 +696,10 @@ function framesToGeoJson(frames: SpreadFrameView[] | null): GeoJSON.FeatureColle
   if (!frames || frames.length === 0) return emptyCollection();
   const features: GeoJSON.Feature[] = [];
   for (const frame of frames) {
+    // Lowest probability first, so the widest contour is painted first and the
+    // hotter cores land on top of it.
     const ordered = [...frame.contours].sort((a, b) => a.probability - b.probability);
-    for (const contour of ordered) {
+    for (const [index, contour] of ordered.entries()) {
       features.push({
         type: "Feature",
         geometry: contour.geometry,
@@ -604,6 +708,9 @@ function framesToGeoJson(frames: SpreadFrameView[] | null): GeoJSON.FeatureColle
           minutes: frame.minutes,
           probability: contour.probability,
           areaM2: contour.areaM2,
+          // Only the widest contour gets an outline: that is the one line
+          // anyone reads off this map — how far it might get.
+          outer: index === 0 ? 1 : 0,
         },
       });
     }

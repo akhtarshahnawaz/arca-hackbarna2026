@@ -273,11 +273,21 @@ const SCENARIOS: Scenario[] = [
 /**
  * Detections, growing with the fire.
  *
- * Deliberately includes three things a clean feed would not: a persistent
- * industrial source that two satellites keep reporting, a lone low-confidence
- * pixel, and a geostationary re-report of the same coarse pixel. Those are what
- * the cleaning rules exist for, and a scenario that omits them would not show
- * the product working.
+ * Satellites do not see tidy diagonals. A polar pass over an active fire
+ * returns a band of pixels along the burning perimeter — dense and hot at the
+ * head, thinner along the flanks, nothing in the interior where the fuel has
+ * already gone — plus the occasional spot fire thrown downwind. An earlier
+ * version emitted points on a straight line, which on a map looked like
+ * scattered noise rather than a fire.
+ *
+ * So this draws an actual front: an arc centred on the ignition, growing with
+ * each pass, sampled more densely and more energetically towards the head.
+ *
+ * It also deliberately includes three things a clean feed would not: a
+ * persistent industrial source two satellites keep reporting, a lone
+ * low-confidence pixel, and a geostationary re-report of the same coarse pixel.
+ * Those are what the cleaning rules exist for, and a scenario that omits them
+ * would not show the product working.
  */
 function hotspots(scenario: Scenario) {
   const rows: Array<Record<string, unknown>> = [];
@@ -303,36 +313,76 @@ function hotspots(scenario: Scenario) {
     });
   };
 
-  const head = (distance: number, across: number) =>
-    along(scenario.ignition, scenario.bearingDeg, distance, across);
+  // Deterministic jitter. Real detections are pixel centres on a satellite
+  // grid, not points on a curve, so a little scatter is truthful — but a
+  // generated fixture that changes every time it is built is not.
+  let seed = 1;
+  const noise = (spread: number) => {
+    seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+    return ((seed / 2_147_483_648) * 2 - 1) * spread;
+  };
 
-  // First pass: one polar satellite sees a small, hot front. Spaced a full
-  // VIIRS pixel apart — neighbouring ground, not the same pixel twice, so the
-  // duplicate rule correctly leaves them alone.
-  for (let i = 0; i < 6; i++) {
-    push(0, head(-560 + i * 400, -420 + i * 300), "VIIRS_NOAA20_NRT", "HIGH", 42 + i * 9);
-  }
-  // Geostationary confirms twenty minutes later: two families agree.
-  for (let i = 0; i < 3; i++) {
-    push(22, head(-180 + i * 340, 40 + i * 120), "MTG_I1", "MEDIUM", 60 + i * 14);
-  }
+  /**
+   * One satellite pass over the burning perimeter.
+   *
+   * `radius` is how far the head has run. The arc spans roughly ±70° either
+   * side of the wind axis: beyond that the flanks are barely burning and the
+   * back of the fire is out.
+   */
+  const pass = (
+    minutes: number,
+    radius: number,
+    source: string,
+    options: { pixels: number; headFrp: number; grade?: (t: number) => string; jitter?: number },
+  ) => {
+    const jitter = options.jitter ?? radius * 0.08;
+    for (let i = 0; i < options.pixels; i++) {
+      // t: 0 at one flank, 1 at the other, 0.5 at the head.
+      const t = options.pixels === 1 ? 0.5 : i / (options.pixels - 1);
+      const angle = (t - 0.5) * 2 * 70;
+      const headness = Math.cos((angle * Math.PI) / 180);
+
+      // Flanks lag the head: an elliptical front, not a circle.
+      const reach = radius * (0.42 + 0.58 * headness);
+      const along = Math.cos((angle * Math.PI) / 180) * reach + noise(jitter);
+      const across = Math.sin((angle * Math.PI) / 180) * reach + noise(jitter);
+
+      const frp = options.headFrp * (0.25 + 0.75 * headness ** 2);
+      const grade = options.grade?.(headness) ?? (headness > 0.55 ? "HIGH" : "MEDIUM");
+      push(minutes, along2(scenario, along, across), source, grade, Math.max(4, frp));
+    }
+  };
+
+  const rate = scenario.spreadMetresPerHour;
+
+  // First pass: one polar satellite catches a young front.
+  pass(0, rate * 0.35, "VIIRS_NOAA20_NRT", { pixels: 7, headFrp: 55 });
+
+  // Geostationary confirms twenty minutes later, coarser and less certain.
+  pass(22, rate * 0.5, "MTG_I1", {
+    pixels: 4,
+    headFrp: 70,
+    grade: () => "MEDIUM",
+    jitter: rate * 0.09,
+  });
+
   // A re-report of the same coarse pixel. The duplicate rule should collapse it.
-  push(24, head(-175, 45), "MTG_I1", "MEDIUM", 58);
+  const repeat = rows.at(-1) as { position: Position } | undefined;
+  if (repeat) push(24, [repeat.position[0] + 0.0004, repeat.position[1] + 0.0003], "MTG_I1", "MEDIUM", 58);
 
   // Second pass: the front has run downwind and intensified.
-  for (let i = 0; i < 14; i++) {
-    push(
-      54,
-      head(-700 + i * 420, -520 + i * 330),
-      i % 3 === 0 ? "VIIRS_SNPP_NRT" : "VIIRS_NOAA20_NRT",
-      i % 5 === 0 ? "MEDIUM" : "HIGH",
-      70 + i * 11,
-    );
-  }
-  // Landsat catches the head at 30 m.
+  pass(54, rate * 0.95, "VIIRS_SNPP_NRT", { pixels: 13, headFrp: 185 });
+
+  // Landsat catches the head at 30 m: a tight, hot cluster right at the nose.
   for (let i = 0; i < 4; i++) {
-    push(61, head(2_050 + i * 120, 110 * i), "LANDSAT_NRT", "HIGH", 180 + i * 30);
+    const across = (i - 1.5) * 220;
+    push(61, along2(scenario, rate * 1.02, across), "LANDSAT_NRT", "HIGH", 210 + i * 26);
   }
+
+  // Two spot fires thrown ahead of the head by the wind. Real, and the reason
+  // a perimeter is not the same thing as a threat boundary.
+  push(58, along2(scenario, rate * 1.45, -560), "VIIRS_SNPP_NRT", "MEDIUM", 38);
+  push(61, along2(scenario, rate * 1.6, 380), "VIIRS_NOAA20_NRT", "MEDIUM", 31);
 
   // The persistent industrial source, reported by two satellites all day. Two
   // sensors agreeing about a kiln is still a kiln.
@@ -340,12 +390,17 @@ function hotspots(scenario: Scenario) {
   push(8, staticAt, "MODIS_NRT", "MEDIUM", 21);
   push(46, offset(staticAt, 25, 22), "VIIRS_SNPP_NRT", "MEDIUM", 24);
 
-  // A single low-confidence pixel well out, in its own cluster. With nothing to
-  // corroborate it, the confidence rule should exclude it — which is the
+  // A single low-confidence pixel well away, in its own cluster. With nothing
+  // to corroborate it, the confidence rule should exclude it — which is the
   // difference between an early-warning system and a false-alarm generator.
-  push(37, head(-4_800, 5_200), "MODIS_NRT", "LOW", 9, `${scenario.clusterId}-stray`);
+  push(37, along2(scenario, -4_800, 5_200), "MODIS_NRT", "LOW", 9, `${scenario.clusterId}-stray`);
 
   return rows;
+}
+
+/** Shorthand: a point `along` the wind axis and `across` it, from ignition. */
+function along2(scenario: Scenario, alongM: number, acrossM: number): Position {
+  return along(scenario.ignition, scenario.bearingDeg, alongM, acrossM);
 }
 
 // ---------------------------------------------------------------------------

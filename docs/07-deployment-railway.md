@@ -117,7 +117,24 @@ NEXT_PUBLIC_AGENT_URL=https://arca-agent-production.up.railway.app
 `NEXT_PUBLIC_*` values are **baked in at build time**. Changing this requires a
 redeploy, not a restart.
 
-Generate a domain for this service too.
+Both services bind `PORT`, and Railway injects a different one into each, so
+there is nothing to set. Locally the same variable would be handed to both,
+which is why `start.sh` unsets it and passes one explicitly per service.
+
+Generate a domain for this service too. The agent sends permissive CORS headers,
+so the browser reaches it across origins without further configuration.
+
+### Why both halves are here rather than one on Vercel
+
+The agent polls DeepFire on a timer, holds an in-process event bus and streams
+server-sent events to every open browser. None of that survives a serverless
+function, so the agent needs a platform that keeps a process alive — and once it
+is here, putting the web app beside it means one platform, one log stream, one
+bill, and no cross-provider URL to keep in step.
+
+Vercel still works for the web half if you prefer it: root directory
+`apps/web`, the same build command, the same `NEXT_PUBLIC_AGENT_URL`. The build
+config drops `output: "standalone"` when it detects Vercel.
 
 ## 4. Verify
 
@@ -129,7 +146,8 @@ curl -s https://arca-agent-production.up.railway.app/api/health | jq
 missing variable, and the deploy logs list each one with what it costs.
 
 Then open the web domain. With no live fire — the normal state — you get the
-incident picker and the replay bundle.
+feed of active clusters on the left, every one of them scored, and the
+   synthetic scenarios one switch away.
 
 ## 5. Telegram
 
