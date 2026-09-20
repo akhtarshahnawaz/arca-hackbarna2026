@@ -14,6 +14,8 @@ import { ACTION_STYLE, minutes, titleCase } from "@/lib/format";
  */
 
 export interface RankedListProps {
+  /** Ranks to hide, because another component is already showing them. */
+  skipRanks?: number[];
   sites: RankedSite[];
   selectedId: string | null;
   onSelect: (assetId: string | null) => void;
@@ -26,7 +28,8 @@ export interface RankedListProps {
 
 export function RankedList(props: RankedListProps) {
   const [showWatch, setShowWatch] = useState(false);
-  const ranked = props.sites.filter((site) => site.rank > 0);
+  const skip = new Set(props.skipRanks ?? []);
+  const ranked = props.sites.filter((site) => site.rank > 0 && !skip.has(site.rank));
   const watch = props.sites.filter((site) => site.rank === 0);
 
   if (props.sites.length === 0) {
@@ -152,25 +155,28 @@ function SiteRow(props: {
               {site.livestockUnits ? ` · ${site.livestockUnits} animals` : ""}
             </div>
 
-            {/* The arithmetic that puts this row where it is. */}
-            <div className="mt-1.5 flex items-center gap-2.5 text-[11px]">
-              <Metric label="arrival" value={minutes(site.arrivalMinutes)} />
-              <span className="text-[var(--color-ink-faint)]">−</span>
-              <Metric label="needs" value={minutes(site.evac.minutes)} />
-              <span className="text-[var(--color-ink-faint)]">=</span>
-              <Metric
-                label="spare"
-                value={minutes(site.spareMinutes)}
-                colour={
-                  site.spareMinutes === null
-                    ? undefined
-                    : site.spareMinutes < 0
-                      ? "var(--color-shelter)"
-                      : site.spareMinutes < 180
-                        ? "var(--color-evacuate)"
-                        : undefined
-                }
-              />
+            {/* One number decides the order, so one number is shown. The
+                arithmetic behind it is in the expanded detail. */}
+            <div className="mt-1.5 flex items-baseline gap-1.5 text-[11px]">
+              <span
+                className="num text-[13px]"
+                style={{
+                  color:
+                    site.spareMinutes === null
+                      ? "var(--color-ink-faint)"
+                      : site.spareMinutes < 0
+                        ? "var(--color-shelter)"
+                        : site.spareMinutes < 180
+                          ? "var(--color-evacuate)"
+                          : "var(--color-ink)",
+                }}
+              >
+                {site.spareMinutes === null
+                  ? "—"
+                  : site.spareMinutes < 0
+                    ? `${minutes(Math.abs(site.spareMinutes))} short`
+                    : `${minutes(site.spareMinutes)} spare`}
+              </span>
               <span className="ml-auto num text-[10px] text-[var(--color-ink-faint)]">
                 {site.reach.runsReaching}/{site.reach.runsTotal} runs
               </span>
@@ -261,6 +267,14 @@ function SiteDetail(props: { site: RankedSite }) {
   return (
     <div className="mt-3 pl-9 pt-3 border-t hairline text-[11px] leading-relaxed text-[var(--color-ink-dim)] space-y-2">
       <p>{site.explanation.actionReason}</p>
+
+      <div className="flex items-center gap-3 text-[11px]">
+        <Metric label="arrival" value={minutes(site.arrivalMinutes)} />
+        <span className="text-[var(--color-ink-faint)]">−</span>
+        <Metric label="needs" value={minutes(site.evac.minutes)} />
+        <span className="text-[var(--color-ink-faint)]">=</span>
+        <Metric label="spare" value={minutes(site.spareMinutes)} />
+      </div>
 
       <div>
         <span className="text-[var(--color-ink-faint)]">Evacuation estimate assumes </span>

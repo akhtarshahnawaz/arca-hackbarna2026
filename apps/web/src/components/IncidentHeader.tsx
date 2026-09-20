@@ -1,8 +1,9 @@
 "use client";
 
 import type { Incident } from "@arca/core";
+import { Brand } from "./Brand";
 import type { SpreadView } from "@/lib/api";
-import { compact, timeOfDay } from "@/lib/format";
+import { timeOfDay } from "@/lib/format";
 
 /**
  * The header.
@@ -28,7 +29,10 @@ export function IncidentHeader(props: IncidentHeaderProps) {
   const tone = score >= 60 ? "var(--color-evacuate)" : score >= 30 ? "var(--color-warn)" : "var(--color-monitor)";
 
   return (
-    <header className="panel px-4 py-3 flex items-center gap-5">
+    <header className="panel px-4 py-2.5 flex items-center gap-5">
+      <Brand />
+      <span className="w-px h-8 bg-[var(--color-line)] shrink-0" aria-hidden="true" />
+
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <h1 className="text-base text-[var(--color-ink)] truncate">{incident.name}</h1>
@@ -44,34 +48,14 @@ export function IncidentHeader(props: IncidentHeaderProps) {
           ) : null}
         </div>
         <div className="mt-0.5 text-[11px] text-[var(--color-ink-faint)]">
-          {incident.status} · first seen {timeOfDay(incident.firstObserved)}Z · last{" "}
+          {incident.status} · {incident.confirmation.distinctSources.length} satellites ·{" "}
+          {incident.confirmation.usableHotspots} detections · last seen{" "}
           {timeOfDay(incident.lastObserved)}Z
         </div>
       </div>
 
       <ScoreBadge score={score} tone={tone} components={incident.confirmation.components} />
 
-      <Stat
-        label="satellites"
-        value={String(incident.confirmation.distinctSources.length)}
-        detail={incident.confirmation.distinctSources.join(", ") || "none"}
-      />
-      <Stat
-        label="detections"
-        value={compact(incident.confirmation.usableHotspots)}
-        detail={
-          incident.confirmation.maskedHotspots > 0
-            ? `${incident.confirmation.maskedHotspots} masked as known heat sources`
-            : "none masked"
-        }
-      />
-      {incident.confirmation.maxFrpMw ? (
-        <Stat
-          label="peak FRP"
-          value={`${Math.round(incident.confirmation.maxFrpMw)}`}
-          detail="megawatts, strongest pixel"
-        />
-      ) : null}
       {props.spread?.windSpeedMs ? (
         <Stat
           label="wind"

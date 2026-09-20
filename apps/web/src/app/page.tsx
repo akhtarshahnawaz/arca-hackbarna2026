@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RankedSite, SiteStatus } from "@arca/core";
 import { api, useIncident, useIncidentList } from "@/lib/api";
 import { IncidentHeader } from "@/components/IncidentHeader";
-import { ImpactPanel } from "@/components/ImpactPanel";
+import { ImpactStrip, NextAction } from "@/components/NextAction";
 import { RankedList } from "@/components/RankedList";
 import { TimelineScrubber } from "@/components/TimelineScrubber";
 import { EventFeed } from "@/components/EventFeed";
@@ -72,7 +72,30 @@ export default function OperationsPage() {
   }, [toast]);
 
   const frames = useMemo(() => data?.spread?.frames ?? [], [data]);
-  const sites = data?.sites ?? [];
+  const sites = useMemo(() => data?.sites ?? [], [data]);
+
+  // The lead card shows the first site that still needs a decision. A site the
+  // coordinator has already settled should not keep demanding attention.
+  const leadSite = useMemo(
+    () =>
+      sites.find(
+        (site) =>
+          site.rank > 0 && site.status !== "evacuated" && site.status !== "do_not_call",
+      ) ?? null,
+    [sites],
+  );
+
+  const exposedNow = useMemo(() => {
+    const within =
+      hour === null
+        ? sites
+        : sites.filter((site) => site.arrivalMinutes !== null && site.arrivalMinutes <= hour * 60);
+    return {
+      people: within.reduce((sum, site) => sum + site.peopleEstimate, 0),
+      sites: within.length,
+      outOfTime: within.filter((site) => site.action === "SHELTER_CANDIDATE").length,
+    };
+  }, [sites, hour]);
   const maskedCount = useMemo(
     () => (data?.hotspots ?? []).filter((hotspot) => hotspot.flags.includes("static_source")).length,
     [data],
@@ -209,8 +232,13 @@ export default function OperationsPage() {
                 ← All incidents
               </button>
               {data?.spread ? (
-                <span className="panel bg-[var(--color-surface)]/92 backdrop-blur px-2.5 py-1.5 text-[10px] text-[var(--color-ink-faint)]">
-                  {describeSpread(data.spread, frames)}
+                <span className="panel bg-[var(--color-surface)]/92 backdrop-blur px-2.5 py-1.5 text-[10px] text-[var(--color-ink-dim)]">
+                  <span className="text-[var(--color-ink)]">
+                    {hour === null
+                      ? `Where the fire may reach in ${frames.length || 6} h`
+                      : `Where the fire may reach by +${hour} h`}
+                  </span>
+                  <span className="text-[var(--color-ink-faint)]"> · {describeSpread(data.spread, frames)}</span>
                 </span>
               ) : null}
             </div>
@@ -241,28 +269,35 @@ export default function OperationsPage() {
 
         {/* Side column */}
         <aside className="min-w-0 min-h-0 flex flex-col gap-2 overflow-hidden">
-          <ImpactPanel
-            sites={sites}
+          <NextAction
+            site={leadSite}
+            totalRanked={sites.filter((site) => site.rank > 0).length}
+            onApprove={onApprove}
+            onSetStatus={onSetStatus}
+            onSelect={setSelectedSiteId}
+            busy={busyId === leadSite?.assetId}
+            canCall={Boolean(capabilities.slng)}
+          />
+
+          <ImpactStrip
+            people={exposedNow.people}
+            sites={exposedNow.sites}
+            outOfTime={exposedNow.outOfTime}
             hour={hour}
             horizonHours={frames.length || 6}
-            populationResident={
-              (data?.exposure?.summary?.population_resident as number | null) ?? null
-            }
-            degraded={Boolean(data?.exposure?.degraded)}
           />
 
           <div className="flex-1 min-h-0 flex flex-col panel p-2">
             <div className="flex items-center justify-between px-1 pb-2">
               <h2 className="text-[11px] uppercase tracking-[0.12em] text-[var(--color-ink-faint)]">
-                Call first
+                Then these
               </h2>
-              <span className="text-[10px] text-[var(--color-ink-faint)]">
-                by spare time
-              </span>
+              <span className="text-[10px] text-[var(--color-ink-faint)]">by spare time</span>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
               <RankedList
                 sites={sites}
+                skipRanks={leadSite ? [leadSite.rank] : []}
                 selectedId={selectedSiteId}
                 onSelect={setSelectedSiteId}
                 onApprove={onApprove}

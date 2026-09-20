@@ -120,7 +120,7 @@ filter is the one shape that reliably exceeds DeepFire's 30-second budget.
 | `DATABASE_URL` | *empty* | Unset runs in memory. Set-but-unreachable fails loudly |
 | `LOG_LEVEL` | `info` | |
 | `NEXT_PUBLIC_AGENT_URL` | `http://localhost:4000` | Web app only, baked in at build time |
-| `NEXT_PUBLIC_BASEMAP_URL` | CARTO dark matter | Any MapLibre style URL |
+| `NEXT_PUBLIC_BASEMAP_TILES` | Esri dark canvas | Raster tile template, e.g. `https://tile.openstreetmap.org/{z}/{x}/{y}.png` |
 
 ## Tuning the decision rules
 

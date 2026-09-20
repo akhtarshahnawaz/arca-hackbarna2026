@@ -9,8 +9,10 @@ import {
   Popup,
   ScaleControl,
   type FilterSpecification,
+  type LayerSpecification,
   type MapLayerMouseEvent,
   type MapMouseEvent,
+  type StyleSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { RankedSite } from "@arca/core";
@@ -23,39 +25,46 @@ import { ACTION_STYLE, areaKm2, minutes } from "@/lib/format";
  * Three things are layered here and they answer three different questions:
  * where the fire has been seen (hotspots), where the model says it is going
  * (probability contours), and what is in the way (assets). They are drawn in
- * that order and styled so they never compete — the fire is a soft field, the
- * assets are hard marks, because the assets are what a coordinator acts on.
+ * that order and styled so they never compete — the fire is a faint field with
+ * a bright edge, the assets are hard marks, because the assets are what a
+ * coordinator acts on.
  *
- * The hour filter is a paint-level filter rather than a source swap, so
- * scrubbing the timeline is a repaint instead of a re-upload. That is the
- * difference between animation that feels like fire spreading and animation
- * that stutters.
+ * ARCA's sources and layers are composed into the *initial* style rather than
+ * added afterwards. Every event-based trigger for `addLayer` was wrong in a
+ * different way: `load` waits for the basemap's sprite and glyphs and never
+ * fires when those hang, and `styledata` fires while the style is still
+ * loading, so `addSource` throws. Composing up front removes the timing
+ * question entirely — the fire renders whether or not the basemap ever does.
  */
-
-const BASEMAP =
-  process.env.NEXT_PUBLIC_BASEMAP_URL ??
-  "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
-
-// MapLibre is pinned to v5 deliberately. v6 loads its worker as a separate ES
-// module resolved against `import.meta.url`, which neither Turbopack nor
-// webpack gives it correctly: the request lands on the app's HTML 404 page, the
-// worker never initialises, and the style never reaches `load` — a basemap with
-// none of ARCA's layers on it, and no error that points at the cause. v5 inlines
-// the worker as a blob and works under any bundler.
 
 /**
- * The map still works with no basemap.
+ * A raster basemap, not a vector one.
  *
- * If the tile CDN is unreachable — a locked-down network, an outage — the fire,
- * the bands and the assets are the content that matters, and they render
- * perfectly well on an empty ground. This beats a black rectangle that gives a
- * coordinator no reason for what they are seeing.
+ * The vector style brought a dependency chain that has to complete before
+ * MapLibre will expose a single layer: style JSON, sprite sheet, glyph ranges,
+ * and worker-side tile parsing. When any link stalls, the map exposes nothing
+ * and the fire disappears with the roads — which is the worst possible failure
+ * for a screen whose content is the fire.
+ *
+ * Raster tiles have none of that: one source, one layer, images. They cost
+ * sharpness at high zoom and gain a map that is either there or visibly absent.
  */
-const FALLBACK_STYLE = {
-  version: 8,
-  sources: {},
-  layers: [{ id: "ground", type: "background", paint: { "background-color": "#12100f" } }],
-};
+const ESRI = "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas";
+
+// Note the {z}/{y}/{x} order: ArcGIS puts row before column, and getting it the
+// usual way round silently serves tiles from the wrong place.
+const BASEMAP_TILES = (
+  process.env.NEXT_PUBLIC_BASEMAP_TILES ??
+  `${ESRI}/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`
+).split(",");
+
+/** Place names, as a separate layer so they can sit above the fire's fill. */
+const BASEMAP_LABEL_TILES = `${ESRI}/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}`;
+
+const BASEMAP_ATTRIBUTION =
+  'Esri, HERE, Garmin, © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+const GROUND = "#0f0d0c";
 
 export interface IncidentMapProps {
   centre: [number, number];
@@ -71,54 +80,15 @@ export interface IncidentMapProps {
 }
 
 export function IncidentMap(props: IncidentMapProps) {
-  /**
-   * What the map is doing, surfaced on screen.
-   *
-   * A map that fails silently is the worst outcome for a coordinator: an empty
-   * dark rectangle looks identical to "no fire near anything". Saying which
-   * stage failed turns that into information.
-   */
-  const [status, setStatus] = useState<"loading" | "ready" | "no-basemap" | "failed">("loading");
-  const [detail, setDetail] = useState<string | null>(null);
+  const [basemapOk, setBasemapOk] = useState<boolean | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const popupRef = useRef<Popup | null>(null);
   const readyRef = useRef(false);
   const centredRef = useRef<string | null>(null);
+
   const onSelectRef = useRef(props.onSelectSite);
   onSelectRef.current = props.onSelectSite;
-
-  /**
-   * The latest data, held in a ref the map pulls from.
-   *
-   * Pushing data from an effect is not enough on its own: React remounts
-   * components in development, so the map is torn down and rebuilt while the
-   * data effect's dependencies are unchanged and it never re-runs. The new map
-   * then has layers and no data. Letting the map pull on load removes the
-   * ordering dependency in both directions.
-   */
-  const dataRef = useRef<{
-    spread: GeoJSON.FeatureCollection;
-    hotspots: GeoJSON.FeatureCollection;
-    sites: GeoJSON.FeatureCollection;
-  }>({ spread: emptyCollection(), hotspots: emptyCollection(), sites: emptyCollection() });
-
-  const filterRef = useRef<number | null>(props.hour);
-  filterRef.current = props.hour;
-
-  /**
-   * Work that must wait for the layers to exist.
-   *
-   * Listening for a map event to know when that happened does not work:
-   * `load` may never fire if the basemap's sprite or glyph requests hang, and
-   * `styledata` stops firing once the style settles — so a listener registered
-   * after that point waits forever. The setup runs these directly instead.
-   */
-  const whenReadyRef = useRef<Array<() => void>>([]);
-  const runWhenReady = (fn: () => void) => {
-    if (readyRef.current) fn();
-    else whenReadyRef.current.push(fn);
-  };
 
   // --- sources -------------------------------------------------------------
 
@@ -138,7 +108,6 @@ export function IncidentMap(props: IncidentMapProps) {
           confidence: hotspot.confidence,
           observedAt: hotspot.observedAt,
           reason: hotspot.reason ?? "",
-          staticSource: hotspot.staticSourceName ?? "",
           masked: hotspot.flags.includes("static_source") ? 1 : 0,
         },
       })),
@@ -176,367 +145,186 @@ export function IncidentMap(props: IncidentMapProps) {
     [props.sites],
   );
 
+  const dataRef = useRef({
+    spread: spreadGeoJson,
+    hotspots: hotspotGeoJson,
+    sites: siteGeoJson,
+  });
   dataRef.current = { spread: spreadGeoJson, hotspots: hotspotGeoJson, sites: siteGeoJson };
+
+  const hourRef = useRef<number | null>(props.hour);
+  hourRef.current = props.hour;
 
   // --- map lifecycle -------------------------------------------------------
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    const container = containerRef.current;
+    let cancelled = false;
 
-    const map = new MapLibreMap({
-      container: containerRef.current,
-      style: BASEMAP,
-      center: props.centre,
-      zoom: 10.5,
-      attributionControl: { compact: true },
-      dragRotate: false,
-    });
-    mapRef.current = map;
+    const boot = async () => {
+      /**
+       * ARCA's own layers go into a minimal style that is guaranteed to load,
+       * and the basemap is added underneath them afterwards.
+       *
+       * The obvious order — basemap first, ARCA's layers on top — fails badly
+       * when the basemap is slow: MapLibre exposes no sources or layers until
+       * the *whole* style has loaded, including its sprite and glyphs, so a
+       * basemap that never settles takes the fire down with it and leaves a
+       * blank rectangle. A raster basemap has no such chain, so it is composed
+       * in directly and simply appears when its tiles arrive.
+       */
+      const style = composeStyle(dataRef.current);
 
-    map.addControl(new NavigationControl({ showCompass: false }), "top-right");
-    map.addControl(new ScaleControl({ unit: "metric" }), "bottom-left");
+      const map = new MapLibreMap({
+        container,
+        style,
+        center: props.centre,
+        zoom: 10.5,
+        attributionControl: { compact: true },
+        dragRotate: false,
+      });
+      mapRef.current = map;
+      readyRef.current = true;
 
-    // Map errors are logged, never acted on. An earlier version swapped the
-    // style whenever any error mentioned tiles — and a single missing tile,
-    // which is routine, tore down every layer that had already been added.
-    map.on("error", (event) => {
-      const message = String(
-        (event as unknown as { error?: { message?: string } }).error?.message ?? event,
-      );
-      console.warn("ARCA map:", message);
-      setDetail(message.slice(0, 160));
-    });
+      map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+      map.addControl(new ScaleControl({ unit: "metric" }), "bottom-left");
 
-    // One narrow check instead: if the style has not loaded at all after a few
-    // seconds, the basemap host is unreachable, so fall back to a flat ground
-    // and keep the fire and the assets on screen.
-    const styleWatchdog = setTimeout(() => {
-      if (!readyRef.current) {
-        console.warn("ARCA: basemap did not load. Falling back to a flat ground.");
-        setStatus("no-basemap");
-        map.setStyle(FALLBACK_STYLE as never);
-      }
-    }, 6_000);
+      // Errors are logged, never acted on. A missing tile is routine, and an
+      // earlier version that reacted to them tore down a working basemap.
+      map.on("error", (event) => {
+        const detail = event as unknown as { error?: { message?: string }; sourceId?: string };
+        const message = String(detail.error?.message ?? event);
+        console.warn("ARCA map:", message);
+        // A basemap that cannot load is worth saying out loud, because a dark
+        // empty ground and a dark rural map look identical at a glance.
+        if (detail.sourceId === "basemap" && !cancelled) setBasemapOk(false);
+      });
 
-    /**
-     * Add ARCA's layers as soon as the style can accept them.
-     *
-     * Deliberately not gated on `load`. That event waits for the basemap's
-     * sprite and glyph requests to finish, and when those hang — a slow or
-     * filtered tile host — it never fires at all, leaving a map with no fire,
-     * no assets and no explanation. `styledata` fires as soon as the style
-     * itself is usable, so ARCA's own layers appear even when the basemap's
-     * decorations never arrive.
-     */
-    const setupLayers = () => {
-      if (readyRef.current || map.getSource("spread")) return;
-      try {
-        map.addSource("spread", { type: "geojson", data: emptyCollection() });
-        map.addSource("hotspots", { type: "geojson", data: emptyCollection() });
-        map.addSource("sites", { type: "geojson", data: emptyCollection() });
-
-        // Fire first, as a soft field.
-        map.addLayer({
-          id: "spread-fill",
-          type: "fill",
-          source: "spread",
-          paint: {
-            "fill-color": [
-              "interpolate", ["linear"], ["get", "probability"],
-              0.2, "#fef08a", 0.4, "#fbbf24", 0.6, "#f97316", 0.8, "#dc2626", 1, "#7f1d1d",
-            ],
-            // Low-probability outer contours stay faint so the high-probability
-            // core reads as the core rather than as one flat blob.
-            // Kept low on purpose. The fire is context; the assets sitting on
-            // top of it are what a coordinator acts on, and at the opacity this
-            // ramp first used the markers disappeared into the orange.
-            "fill-opacity": [
-              "interpolate", ["linear"], ["get", "probability"],
-              0.2, 0.1, 0.5, 0.18, 1, 0.28,
-            ],
-          },
-        });
-        map.addLayer({
-          id: "spread-line",
-          type: "line",
-          source: "spread",
-          paint: {
-            "line-color": [
-              "interpolate", ["linear"], ["get", "probability"],
-              0.2, "#fbbf24", 0.6, "#f97316", 1, "#ef4444",
-            ],
-            "line-width": ["interpolate", ["linear"], ["get", "probability"], 0.2, 0.6, 1, 1.6],
-            "line-opacity": 0.75,
-          },
-        });
-
-        // Detections: what a satellite actually saw.
-        map.addLayer({
-          id: "hotspots-masked",
-          type: "circle",
-          source: "hotspots",
-          filter: ["==", ["get", "masked"], 1],
-          paint: {
-            "circle-radius": 4,
-            "circle-color": "transparent",
-            "circle-stroke-color": "#6f6762",
-            "circle-stroke-width": 1.2,
-            "circle-opacity": 0.9,
-          },
-        });
-        map.addLayer({
-          id: "hotspots-live",
-          type: "circle",
-          source: "hotspots",
-          filter: ["==", ["get", "masked"], 0],
-          paint: {
-            "circle-radius": [
-              "interpolate", ["linear"], ["get", "frp"],
-              0, 2.6, 50, 4.5, 300, 7,
-            ],
-            "circle-color": ["case", ["==", ["get", "usable"], 1], "#fb923c", "#78716c"],
-            "circle-opacity": ["case", ["==", ["get", "usable"], 1], 0.85, 0.4],
-            "circle-stroke-color": "#0a0908",
-            "circle-stroke-width": 0.5,
-          },
-        });
-
-        // Assets last, as hard marks: these are the things to act on.
-        map.addLayer({
-          id: "sites-halo",
-          type: "circle",
-          source: "sites",
-          filter: ["any", ["==", ["get", "action"], "EVACUATE_NOW"], ["==", ["get", "action"], "SHELTER_CANDIDATE"]],
-          paint: {
-            "circle-radius": 16,
-            // to-color is required: MapLibre type-checks paint expressions, and
-            // ["get"] yields a string where circle-color demands a colour. Without
-            // it addLayer throws, which silently aborts the rest of this handler.
-            "circle-color": ["to-color", ["get", "colour"]],
-            "circle-opacity": 0.14,
-            "circle-blur": 0.5,
-          },
-        });
-        // A dark collar under every marker. Without it a red site on an orange
-        // fire is invisible, which is exactly where sites matter most.
-        map.addLayer({
-          id: "sites-collar",
-          type: "circle",
-          source: "sites",
-          paint: {
-            "circle-radius": [
-              "interpolate", ["linear"], ["zoom"],
-              9, ["interpolate", ["linear"], ["get", "weight"], 0, 7, 1000, 10],
-              14, ["interpolate", ["linear"], ["get", "weight"], 0, 9, 1000, 14],
-            ],
-            "circle-color": "#0a0908",
-            "circle-opacity": 0.85,
-          },
-        });
-        map.addLayer({
-          id: "sites-point",
-          type: "circle",
-          source: "sites",
-          paint: {
-            "circle-radius": [
-              "interpolate", ["linear"], ["zoom"],
-              9, ["interpolate", ["linear"], ["get", "weight"], 0, 4, 1000, 6],
-              14, ["interpolate", ["linear"], ["get", "weight"], 0, 5.5, 1000, 9],
-            ],
-            "circle-color": ["to-color", ["get", "colour"]],
-            "circle-stroke-color": "#0a0908",
-            "circle-stroke-width": 1.5,
-            "circle-opacity": 1,
-          },
-        });
-        map.addLayer({
-          id: "sites-label",
-          type: "symbol",
-          source: "sites",
-          filter: [">", ["get", "weight"], 994],
-          layout: {
-            "text-field": ["concat", ["to-string", ["get", "rank"]], ". ", ["get", "name"]],
-            "text-size": 11,
-            "text-offset": [0, 1.4],
-            "text-anchor": "top",
-            "text-max-width": 13,
-            "text-allow-overlap": false,
-            "text-optional": true,
-            "text-padding": 4,
-          },
-          paint: {
-            "text-color": "#f5f2ef",
-            "text-halo-color": "#0a0908",
-            "text-halo-width": 2,
-            "text-halo-blur": 0.4,
-          },
-        });
-
-        readyRef.current = true;
-        applyData(map, dataRef.current);
-        applyHourFilter(map, filterRef.current);
-        map.resize();
-        setStatus("ready");
-
-        // A handle for inspecting layers and sources from a browser console.
-        // Read-only debugging aid on a screen that is already authenticated.
-        (window as unknown as { __arcaMap?: MapLibreMap }).__arcaMap = map;
-      } catch (error) {
-        // The style may not be ready on the first styledata. Remove anything
-        // partially added so the next attempt starts from a known state, and
-        // only report a failure once retrying stops helping.
-        for (const id of LAYER_IDS) if (map.getLayer(id)) map.removeLayer(id);
-        for (const id of SOURCE_IDS) if (map.getSource(id)) map.removeSource(id);
-        setupAttempts += 1;
-        if (setupAttempts >= 5) {
-          console.error("ARCA: map layer setup failed", error);
-          setStatus("failed");
-          setDetail(error instanceof Error ? error.message : String(error));
+      // Tiles arriving is the only confirmation that matters.
+      map.on("sourcedata", (event) => {
+        const detail = event as unknown as { sourceId?: string; isSourceLoaded?: boolean };
+        if (detail.sourceId === "basemap" && detail.isSourceLoaded && !cancelled) {
+          setBasemapOk(true);
         }
-      }
+      });
+
+      applyHourFilter(map, hourRef.current);
+
+
+      const hover = (layer: string, build: (properties: Record<string, unknown>) => string) => {
+        map.on("mouseenter", layer, (event: MapLayerMouseEvent) => {
+          map.getCanvas().style.cursor = "pointer";
+          const feature = event.features?.[0];
+          if (!feature) return;
+          popupRef.current?.remove();
+          popupRef.current = new Popup({ closeButton: false, offset: 12, maxWidth: "280px" })
+            .setLngLat(event.lngLat)
+            .setHTML(build(feature.properties as Record<string, unknown>))
+            .addTo(map);
+        });
+        map.on("mouseleave", layer, () => {
+          map.getCanvas().style.cursor = "";
+          popupRef.current?.remove();
+          popupRef.current = null;
+        });
+      };
+
+      hover("sites-point", siteTooltip);
+      hover("hotspots-live", hotspotTooltip);
+      hover("hotspots-masked", hotspotTooltip);
+
+      map.on("click", "sites-point", (event: MapLayerMouseEvent) => {
+        const id = event.features?.[0]?.properties?.id;
+        if (typeof id === "string") onSelectRef.current(id);
+      });
+      map.on("click", (event: MapMouseEvent) => {
+        const hits = map.queryRenderedFeatures(event.point, { layers: ["sites-point"] });
+        if (hits.length === 0) onSelectRef.current(null);
+      });
+
+      // A read-only handle for inspecting layers from a browser console.
+      (window as unknown as { __arcaMap?: MapLibreMap }).__arcaMap = map;
     };
 
-    let setupAttempts = 0;
-    map.on("styledata", setupLayers);
-    map.on("load", setupLayers);
-    if (map.isStyleLoaded()) setupLayers();
-
-    const hover = (layer: string, build: (properties: Record<string, unknown>) => string) => {
-      map.on("mouseenter", layer, (event: MapLayerMouseEvent) => {
-        map.getCanvas().style.cursor = "pointer";
-        const feature = event.features?.[0];
-        if (!feature) return;
-        popupRef.current?.remove();
-        popupRef.current = new Popup({ closeButton: false, offset: 12, maxWidth: "280px" })
-          .setLngLat(event.lngLat)
-          .setHTML(build(feature.properties as Record<string, unknown>))
-          .addTo(map);
-      });
-      map.on("mouseleave", layer, () => {
-        map.getCanvas().style.cursor = "";
-        popupRef.current?.remove();
-        popupRef.current = null;
-      });
-    };
-
-    hover("sites-point", siteTooltip);
-    hover("hotspots-live", hotspotTooltip);
-    hover("hotspots-masked", hotspotTooltip);
-
-    map.on("click", "sites-point", (event: MapLayerMouseEvent) => {
-      const id = event.features?.[0]?.properties?.id;
-      if (typeof id === "string") onSelectRef.current(id);
-    });
-    map.on("click", (event: MapMouseEvent) => {
-      const hits = map.queryRenderedFeatures(event.point, { layers: ["sites-point"] });
-      if (hits.length === 0) onSelectRef.current(null);
-    });
+    void boot();
 
     return () => {
-      clearTimeout(styleWatchdog);
-      whenReadyRef.current = [];
+      cancelled = true;
       popupRef.current?.remove();
-      map.remove();
+      mapRef.current?.remove();
       mapRef.current = null;
       readyRef.current = false;
+      centredRef.current = null;
     };
-    // The map is created once and updated by the effects below; re-creating it
-    // on every prop change would throw away tiles and flash the screen.
+    // Created once; the effects below keep it current. Re-creating it on every
+    // prop change would throw away tiles and flash the screen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- data updates --------------------------------------------------------
+  // --- data, filter, visibility, framing ------------------------------------
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-    // A map that is not ready yet also pulls the current data from the ref
-    // during setup, so this is the update path rather than the only path.
-    if (readyRef.current) {
-      applyData(map, { spread: spreadGeoJson, hotspots: hotspotGeoJson, sites: siteGeoJson });
-    }
-  }, [spreadGeoJson, hotspotGeoJson, siteGeoJson]);
+    if (!map || !readyRef.current) return;
+    setData(map, "spread", spreadGeoJson);
+    setData(map, "hotspots", hotspotGeoJson);
+    setData(map, "sites", siteGeoJson);
+  }, [spreadGeoJson, hotspotGeoJson, siteGeoJson, basemapOk]);
 
-  // Scrubbing the hour is a filter change, which repaints without re-uploading.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
     applyHourFilter(map, props.hour);
-  }, [props.hour, spreadGeoJson]);
+  }, [props.hour, spreadGeoJson, basemapOk]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    for (const layer of ["hotspots-masked"]) {
-      if (map.getLayer(layer)) {
-        map.setLayoutProperty(layer, "visibility", props.showMasked ? "visible" : "none");
-      }
-    }
-    for (const layer of ["sites-point", "sites-label", "sites-halo", "sites-collar"]) {
-      if (map.getLayer(layer)) {
-        map.setLayoutProperty(layer, "visibility", props.showAssets ? "visible" : "none");
-      }
-    }
-  }, [props.showMasked, props.showAssets]);
+    setVisible(map, ["hotspots-masked"], props.showMasked);
+    setVisible(map, ["sites-halo", "sites-collar", "sites-point", "sites-label"], props.showAssets);
+  }, [props.showMasked, props.showAssets, basemapOk]);
 
   // Fit once per incident. Re-fitting on every update would fight a coordinator
   // who has panned somewhere deliberately.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !readyRef.current) return;
     const key = `${props.centre[0].toFixed(3)},${props.centre[1].toFixed(3)}`;
     if (centredRef.current === key) return;
 
-    const fit = () => {
-      const bounds = new LngLatBounds();
-      let count = 0;
-      for (const feature of siteGeoJson.features) {
-        const point = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
-        bounds.extend(point);
-        count++;
-      }
-      for (const hotspot of props.hotspots.slice(0, 500)) {
-        bounds.extend(hotspot.position);
-        count++;
-      }
-      if (count > 1) map.fitBounds(bounds, { padding: 80, maxZoom: 13, duration: 900 });
-      else map.flyTo({ center: props.centre, zoom: 11, duration: 900 });
-      centredRef.current = key;
-    };
-
-    // An unfitted map shows a slice of the fire with no indication that there
-    // is more of it off screen, so this must run even when the map became
-    // usable through a path that fires no further events.
-    runWhenReady(fit);
-  }, [props.centre, siteGeoJson, props.hotspots]);
+    const bounds = new LngLatBounds();
+    let count = 0;
+    for (const feature of siteGeoJson.features) {
+      bounds.extend((feature.geometry as GeoJSON.Point).coordinates as [number, number]);
+      count++;
+    }
+    for (const hotspot of props.hotspots.slice(0, 500)) {
+      bounds.extend(hotspot.position);
+      count++;
+    }
+    if (count > 1) map.fitBounds(bounds, { padding: 90, maxZoom: 13, duration: 700 });
+    else map.flyTo({ center: props.centre, zoom: 11, duration: 700 });
+    centredRef.current = key;
+  }, [props.centre, siteGeoJson, props.hotspots, basemapOk]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current || !props.selectedSiteId) return;
     const site = props.sites.find((candidate) => candidate.assetId === props.selectedSiteId);
-    if (site?.position) map.easeTo({ center: site.position, zoom: Math.max(map.getZoom(), 12), duration: 600 });
+    if (site?.position) {
+      map.easeTo({ center: site.position, zoom: Math.max(map.getZoom(), 12), duration: 600 });
+    }
   }, [props.selectedSiteId, props.sites]);
 
-  // h-full rather than absolute inset-0: MapLibre's own stylesheet sets
-  // `position: relative` on the container it is given, which would override an
-  // absolute position and collapse the element to zero height.
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full" style={{ background: GROUND }}>
       <div ref={containerRef} className="h-full w-full" />
-      {status !== "ready" ? (
-        <div className="pointer-events-none absolute inset-0 grid place-items-center">
-          <div className="panel bg-[var(--color-surface)]/92 px-4 py-3 max-w-[340px] text-center">
-            <p className="text-[12px] text-[var(--color-ink-dim)]">
-              {status === "loading"
-                ? "Loading the map…"
-                : status === "no-basemap"
-                  ? "Basemap unavailable. Showing the fire and the assets on a flat ground."
-                  : "The map failed to initialise."}
-            </p>
-            {detail ? (
-              <p className="mt-1.5 text-[10px] text-[var(--color-ink-faint)] break-words">{detail}</p>
-            ) : null}
-          </div>
+      {basemapOk === false ? (
+        <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-3 panel bg-[var(--color-surface)]/92 px-3 py-1.5">
+          <p className="text-[10px] text-[var(--color-warn)]">
+            Basemap unavailable — the fire and the sites are still live.
+          </p>
         </div>
       ) : null}
     </div>
@@ -544,34 +332,229 @@ export function IncidentMap(props: IncidentMapProps) {
 }
 
 // ---------------------------------------------------------------------------
-
-const SOURCE_IDS = ["spread", "hotspots", "sites"] as const;
-const LAYER_IDS = [
-  "spread-fill",
-  "spread-line",
-  "hotspots-masked",
-  "hotspots-live",
-  "sites-halo",
-  "sites-collar",
-  "sites-point",
-  "sites-label",
-] as const;
+// Style composition
+// ---------------------------------------------------------------------------
 
 function emptyCollection(): GeoJSON.FeatureCollection {
   return { type: "FeatureCollection", features: [] };
 }
 
-function applyData(
-  map: MapLibreMap,
-  data: {
-    spread: GeoJSON.FeatureCollection;
-    hotspots: GeoJSON.FeatureCollection;
-    sites: GeoJSON.FeatureCollection;
-  },
-): void {
-  (map.getSource("spread") as GeoJSONSource | undefined)?.setData(data.spread);
-  (map.getSource("hotspots") as GeoJSONSource | undefined)?.setData(data.hotspots);
-  (map.getSource("sites") as GeoJSONSource | undefined)?.setData(data.sites);
+/**
+ * The basemap's layers with ARCA's on top, or ARCA's alone on a flat ground.
+ *
+ * Fonts are taken from the basemap when there is one; without it, labels are
+ * dropped rather than requesting glyphs from a host that is evidently not
+ * answering. Losing labels is a smaller loss than losing the map.
+ */
+function composeStyle(data: {
+  spread: GeoJSON.FeatureCollection;
+  hotspots: GeoJSON.FeatureCollection;
+  sites: GeoJSON.FeatureCollection;
+}): StyleSpecification {
+  return {
+    version: 8,
+    sources: {
+      basemap: {
+        type: "raster",
+        tiles: BASEMAP_TILES,
+        tileSize: 256,
+        maxzoom: 16,
+        attribution: BASEMAP_ATTRIBUTION,
+      },
+      basemapLabels: {
+        type: "raster",
+        tiles: [BASEMAP_LABEL_TILES],
+        tileSize: 256,
+        maxzoom: 16,
+      },
+      spread: { type: "geojson", data: data.spread },
+      hotspots: { type: "geojson", data: data.hotspots },
+      sites: { type: "geojson", data: data.sites },
+    },
+    layers: [
+      { id: "ground", type: "background", paint: { "background-color": GROUND } },
+      {
+        id: "basemap",
+        type: "raster",
+        source: "basemap",
+        // Held back so the fire and the markers stay the brightest things on
+        // screen; the map is orientation, not content.
+        paint: { "raster-opacity": 0.9, "raster-fade-duration": 200 },
+      },
+      // No symbol layers: a raster basemap declares no glyphs, so site labels
+      // are drawn as part of the site marks instead of as map text.
+      ...arcaLayers(false),
+      {
+        // Place names last, so a town stays readable through the fire's fill.
+        // Knowing which village is inside the perimeter is the whole point of
+        // having a basemap at all.
+        id: "basemap-labels",
+        type: "raster",
+        source: "basemapLabels",
+        paint: { "raster-opacity": 0.75, "raster-fade-duration": 200 },
+      },
+    ],
+  };
+}
+
+function arcaLayers(canLabel: boolean): LayerSpecification[] {
+  const layers: LayerSpecification[] = [
+    // Fire first, as a faint field with a bright edge.
+    {
+      id: "spread-fill",
+      type: "fill",
+      source: "spread",
+      paint: {
+        "fill-color": [
+          "interpolate", ["linear"], ["get", "probability"],
+          0.2, "#fbbf24", 0.5, "#f97316", 0.8, "#dc2626", 1, "#991b1b",
+        ],
+        // Very faint, because these contours are nested: five stacked fills at
+        // a readable opacity compound into an opaque blob that hides the map
+        // underneath. The outline below carries the shape instead.
+        "fill-opacity": [
+          "interpolate", ["linear"], ["get", "probability"],
+          0.2, 0.05, 0.5, 0.09, 1, 0.16,
+        ],
+      },
+    },
+    {
+      id: "spread-line",
+      type: "line",
+      source: "spread",
+      paint: {
+        "line-color": [
+          "interpolate", ["linear"], ["get", "probability"],
+          0.2, "#fcd34d", 0.5, "#fb923c", 0.8, "#f87171", 1, "#ef4444",
+        ],
+        // A contour reads as a front; a filled blob reads as a stain.
+        "line-width": [
+          "interpolate", ["linear"], ["get", "probability"],
+          0.2, 1, 0.5, 1.6, 1, 2.4,
+        ],
+        "line-opacity": ["interpolate", ["linear"], ["get", "probability"], 0.2, 0.5, 1, 0.95],
+      },
+    },
+
+    // Detections: what a satellite actually saw.
+    {
+      id: "hotspots-masked",
+      type: "circle",
+      source: "hotspots",
+      filter: ["==", ["get", "masked"], 1],
+      paint: {
+        "circle-radius": 4,
+        "circle-color": "rgba(0,0,0,0)",
+        "circle-stroke-color": "#6f6762",
+        "circle-stroke-width": 1.2,
+      },
+    },
+    {
+      id: "hotspots-live",
+      type: "circle",
+      source: "hotspots",
+      filter: ["==", ["get", "masked"], 0],
+      paint: {
+        "circle-radius": ["interpolate", ["linear"], ["get", "frp"], 0, 2.4, 50, 4, 300, 6.5],
+        "circle-color": ["case", ["==", ["get", "usable"], 1], "#fb923c", "#78716c"],
+        "circle-opacity": ["case", ["==", ["get", "usable"], 1], 0.9, 0.4],
+        "circle-stroke-color": GROUND,
+        "circle-stroke-width": 0.5,
+      },
+    },
+
+    // Assets last, as hard marks: these are the things to act on.
+    {
+      id: "sites-halo",
+      type: "circle",
+      source: "sites",
+      filter: [
+        "any",
+        ["==", ["get", "action"], "EVACUATE_NOW"],
+        ["==", ["get", "action"], "SHELTER_CANDIDATE"],
+      ],
+      paint: {
+        "circle-radius": 18,
+        "circle-color": ["to-color", ["get", "colour"]],
+        "circle-opacity": 0.16,
+        "circle-blur": 0.6,
+      },
+    },
+    {
+      // A dark collar under every marker. Without it a red site on an orange
+      // fire is invisible, which is exactly where sites matter most.
+      id: "sites-collar",
+      type: "circle",
+      source: "sites",
+      paint: {
+        "circle-radius": [
+          "interpolate", ["linear"], ["zoom"],
+          9, ["interpolate", ["linear"], ["get", "weight"], 0, 7, 1000, 10],
+          14, ["interpolate", ["linear"], ["get", "weight"], 0, 9, 1000, 14],
+        ],
+        "circle-color": GROUND,
+        "circle-opacity": 0.9,
+      },
+    },
+    {
+      id: "sites-point",
+      type: "circle",
+      source: "sites",
+      paint: {
+        // to-color is required: MapLibre type-checks paint expressions, and
+        // ["get"] yields a string where circle-color demands a colour.
+        "circle-color": ["to-color", ["get", "colour"]],
+        "circle-radius": [
+          "interpolate", ["linear"], ["zoom"],
+          9, ["interpolate", ["linear"], ["get", "weight"], 0, 4, 1000, 6],
+          14, ["interpolate", ["linear"], ["get", "weight"], 0, 5.5, 1000, 9],
+        ],
+        "circle-stroke-color": GROUND,
+        "circle-stroke-width": 1.5,
+      },
+    },
+  ];
+
+  if (canLabel) {
+    layers.push({
+      id: "sites-label",
+      type: "symbol",
+      source: "sites",
+      filter: [">", ["get", "weight"], 994],
+      layout: {
+        "text-field": ["concat", ["to-string", ["get", "rank"]], ". ", ["get", "name"]],
+        "text-font": ["Open Sans Regular"],
+        "text-size": 11,
+        "text-offset": [0, 1.4],
+        "text-anchor": "top",
+        "text-max-width": 13,
+        "text-allow-overlap": false,
+        "text-optional": true,
+        "text-padding": 4,
+      },
+      paint: {
+        "text-color": "#f5f2ef",
+        "text-halo-color": GROUND,
+        "text-halo-width": 2,
+        "text-halo-blur": 0.4,
+      },
+    });
+  }
+
+  return layers;
+}
+
+// ---------------------------------------------------------------------------
+// Map operations, each tolerant of a style that is still settling
+// ---------------------------------------------------------------------------
+
+function setData(map: MapLibreMap, id: string, data: GeoJSON.FeatureCollection): void {
+  try {
+    (map.getSource(id) as GeoJSONSource | undefined)?.setData(data);
+  } catch {
+    // A source not yet materialised will pick the data up from the style it
+    // was created with; the next update lands normally.
+  }
 }
 
 /** Scrubbing an hour is a filter change: a repaint, not a re-upload. */
@@ -581,7 +564,23 @@ function applyHourFilter(map: MapLibreMap, hour: number | null): void {
       ? (["all"] as unknown as FilterSpecification)
       : (["<=", ["get", "hour"], hour] as unknown as FilterSpecification);
   for (const layer of ["spread-fill", "spread-line"]) {
-    if (map.getLayer(layer)) map.setFilter(layer, filter);
+    try {
+      if (map.getLayer(layer)) map.setFilter(layer, filter);
+    } catch {
+      /* layer not present yet */
+    }
+  }
+}
+
+function setVisible(map: MapLibreMap, layers: string[], visible: boolean): void {
+  for (const layer of layers) {
+    try {
+      if (map.getLayer(layer)) {
+        map.setLayoutProperty(layer, "visibility", visible ? "visible" : "none");
+      }
+    } catch {
+      /* layer not present yet */
+    }
   }
 }
 
@@ -612,6 +611,10 @@ function framesToGeoJson(frames: SpreadFrameView[] | null): GeoJSON.FeatureColle
   return { type: "FeatureCollection", features };
 }
 
+// ---------------------------------------------------------------------------
+// Tooltips
+// ---------------------------------------------------------------------------
+
 function escapeHtml(value: unknown): string {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -635,9 +638,9 @@ function siteTooltip(properties: Record<string, unknown>): string {
         style.colour
       }22;color:${style.colour};border:1px solid ${style.colour}55">${style.short}</div>
       <div style="margin-top:8px;font-size:11px;line-height:1.55;color:#d6d0cb">
-        <div>Arrival <b>${minutes(Number(properties.arrival) < 0 ? null : Number(properties.arrival))}</b> · needs <b>${minutes(
-          Number(properties.evac),
-        )}</b></div>
+        <div>Fire in <b>${minutes(
+          Number(properties.arrival) < 0 ? null : Number(properties.arrival),
+        )}</b> · needs <b>${minutes(Number(properties.evac))}</b></div>
         <div>Spare <b style="color:${spare < 0 ? "#e879f9" : "#f5f2ef"}">${
           spare > 90_000 ? "—" : minutes(spare)
         }</b> · ${escapeHtml(properties.runs)} runs reach it</div>
@@ -667,26 +670,15 @@ function hotspotTooltip(properties: Record<string, unknown>): string {
     </div>`;
 }
 
-export function spreadLegendEntries(spread: SpreadView | null): Array<{ label: string; colour: string }> {
-  if (spread?.synthetic) {
-    return [{ label: "Drawn ring, not a model prediction", colour: "#78716c" }];
-  }
-  return [
-    { label: "2 in 10 runs", colour: "#fef08a" },
-    { label: "4 in 10", colour: "#fbbf24" },
-    { label: "6 in 10", colour: "#f97316" },
-    { label: "8 in 10", colour: "#dc2626" },
-    { label: "Every run", colour: "#7f1d1d" },
-  ];
-}
-
 export function describeSpread(spread: SpreadView | null, frames: SpreadFrameView[] | null): string {
   if (!spread) return "No model run yet.";
   if (spread.synthetic) {
-    return `No usable model output${spread.errorMessage ? `: ${spread.errorMessage}` : ""}. The footprint is a drawn ring.`;
+    return `no usable model output${
+      spread.errorMessage ? `: ${spread.errorMessage}` : ""
+    } — the footprint is a drawn ring`;
   }
   const last = frames?.[frames.length - 1];
-  return `${spread.ensembleMembers ?? 1} ensemble members · footprint ${areaKm2(last?.cumulativeAreaM2)} · expected burn ${areaKm2(
-    last?.expectedAreaM2,
+  return `${spread.ensembleMembers ?? 1} ensemble members · footprint ${areaKm2(
+    last?.cumulativeAreaM2,
   )}`;
 }
