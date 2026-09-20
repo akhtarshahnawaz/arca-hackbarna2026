@@ -74,6 +74,15 @@ export interface CallView {
   dispatchedAt: string;
 }
 
+export interface ScriptView {
+  siteName: string;
+  language: string;
+  exerciseMode: boolean;
+  lines: Array<{ role: "agent" | "note"; text: string }>;
+  audioAvailable: boolean;
+  wouldDial: boolean;
+}
+
 export interface IncidentDetail {
   incident: Incident;
   hotspots: HotspotView[];
@@ -196,6 +205,8 @@ export const api = {
     post<{ incidentId: string }>(`/api/replay/${name}${asOf ? `?asOf=${encodeURIComponent(asOf)}` : ""}`),
   refresh: (id: string, force = false) => post<unknown>(`/api/incidents/${id}/refresh?force=${force}`),
   brief: (id: string) => post<{ message: string; sentTo: number }>(`/api/incidents/${id}/brief`),
+  script: (id: string, assetId: string) =>
+    get<ScriptView>(`/api/incidents/${id}/sites/${encodeURIComponent(assetId)}/script`),
   tick: () => post<unknown>("/api/watch/tick"),
   decide: (
     id: string,

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { RankedSite, SiteStatus } from "@arca/core";
 import type { CallView } from "@/lib/api";
 import { CallState } from "./CallState";
+import { ScriptPreview } from "./ScriptPreview";
 import { ACTION_STYLE, minutes, titleCase } from "@/lib/format";
 
 /**
@@ -37,6 +38,8 @@ export interface RankedListProps {
   onTranscript: (assetId: string, transcript: string) => Promise<void>;
   busyId: string | null;
   canCall: boolean;
+  callsArmed: boolean;
+  incidentId: string;
 }
 
 export function RankedList(props: RankedListProps) {
@@ -69,6 +72,8 @@ export function RankedList(props: RankedListProps) {
           selected={props.selectedId === site.assetId}
           busy={props.busyId === site.assetId}
           canCall={props.canCall}
+          callsArmed={props.callsArmed}
+          incidentId={props.incidentId}
           onSelect={props.onSelect}
           onApprove={props.onApprove}
           onDeny={props.onDeny}
@@ -111,6 +116,8 @@ export function RankedList(props: RankedListProps) {
                   selected={props.selectedId === site.assetId}
                   busy={props.busyId === site.assetId}
                   canCall={props.canCall}
+                  callsArmed={props.callsArmed}
+                  incidentId={props.incidentId}
                   onSelect={props.onSelect}
                   onApprove={props.onApprove}
                   onDeny={props.onDeny}
@@ -132,12 +139,15 @@ function SiteRow(props: {
   selected: boolean;
   busy: boolean;
   canCall: boolean;
+  callsArmed: boolean;
+  incidentId: string;
   onSelect: (assetId: string | null) => void;
   onApprove: (site: RankedSite) => void;
   onDeny: (site: RankedSite) => void;
   onSetStatus: (site: RankedSite, status: SiteStatus) => void;
   onTranscript: (assetId: string, transcript: string) => Promise<void>;
 }) {
+  const [showScript, setShowScript] = useState(false);
   const { site } = props;
   const style = ACTION_STYLE[site.action];
   const lastCall = props.calls.filter((call) => call.siteId === site.assetId).at(-1) ?? null;
@@ -265,11 +275,13 @@ function SiteRow(props: {
                     disabled={props.busy || !props.canCall}
                     onClick={() => props.onApprove(site)}
                     title={
-                      props.canCall
-                        ? phone
-                          ? `Approve a call to ${phone.slice(0, 5)}…`
-                          : "No number on file: this opens a browser voice session."
-                        : "Voice is not configured on this deployment."
+                      !props.canCall
+                        ? "Voice is not configured on this deployment. Set SLNG_API_KEY and SLNG_AGENT_ID on the agent."
+                        : !props.callsArmed
+                          ? "Records who approved it. CALL_ALLOWLIST is empty, so nobody is dialled — a browser voice session opens with the identical script."
+                          : phone
+                            ? `Records who approved it, then dials ${phone.slice(0, 6)}… and asks how many people are there now.`
+                            : "No number on file for this site, so this opens a browser voice session instead."
                     }
                     className="text-[11px] px-2.5 py-1 rounded border border-[var(--color-line-bright)] bg-[var(--color-surface-3)] hover:bg-[var(--color-line)] transition-colors disabled:opacity-40"
                   >
@@ -277,8 +289,17 @@ function SiteRow(props: {
                   </button>
                   <button
                     type="button"
+                    onClick={() => setShowScript(!showScript)}
+                    title="Hear the opening in the agent's own voice. Nobody is called."
+                    className="text-[11px] px-2 py-1 rounded text-[var(--color-ink-faint)] hover:text-[var(--color-ink-dim)] transition-colors"
+                  >
+                    Hear it
+                  </button>
+                  <button
+                    type="button"
                     disabled={props.busy}
                     onClick={() => props.onDeny(site)}
+                    title="Record that you decided not to call this site. Nothing is dialled, and the decision is kept with your name on it."
                     className="text-[11px] px-2 py-1 rounded text-[var(--color-ink-faint)] hover:text-[var(--color-ink-dim)] transition-colors"
                   >
                     Deny
@@ -289,6 +310,11 @@ function SiteRow(props: {
                 type="button"
                 disabled={props.busy}
                 onClick={() => props.onSetStatus(site, settled ? "unnotified" : "evacuated")}
+                title={
+                  settled
+                    ? "Put this site back in the ranking as still needing a decision."
+                    : "Mark this site as already emptied. It drops out of the ranking and stops being offered, but stays on the list so you can see the work that is done."
+                }
                 className="text-[11px] px-2 py-1 rounded text-[var(--color-ink-faint)] hover:text-[var(--color-ink-dim)] transition-colors"
               >
                 {settled ? "Reopen" : "Mark clear"}
@@ -301,6 +327,13 @@ function SiteRow(props: {
           <>
             <SiteDetail site={site} />
             <div className="pl-9">
+              {showScript ? (
+                <ScriptPreview
+                  incidentId={props.incidentId}
+                  assetId={site.assetId}
+                  onClose={() => setShowScript(false)}
+                />
+              ) : null}
               <CallState
                 calls={props.calls}
                 assetId={site.assetId}

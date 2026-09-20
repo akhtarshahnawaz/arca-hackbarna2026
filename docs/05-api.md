@@ -143,6 +143,38 @@ calls the same service, so there is one audit trail.
 audit trail cannot be missing for a call that happened. The response says what
 actually occurred, including when no call was placed and why.
 
+### `GET /api/incidents/:id/sites/:assetId/script`
+
+What the agent will open with, rendered from the same `CallScript` the call
+receives: the SIMULACRO line when exercise mode is on, the greeting, the
+situation and recommendation, and the four questions. Plus `wouldDial`, which
+says whether this site's number is actually on the allowlist.
+
+It stops after the questions on purpose — everything past that is a
+conversation, and the payload says so rather than letting a tidy transcript
+imply the whole call is scripted.
+
+### `GET /api/incidents/:id/sites/:assetId/script/audio`
+
+The same opening, synthesised through the voice the agent uses, as `audio/mpeg`.
+
+This exists because `CALL_ALLOWLIST` is empty by default and should be — which
+meant the most obvious question about a system that telephones care homes,
+*what does it actually say*, had no answer anywhere in the product. An approval
+opened a LiveKit room and synthesised nothing.
+
+Accepts `?token=` as well as the header, because an `<audio>` element cannot
+set one. 503 when `SLNG_API_KEY` is unset.
+
+### `POST /api/incidents/:id/brief`
+
+Send the briefing to `COORDINATOR_TELEGRAM_CHAT_IDS` now, with approval buttons
+for the top sites. The pipeline briefs on its own when the watcher confirms a
+fire, and every route a human drives passes `notify: false`; this is the
+explicit button, and it sends the same briefing built the same way.
+
+400 if Telegram is unconfigured or no coordinator ids are set.
+
 ### `POST /api/incidents/:id/transcript`
 
 ```json

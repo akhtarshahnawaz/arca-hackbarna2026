@@ -125,6 +125,19 @@ three places:
 The web session link is a link, because the failsafe is useless if nobody can
 find the session it opened. The transcript is one click away, under the call.
 
+### Hearing the call that is not placed
+
+`CALL_ALLOWLIST` is empty by default and should be. The cost is that an
+approval opens a LiveKit room, synthesises nothing, and leaves you taking the
+script on trust — so the one question anyone asks about a system that
+telephones care homes had no answer in the product.
+
+**Hear it**, beside every approve button, synthesises the opening through the
+same voice the agent uses, on the same variables the call would get. Two things
+it is careful not to imply: that a call happened, and that the whole call is
+scripted. The panel shows the lines, says nobody was called, and marks where
+the script ends and the conversation begins.
+
 ### Logging a call made by hand
 
 Every site row carries a transcript box. Two reasons it exists and is not a

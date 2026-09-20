@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { policySnapshot, type SiteStatus } from "@arca/core";
+import { scriptLines } from "../voice/slng.js";
 import type { Context as ArcaContext } from "../context.js";
 import type { IncidentService } from "../pipeline/incident.js";
 import type { ReplayService } from "../pipeline/replay.js";
@@ -359,6 +360,55 @@ export function createApp(deps: ServerDeps) {
         default:
           return c.json({ error: "unknown decision kind" }, 400);
       }
+    } catch (error) {
+      return c.json({ error: describeError(error) }, 500);
+    }
+  });
+
+  /**
+   * What the call would say, and what it would sound like.
+   *
+   * With an empty `CALL_ALLOWLIST` nothing is dialled and nothing is
+   * synthesised, which leaves the most obvious question about a system that
+   * phones care homes — what does it actually say — with no way to answer it.
+   * These two routes answer it without calling anyone.
+   */
+  app.get("/api/incidents/:id/sites/:assetId/script", async (c) => {
+    try {
+      const site = await incidents.getSiteOrThrow(c.req.param("id"), c.req.param("assetId"));
+      const script = incidents.voice.buildScript(site.payload, "es");
+      return c.json({
+        siteName: site.payload.name,
+        language: script.language,
+        exerciseMode: script.exerciseMode,
+        lines: scriptLines(script),
+        // Whether the audio route below will actually return anything.
+        audioAvailable: Boolean(capabilities().slng || env.slng.apiKey),
+        wouldDial: incidents.voice.allowed(site.payload.contacts?.phone?.[0]),
+      });
+    } catch (error) {
+      return c.json({ error: describeError(error) }, 404);
+    }
+  });
+
+  app.get("/api/incidents/:id/sites/:assetId/script/audio", async (c) => {
+    try {
+      const site = await incidents.getSiteOrThrow(c.req.param("id"), c.req.param("assetId"));
+      const script = incidents.voice.buildScript(site.payload, "es");
+      const preview = await incidents.voice.previewAudio(script);
+      if (!preview) {
+        return c.json({ error: "Speech synthesis is unavailable on this deployment." }, 503);
+      }
+      // A Uint8Array view has to be copied into its own buffer before it can
+      // be handed out as a body: it may be a slice of a larger pooled one.
+      const bytes = new Uint8Array(preview.audio.byteLength);
+      bytes.set(preview.audio);
+      return new Response(bytes, {
+        headers: {
+          "content-type": preview.contentType,
+          "cache-control": "private, max-age=300",
+        },
+      });
     } catch (error) {
       return c.json({ error: describeError(error) }, 500);
     }

@@ -38,6 +38,8 @@ export interface SidePanelProps {
   selectedSiteId: string | null;
   busyId: string | null;
   canCall: boolean;
+  callsArmed: boolean;
+  incidentId: string;
   onSelect: (assetId: string | null) => void;
   onApprove: (site: RankedSite) => void;
   onDeny: (site: RankedSite) => void;
@@ -65,6 +67,8 @@ export function SidePanel(props: SidePanelProps) {
         onTranscript={props.onTranscript}
         busy={props.busyId === props.leadSite?.assetId}
         canCall={props.canCall}
+        callsArmed={props.callsArmed}
+        incidentId={props.incidentId}
       />
       </div>
 
@@ -115,6 +119,8 @@ export function SidePanel(props: SidePanelProps) {
                 onTranscript={props.onTranscript}
                 busyId={props.busyId}
                 canCall={props.canCall}
+                callsArmed={props.callsArmed}
+                incidentId={props.incidentId}
               />
             </div>
           ) : (

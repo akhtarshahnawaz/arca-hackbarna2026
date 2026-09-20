@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import type { RankedSite, SiteStatus } from "@arca/core";
 import type { CallView } from "@/lib/api";
 import { CallState } from "./CallState";
+import { ScriptPreview } from "./ScriptPreview";
 import { ACTION_STYLE, minutes } from "@/lib/format";
 
 /**
@@ -27,10 +29,14 @@ export interface NextActionProps {
   onTranscript: (assetId: string, transcript: string) => Promise<void>;
   busy: boolean;
   canCall: boolean;
+  incidentId: string;
+  /** Empty means ARCA dials nobody; the button says so rather than lying. */
+  callsArmed: boolean;
 }
 
 export function NextAction(props: NextActionProps) {
   const { site } = props;
+  const [showScript, setShowScript] = useState(false);
 
   if (!site) {
     return (
@@ -120,9 +126,19 @@ export function NextAction(props: NextActionProps) {
 
         <div className="mt-3 flex items-center gap-2">
           {settled ? (
-            <span className="text-[11px] text-[var(--color-ink-faint)]">
-              Marked {site.status.replace(/_/g, " ")}.
-            </span>
+            <>
+              <span className="text-[11px] text-[var(--color-ink-faint)]">
+                Marked {site.status.replace(/_/g, " ")}.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowScript(!showScript)}
+                title="Hear the opening in the agent's own voice. Nobody is called."
+                className="text-[11px] px-2 py-1 rounded text-[var(--color-ink-faint)] hover:text-[var(--color-ink-dim)] transition-colors"
+              >
+                {showScript ? "Hide script" : "Hear it"}
+              </button>
+            </>
           ) : (
             <>
               <button
@@ -130,19 +146,30 @@ export function NextAction(props: NextActionProps) {
                 disabled={props.busy || !props.canCall}
                 onClick={() => props.onApprove(site)}
                 title={
-                  props.canCall
-                    ? "Records the approval, then places the call"
-                    : "Voice is not configured on this deployment"
+                  !props.canCall
+                    ? "Voice is not configured on this deployment. Set SLNG_API_KEY and SLNG_AGENT_ID on the agent."
+                    : props.callsArmed
+                      ? `Records who approved it, then dials ${site.name}. The agent reads the recommendation and asks how many people are there now.`
+                      : `Records who approved it. CALL_ALLOWLIST is empty, so nobody is dialled — a browser voice session opens with the identical script instead.`
                 }
                 className="text-[12px] px-3 py-1.5 rounded font-medium transition-colors disabled:opacity-40"
                 style={{ background: `${style.colour}22`, color: style.colour, border: `1px solid ${style.colour}66` }}
               >
-                {props.busy ? "Calling…" : "Approve call"}
+                {props.busy ? "Calling…" : props.callsArmed ? "Approve call" : "Approve call"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowScript(!showScript)}
+                title="Hear the opening in the agent's own voice. Nobody is called."
+                className="text-[12px] px-2.5 py-1.5 rounded border border-[var(--color-line-bright)] text-[var(--color-ink-dim)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-3)] transition-colors"
+              >
+                {showScript ? "Hide script" : "Hear it"}
               </button>
               <button
                 type="button"
                 disabled={props.busy}
                 onClick={() => props.onSetStatus(site, "evacuated")}
+                title="Mark this site as already emptied. It drops out of the ranking and stops being offered, but stays on the list so you can see the work that is done."
                 className="text-[12px] px-2.5 py-1.5 rounded text-[var(--color-ink-faint)] hover:text-[var(--color-ink-dim)] transition-colors"
               >
                 Already clear
@@ -155,6 +182,14 @@ export function NextAction(props: NextActionProps) {
             </span>
           ) : null}
         </div>
+
+        {showScript ? (
+          <ScriptPreview
+            incidentId={props.incidentId}
+            assetId={site.assetId}
+            onClose={() => setShowScript(false)}
+          />
+        ) : null}
 
         <CallState
           calls={props.calls}

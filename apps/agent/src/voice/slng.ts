@@ -336,6 +336,53 @@ export class VoiceService {
     }
   }
 
+  /**
+   * Hear the call that is not being placed.
+   *
+   * With `CALL_ALLOWLIST` empty — the default, and the right default — an
+   * approval opens a LiveKit room and synthesises nothing. Which means the one
+   * thing anyone wants to know about a system that phones care homes, *what
+   * does it actually say*, was the one thing there was no way to find out.
+   *
+   * So the opening is synthesised on demand through the same voice the agent
+   * uses. It is a rendering of the script, not a recording of a call: no call
+   * happened, and every surface showing this says so.
+   */
+  async previewAudio(script: CallScript): Promise<{ audio: Uint8Array; contentType: string } | null> {
+    if (!env.slng.apiKey) return null;
+
+    const text = spokenScript(script);
+    try {
+      const response = await fetch(`${env.slng.mediaUrl}/v1/tts/${env.slng.ttsModel}`, {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify({
+          text,
+          reference_id: env.slng.ttsVoice,
+          format: "mp3",
+          prosody: { speed: 1, volume: 0 },
+        }),
+        signal: AbortSignal.timeout(30_000),
+      });
+
+      if (!response.ok) {
+        this.ctx.log.warn("Voice preview failed", {
+          status: response.status,
+          body: (await response.text().catch(() => "")).slice(0, 200),
+        });
+        return null;
+      }
+
+      return {
+        audio: new Uint8Array(await response.arrayBuffer()),
+        contentType: response.headers.get("content-type") ?? "audio/mpeg",
+      };
+    } catch (error) {
+      this.ctx.log.warn("Voice preview failed", { error: describeError(error) });
+      return null;
+    }
+  }
+
   /** Speech to text, so a coordinator can drive ARCA from a vehicle. */
   async transcribe(audio: Uint8Array, filename = "note.ogg"): Promise<string | null> {
     if (!env.slng.apiKey) return null;
@@ -364,6 +411,79 @@ export class VoiceService {
       return null;
     }
   }
+}
+
+/**
+ * What the agent will actually open with, as text.
+ *
+ * Built from the same `CallScript` the call is given, and worded to match the
+ * system prompt the voice agent was created with — so this is a rendering of
+ * the script, not a second script that could drift from it.
+ *
+ * It stops after the four questions on purpose. Everything past that is a
+ * conversation: the agent confirms numbers, handles corrections, and answers
+ * what it is asked, none of which can be written down in advance. Saying so is
+ * the difference between a preview and a promise.
+ */
+export function scriptLines(script: CallScript): Array<{ role: "agent" | "note"; text: string }> {
+  const eta =
+    script.fireEtaMinutes === null
+      ? "poco tiempo"
+      : script.fireEtaMinutes >= 90
+        ? `unas ${(script.fireEtaMinutes / 60).toFixed(1).replace(".", ",")} horas`
+        : `unos ${Math.round(script.fireEtaMinutes)} minutos`;
+
+  const people =
+    script.registeredPeople === null
+      ? "un número desconocido de"
+      : String(script.registeredPeople);
+
+  const lines: Array<{ role: "agent" | "note"; text: string }> = [];
+
+  if (script.exerciseMode) {
+    lines.push({
+      role: "agent",
+      text: "Esto es un SIMULACRO. Repito: es un simulacro, no una emergencia real.",
+    });
+  }
+
+  lines.push({
+    role: "agent",
+    text: `Hola, le llamo de forma automática de parte del centro de coordinación de emergencias. ¿Hablo con ${script.siteName}?`,
+  });
+
+  lines.push({
+    role: "agent",
+    text:
+      `Hay un incendio forestal que podría llegar a ${script.siteName} en ${eta}. ` +
+      `La recomendación actual del centro de coordinación es: ${script.recommendedAction}. ` +
+      `En el registro oficial constan ${people} personas, pero eso es una capacidad registrada, no las personas presentes ahora.`,
+  });
+
+  lines.push({
+    role: "agent",
+    text:
+      "Le voy a hacer cuatro preguntas. ¿Cuántas personas hay ahí ahora mismo? " +
+      "¿Cuántas no pueden caminar sin ayuda? ¿Qué vehículos tienen disponibles? " +
+      "¿Necesitan ayuda para evacuar?",
+  });
+
+  lines.push({
+    role: "note",
+    text:
+      "From here it is a conversation: the agent confirms each figure, keeps the last number if it is corrected, " +
+      `and refers anything it cannot answer to ${script.coordinatorCallback}.`,
+  });
+
+  return lines;
+}
+
+/** Just the spoken part, for synthesis. */
+export function spokenScript(script: CallScript): string {
+  return scriptLines(script)
+    .filter((line) => line.role === "agent")
+    .map((line) => line.text)
+    .join(" ");
 }
 
 function toArguments(script: CallScript): Record<string, string> {

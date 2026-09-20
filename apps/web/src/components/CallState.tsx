@@ -109,6 +109,7 @@ export function CallState(props: CallStateProps) {
               type="button"
               disabled={props.busy || draft.trim().length === 0}
               onClick={() => void submit()}
+              title="Extract what the site said — people present, who cannot walk unaided, vehicles — and recompute the ranking on it. The list reorders and the diff names this call as the cause."
               className="text-[11px] px-2.5 py-1 rounded border border-[var(--color-line-bright)] bg-[var(--color-surface-3)] hover:bg-[var(--color-line)] transition-colors disabled:opacity-40"
             >
               {props.busy ? "Applying…" : "Apply to ranking"}
@@ -126,6 +127,7 @@ export function CallState(props: CallStateProps) {
         <button
           type="button"
           onClick={() => setOpen(true)}
+          title="Type what the site told you on the phone. ARCA extracts the figures and re-ranks on them, exactly as it would from a call it placed itself."
           className="mt-1 text-[10px] text-[var(--color-ink-faint)] hover:text-[var(--color-ink-dim)] transition-colors"
         >
           {latest ? "Add what they said" : "Log a call made by hand"}

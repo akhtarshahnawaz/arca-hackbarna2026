@@ -443,6 +443,8 @@ export default function OperationsPage() {
               selectedSiteId={selectedSiteId}
               busyId={busyId}
               canCall={Boolean(capabilities.slng)}
+              callsArmed={Boolean(capabilities.outboundCalls)}
+              incidentId={data.incident.id}
               onSelect={setSelectedSiteId}
               onApprove={onApprove}
               onDeny={onDeny}

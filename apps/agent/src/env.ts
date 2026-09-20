@@ -70,6 +70,16 @@ export const env = {
     // eu-west, not eu-central: no SLNG model is served in eu-central, so an
     // agent created there is refused at the voice-selection step.
     region: str("SLNG_REGION", "eu-west"),
+    /**
+     * The voice used to preview a call script.
+     *
+     * Matches what `slng:create-agent` gives the agent, so what you hear is
+     * what the site would hear. The `slng/` prefix belongs in the path for the
+     * regionally hosted model; the bare `fish/…` form is served only from the
+     * Americas.
+     */
+    ttsModel: str("SLNG_TTS_MODEL", "slng/fish/tts:s2.1-pro"),
+    ttsVoice: str("SLNG_TTS_VOICE", "3f065d660212478a9c697fa965b4d098"),
   },
 
   telegram: {
