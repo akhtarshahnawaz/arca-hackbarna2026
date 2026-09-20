@@ -49,6 +49,21 @@ export class SpreadService {
   ): Promise<SpreadOutcome> {
     const cached = await this.ctx.store.latestSpreadRun(incident.id);
 
+    // A replay's geometry is recorded, so there is nothing to ask the live API
+    // for — and its cluster id is not a DeepFire UUID, so asking fails anyway.
+    // Forcing a refresh on one must not reach the network.
+    if (incident.replay) {
+      if (cached?.bands) {
+        return {
+          run: cached,
+          simulation: (cached.result as Simulation) ?? null,
+          bands: cached.bands as BandFeatureCollection,
+          synthetic: cached.status !== "COMPLETED",
+        };
+      }
+      return this.degrade(incident, cached, "This is a replay incident and its bundle carries no simulation.");
+    }
+
     if (!options.force && cached?.status === "COMPLETED" && cached.bands) {
       const age = Date.now() - Date.parse(cached.requestedAt);
       if (age < MIN_REFRESH_MS) {
@@ -187,29 +202,44 @@ export class SpreadService {
   }
 
   /**
-   * Fall back to drawn rings, clearly marked.
+   * Fall back to the best geometry available, and only then to drawn rings.
    *
-   * A failed model run must not leave a coordinator with an empty screen, but
-   * the substitute has to be obviously a substitute: these bands carry a zero
-   * probability floor, which is the flag every consumer reads to label them as
-   * a circle drawn around a fire rather than a prediction.
+   * The store is re-queried rather than trusting the record this was handed:
+   * the caller passes the run that just failed, and an earlier version returned
+   * that, so a refresh that failed replaced a good ten-member ensemble with
+   * drawn circles. A coordinator watching the screen saw "9 of 10 runs" become
+   * "1/1" and the order change, because a network call had failed.
+   *
+   * `latestSpreadRun` already prefers a completed run over a newer failure,
+   * which is exactly the question being asked here.
+   *
+   * Drawn rings remain the last resort, and they are obviously a substitute:
+   * they carry a zero probability floor, the flag every consumer reads to label
+   * them a circle drawn around a fire rather than a prediction.
    */
   private async degrade(
     incident: Incident,
-    cached: SpreadRunRecord | null,
+    _failed: SpreadRunRecord | null,
     reason: string,
   ): Promise<SpreadOutcome> {
-    if (cached?.status === "COMPLETED" && cached.bands) {
+    const best = await this.ctx.store.latestSpreadRun(incident.id).catch(() => null);
+
+    if (best?.status === "COMPLETED" && best.bands) {
+      await this.ctx.timeline(
+        incident.id,
+        "note",
+        `Keeping the previous model run: ${reason}`,
+      );
       return {
-        run: cached,
-        simulation: (cached.result as Simulation) ?? null,
-        bands: cached.bands as BandFeatureCollection,
+        run: best,
+        simulation: (best.result as Simulation) ?? null,
+        bands: best.bands as BandFeatureCollection,
         synthetic: false,
       };
     }
 
     const bands = fallbackBands(incident.position, { horizonHours: env.watch.horizonHours });
-    const run: SpreadRunRecord = cached ?? {
+    const run: SpreadRunRecord = best ?? {
       id: randomUUID(),
       incidentId: incident.id,
       simulationId: null,
