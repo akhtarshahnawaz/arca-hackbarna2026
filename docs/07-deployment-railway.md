@@ -230,6 +230,17 @@ info  ARCA ready  storage=postgres detection=live exposure=true voice=web-sessio
 
 Railway does not assign a public domain automatically; this step is required.
 
+You end up with **two domains** and they do different jobs. Worth writing down
+somewhere before you forget which is which:
+
+| | Serves | You open it to |
+|---|---|---|
+| `arca-agent` domain | The JSON API and the event stream | Check `/api/health`; never for the UI |
+| `arca-web` domain | The operations screen | Everything else |
+
+The agent's domain is the value of `NEXT_PUBLIC_AGENT_URL` in step 5. Give the
+short, memorable name to `arca-web` — that is the one people will actually type.
+
 Then add one more variable to `arca-agent`, with **no trailing slash**:
 
 ```dotenv
@@ -289,6 +300,14 @@ Open this in a browser:
 ```text
 https://YOUR-AGENT-DOMAIN/api/health
 ```
+
+> **This must be the agent's domain, not the web app's.** They are two services
+> with two domains, and it is easy to reach for the one you have been opening
+> all along. `arca-web` is a front end with exactly two routes — `/` and a 404
+> page — so `/api/health` on it returns a **Next.js 404**, which looks alarming
+> and means nothing. If the response says `x-powered-by: Next.js`, you are on
+> the wrong domain: go to `arca-agent → Settings → Networking` and use the one
+> listed there.
 
 `/api/health` is deliberately exempt from `OPS_TOKEN`, so a platform health
 check works. You should get something like:
@@ -354,6 +373,11 @@ Then:
 Only needed if you want outbound voice. It is a one-off: it creates an agent at
 SLNG and prints an id.
 
+There is no `SLNG_AGENT_ID` to look up before you have created one — the id is
+minted when the agent is created, and this script is what creates it. If you
+have already created one (in SLNG's own dashboard, or by running this before),
+skip to *Reading back an id you already have* below.
+
 **Borrow the Pre-deploy slot.** It runs exactly once per deployment, its output
 lands in the deploy log, and nothing lingers afterwards.
 
@@ -376,6 +400,23 @@ lands in the deploy log, and nothing lingers afterwards.
 > Step 5 is not tidiness. The script creates a *new* agent every time it runs —
 > deliberately, so an agent mid-incident is never mutated underneath a call in
 > progress. Left in pre-deploy it would mint another one on every deployment.
+
+### Reading back an id you already have
+
+`GET https://api.agents.slng.ai/v1/agents` lists the agents on your key. In a
+browser console, with the site open so there is no CORS preflight to argue with,
+or from anywhere that can send a header:
+
+```js
+const key = "YOUR_SLNG_API_KEY";
+const r = await fetch("https://api.agents.slng.ai/v1/agents", {
+  headers: { authorization: `Bearer ${key}` },
+});
+console.log(await r.json());
+```
+
+Look for the one named `arca-site-check` — that is the name the script gives it
+— and take its `id`. A 401 means the key is wrong; the route itself is there.
 
 <details>
 <summary>The temporary-service alternative, and why it is worse</summary>
@@ -426,6 +467,8 @@ it grows slowly: incidents, timeline events and ranked sites.
 
 | Symptom | Cause |
 |---|---|
+| `/api/health` returns a Next.js 404 page | You are on the **web** domain. The API lives on `arca-agent`, which has its own domain — `arca-agent → Settings → Networking` |
+| `/api/health` returns Railway's own "Application not found" | No domain generated on `arca-agent` yet, or the service is not deployed |
 | Deploy hangs in pre-deploy | Using `push` instead of `push:ci`; drizzle is waiting on a prompt that will never come |
 | `storage: "memory"` on `/api/health` | `DATABASE_URL` unset or the reference does not match the Postgres service name |
 | Web shows *This deployment is protected* | `OPS_TOKEN` is set. Paste the same value; it is stored in that browser |
