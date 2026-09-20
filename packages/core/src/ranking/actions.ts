@@ -3,11 +3,14 @@ import type { ProtectiveAction, ReachStats } from "../domain/types.js";
 
 export interface ActionInput {
   reach: ReachStats;
+  /** Spare time for the *people*. Livestock is handled separately. */
   spareMinutes: number | null;
   arrivalMinutes: number | null;
   hazardous: boolean;
   responseAsset: boolean;
   humanBearing: boolean;
+  /** Minutes to move the animals, if there are any. */
+  livestockMinutes?: number;
 }
 
 export interface ActionDecision {
@@ -24,8 +27,39 @@ export interface ActionDecision {
  * be driving an engine past it. Shelter-in-place outranks evacuate because when
  * the clock has already run out, sending people onto a road the fire is about
  * to cross is worse than keeping them in a building.
+ *
+ * Every branch here is about the people. Livestock that cannot be cleared in
+ * time is appended to the reason rather than changing the instruction: a farm
+ * with two staff and six thousand sheep is not a shelter-in-place case, and
+ * saying so was the bug that filled the top of a live ranked list with unnamed
+ * field parcels.
  */
 export function decideAction(input: ActionInput): ActionDecision {
+  const policy = rankingPolicy;
+  const decision = decidePeopleAction(input);
+  return { ...decision, reason: withLivestock(decision.reason, input) };
+}
+
+/**
+ * The animals, when they are the part that cannot be saved.
+ *
+ * Only said when it changes something: there are animals, the fire is coming,
+ * and moving them takes longer than there is. Starting a livestock move late is
+ * the difference between a herd relocated and a herd lost, so it is worth a
+ * sentence — and worth an early call — even where the people are fine.
+ */
+function withLivestock(reason: string, input: ActionInput): string {
+  const livestock = input.livestockMinutes ?? 0;
+  if (livestock <= 0 || input.arrivalMinutes === null) return reason;
+  if (livestock <= input.arrivalMinutes) return reason;
+
+  const short = Math.round(livestock - input.arrivalMinutes);
+  return `${reason} Moving the animals needs about ${
+    short >= 120 ? `${Math.round(short / 60)} h` : `${short} min`
+  } longer than the fire is expected to take, so call early even though the people can clear in time.`;
+}
+
+function decidePeopleAction(input: ActionInput): ActionDecision {
   const policy = rankingPolicy;
 
   if (input.reach.pReach < policy.watchBelowProbability) {

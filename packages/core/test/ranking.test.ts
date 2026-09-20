@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rankSites, formatMinutes, reachCopy, spareCopy } from "../src/ranking/rank.js";
+import { compareSites, rankSites, formatMinutes, reachCopy, spareCopy } from "../src/ranking/rank.js";
 import { estimateEvacMinutes, resolvePeople } from "../src/ranking/evac.js";
 import { decideAction } from "../src/ranking/actions.js";
 import { rankingDiff } from "../src/ranking/diff.js";
@@ -84,8 +84,23 @@ describe("evacuation time", () => {
       subcategory: "livestock_farm", category: "livestock",
       livestockSpecies: [{ species: "pig", count: 300 }],
     });
-    expect(pigs.minutes).toBeGreaterThan(sheep.minutes);
+    expect(pigs.livestockMinutes).toBeGreaterThan(sheep.livestockMinutes);
     expect(sheep.assumptions.join(" ")).toContain("300 sheep");
+  });
+
+  it("keeps animal time out of the people clearance time", () => {
+    // Two staff who can walk out in minutes, and a herd that cannot be moved
+    // for hours. Adding those together says the staff cannot escape, which is
+    // both false and — on live registry data — enough to fill the top of a
+    // ranked list with unnamed field parcels.
+    const farm = estimateEvacMinutes({
+      subcategory: "livestock_farm", category: "livestock",
+      capacityPeople: 2,
+      livestockSpecies: [{ species: "sheep", count: 6_000 }],
+    });
+
+    expect(farm.livestockMinutes).toBeGreaterThan(300);
+    expect(farm.minutes).toBeLessThan(120);
   });
 
   it("caps an impossible livestock evacuation and says why", () => {
@@ -93,7 +108,7 @@ describe("evacuation time", () => {
       subcategory: "livestock_farm", category: "livestock",
       livestockSpecies: [{ species: "pig", count: 100_000 }],
     });
-    expect(huge.minutes).toBeLessThanOrEqual(1440);
+    expect(huge.livestockMinutes).toBeLessThanOrEqual(1440);
   });
 
   it("always states its assumptions", () => {
@@ -248,6 +263,62 @@ describe("ranking", () => {
     const result = rankSites(exposure([]), { simulation });
     expect(result.ranked).toHaveLength(0);
     expect(result.totals.sites).toBe(0);
+  });
+});
+
+describe("ordering under pressure", () => {
+  const site = (overrides: { id: string; spare: number; priority: number; pReach?: number }) =>
+    ({
+      id: overrides.id,
+      assetId: overrides.id,
+      spareMinutes: overrides.spare,
+      priorityScore: overrides.priority,
+      reach: { pReach: overrides.pReach ?? 0.9, runsReaching: 9, runsTotal: 10, singleRun: false },
+    }) as never;
+
+  it("prefers the more critical site when the clock is effectively the same", () => {
+    // Twelve minutes apart on an estimate built from an ensemble arrival time
+    // and a parametric evacuation model is not a real difference. Sorting on
+    // the raw minute put an unnamed sheep shed above a care home; both lose the
+    // race, and only one of them is who you call first.
+    const shed = site({ id: "shed", spare: -781, priority: 20 });
+    const careHome = site({ id: "care", spare: -769, priority: 95 });
+
+    expect([shed, careHome].sort(compareSites)[0]).toBe(careHome);
+  });
+
+  it("still puts a genuinely shorter clock first", () => {
+    const urgent = site({ id: "urgent", spare: -400, priority: 10 });
+    const critical = site({ id: "critical", spare: -60, priority: 99 });
+
+    expect([critical, urgent].sort(compareSites)[0]).toBe(urgent);
+  });
+
+  it("sorts a site with no arrival time last", () => {
+    const timed = site({ id: "timed", spare: 600, priority: 10 });
+    const untimed = { ...site({ id: "untimed", spare: 0, priority: 99 }), spareMinutes: null } as never;
+
+    expect([untimed, timed].sort(compareSites)[0]).toBe(timed);
+  });
+
+  it("keeps a genuinely shorter clock first at every scale", () => {
+    // The transform must be monotonic, or a site with less time could sort
+    // below one with more — the single thing this ordering exists to prevent.
+    const values = [-2000, -900, -400, -120, -60, -30, -12, -3, 0, 3, 12, 60, 400, 2000];
+    const sorted = values
+      .map((spare, index) => site({ id: `s${index}`, spare, priority: 50 }))
+      .sort(compareSites)
+      .map((entry: { spareMinutes: number }) => entry.spareMinutes);
+
+    expect(sorted).toEqual(values);
+  });
+
+  it("is stable, so rows that did not move do not shuffle", () => {
+    const a = site({ id: "a", spare: -100, priority: 50 });
+    const b = site({ id: "b", spare: -100, priority: 50 });
+
+    expect([a, b].sort(compareSites).map((s: { id: string }) => s.id)).toEqual(["a", "b"]);
+    expect([b, a].sort(compareSites).map((s: { id: string }) => s.id)).toEqual(["a", "b"]);
   });
 });
 

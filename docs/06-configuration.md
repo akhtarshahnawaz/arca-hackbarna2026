@@ -103,6 +103,8 @@ incident by people who know it is on.
 |---|---|---|
 | `AOI_BBOX` | `0.15,40.50,3.35,42.90` | Catalonia. Spain: `-9.50,35.90,4.40,43.90` |
 | `WATCH_INTERVAL_MINUTES` | `5` | |
+| `CLUSTER_LOOKBACK_HOURS` | `24` | How far back a cluster counts as active. A legibility setting as much as a detection one: too short and a fire that has not been overflown for a few hours vanishes from the feed while it is still burning |
+| `PLACE_LOOKUP` | `true` | Reverse-geocode cluster positions into place names through Nominatim. Set `false` to send no coordinates to a third party; clusters are then labelled with their coordinates |
 | `SPREAD_HORIZON_HOURS` | `6` | Matches evacuation timescales |
 | `SPREAD_ENSEMBLE_MEMBERS` | `10` | 1–50. Ten makes "7 of 10 runs" readable |
 | `SPREAD_LOOKBACK_HOURS` | `12` | Only hotspots this recent seed a simulation |

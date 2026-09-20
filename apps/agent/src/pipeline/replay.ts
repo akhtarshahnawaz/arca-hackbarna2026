@@ -11,6 +11,7 @@ import {
   type ExposureReport,
   type Hotspot,
   type Incident,
+  type ScenarioSummary,
   type Simulation,
   type StaticHeatSource,
 } from "@arca/core";
@@ -33,6 +34,15 @@ import { describeError } from "../logger.js";
 
 export interface ReplayBundle {
   name: string;
+  /** Human title for the picker. Falls back to a tidied file name. */
+  label?: string;
+  /** Where it is, in words. */
+  place?: string;
+  /** One sentence on what this scenario is for. */
+  blurb?: string;
+  /** True for generated bundles. Surfaced in the UI, never hidden. */
+  synthetic?: boolean;
+  note?: string;
   /** DeepFire fire id, for provenance. */
   fireId?: string;
   clusterId: string;
@@ -61,6 +71,45 @@ export class ReplayService {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * The scenarios, described well enough to choose between them.
+   *
+   * Reads each bundle rather than listing file names, because a picker that
+   * says "demo bages synthetic" asks the operator to guess. A bundle that fails
+   * to parse is skipped and logged: one bad file must not empty the list.
+   */
+  async catalogue(): Promise<ScenarioSummary[]> {
+    const names = await this.list();
+    const incidents = await this.ctx.store.listIncidents({}).catch(() => [] as Incident[]);
+    const byCluster = new Map(incidents.map((incident) => [incident.clusterId, incident]));
+
+    const entries = await Promise.all(
+      names.map(async (name) => {
+        const bundle = await this.load(name);
+        if (!bundle) return null;
+        const incident = byCluster.get(bundle.clusterId) ?? null;
+        return {
+          name,
+          label: bundle.label ?? titleFrom(name),
+          place: bundle.place ?? "Catalonia",
+          blurb: bundle.blurb ?? bundle.note ?? "Recorded detections, real pipeline.",
+          synthetic: bundle.synthetic !== false,
+          position: bundle.position,
+          firstObserved: bundle.firstObserved,
+          lastObserved: bundle.lastObserved,
+          detections: bundle.hotspots.length,
+          assets: bundle.exposure?.assets?.length ?? null,
+          peopleEstimate: bundle.exposure?.summary?.people_estimate ?? null,
+          incidentId: incident?.id ?? null,
+        } satisfies ScenarioSummary;
+      }),
+    );
+
+    return entries
+      .filter((entry): entry is ScenarioSummary => entry !== null)
+      .sort((a, b) => a.label.localeCompare(b.label));
   }
 
   async load(name: string): Promise<ReplayBundle | null> {
@@ -111,7 +160,7 @@ export class ReplayService {
     const incident: Incident = {
       id: existing?.id ?? randomUUID(),
       clusterId: bundle.clusterId,
-      name: bundle.name,
+      name: bundle.label ?? titleFrom(bundle.name),
       status: confirmation.classification === "CONFIRMED" ? "confirmed" : "candidate",
       replay: true,
       position: bundle.position,
@@ -158,9 +207,39 @@ export class ReplayService {
     return incident;
   }
 
+  /**
+   * Resolve a bundle by file name or by the label shown on screen.
+   *
+   * Incidents are named for the operator, not for the filesystem, so the only
+   * handle the exposure fallback has on a replay incident is its label. This is
+   * where the two are reconciled — file name first, because that is exact.
+   */
+  async resolveName(nameOrLabel: string): Promise<string | null> {
+    const names = await this.list();
+    if (names.includes(nameOrLabel)) return nameOrLabel;
+    const wanted = nameOrLabel.trim().toLowerCase();
+    for (const name of names) {
+      const bundle = await this.load(name);
+      const label = (bundle?.label ?? titleFrom(name)).trim().toLowerCase();
+      if (label === wanted) return name;
+    }
+    return null;
+  }
+
   /** The recorded exposure, used as the Talaia failsafe's last rung. */
-  async exposureFor(name: string): Promise<ExposureReport | null> {
+  async exposureFor(nameOrLabel: string): Promise<ExposureReport | null> {
+    const name = await this.resolveName(nameOrLabel);
+    if (!name) return null;
     const bundle = await this.load(name);
     return bundle?.exposure ?? null;
   }
+}
+
+/** "demo-bages-synthetic" reads badly on a wall display. */
+function titleFrom(name: string): string {
+  return name
+    .replace(/^demo-/, "")
+    .replace(/-synthetic$/, "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }

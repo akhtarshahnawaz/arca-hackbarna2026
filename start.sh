@@ -141,6 +141,19 @@ AGENT_URL="http://localhost:$AGENT_PORT"
 WEB_URL="http://localhost:$WEB_PORT"
 export NEXT_PUBLIC_AGENT_URL="${NEXT_PUBLIC_AGENT_URL:-$AGENT_URL}"
 
+# Next reads apps/web/.env.local and it wins over anything exported here. A
+# stale one left from a run on a different port points the browser at a dead
+# agent, and the only symptom is "Failed to fetch" beside a healthy-looking
+# agent log — worth twenty minutes of anyone's life, so check for it.
+if [[ -f apps/web/.env.local ]] && grep -q "NEXT_PUBLIC_AGENT_URL" apps/web/.env.local; then
+  LOCAL_AGENT_URL="$(grep "^NEXT_PUBLIC_AGENT_URL=" apps/web/.env.local | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")"
+  if [[ -n "$LOCAL_AGENT_URL" && "$LOCAL_AGENT_URL" != "$NEXT_PUBLIC_AGENT_URL" ]]; then
+    warn "apps/web/.env.local points the browser at $LOCAL_AGENT_URL, but the agent"
+    warn "will start on $NEXT_PUBLIC_AGENT_URL. The web app will not reach it."
+    warn "Delete apps/web/.env.local, or start with PORT=${LOCAL_AGENT_URL##*:}"
+  fi
+fi
+
 port_busy() { lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
 
 # --- checks only -------------------------------------------------------------

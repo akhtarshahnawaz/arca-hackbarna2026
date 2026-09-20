@@ -102,13 +102,41 @@ this site within 2 h" — because that is how the uncertainty was generated.
 
 ## Ordering and stability
 
-1. Spare time ascending. No clock at all sorts last.
+1. Spare time ascending, **at the precision it is actually known to**. No clock
+   at all sorts last.
 2. More runs agreeing.
 3. Talaia's priority score.
 4. Asset id.
 
 The last tiebreak exists only so the order is stable across recomputations and
 the screen does not shuffle rows that did not actually move.
+
+### Why spare time is not compared minute by minute
+
+Spare time is an ensemble arrival estimate minus a parametric evacuation model.
+Neither is accurate to the minute, and the error grows with the magnitude:
+"twelve minutes short" is a real distinction, "twelve minutes apart at thirteen
+hours short" is noise in both models.
+
+Sorting on the raw minute treats those identically, and at scale that has one
+specific, bad consequence. A live Talaia query over a large footprint returns
+thousands of assets — one Empordà run came back with 2,022 — most of them field
+parcels carrying a class-default headcount of two. Sorted strictly by minute, an
+unnamed sheep shed 13.1 hours short outranks a care home 12.9 hours short. Both
+lose the race; only one of them is who you call first.
+
+So spare time is compared on a signed log scale: roughly five-minute resolution
+near zero, where the distinction decides an action, widening to hours out in the
+region where nothing arrives in time anyway. The transform is monotonic, so a
+genuinely shorter clock still sorts first — there is a test that walks it from
+−2000 to +2000 minutes to keep it that way.
+
+### Where the headcount came from
+
+With live registry data most headcounts are class defaults — "a farm building
+holds about two people". On the Empordà run, 80,750 of 109,104 people came from
+defaults and 28,478 from registries. Every row says which it is, because
+printing a rule of thumb as "registered" dresses it as a record.
 
 ## What a re-rank must never lose
 

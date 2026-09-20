@@ -49,6 +49,52 @@ would fail.
 Every threshold the engine used: cleaning, ranking and evacuation assumptions. A
 policy the operator cannot read is a policy they cannot argue with.
 
+### `GET /api/clusters?force=true`
+
+The live feed: **every** active cluster in the area of interest, with the
+confirmation score that judged it — including the ones scored as noise, and the
+reason each detection was dropped.
+
+```json
+{
+  "clusters": [{
+    "clusterId": "5b03169d-8daa-4531-b05b-ba7231973da4",
+    "position": [1.23098, 41.18126],
+    "place": "la Pobla de Mafumet",
+    "firstObserved": "2026-09-18T00:43:00Z",
+    "lastObserved": "2026-09-19T19:08:34Z",
+    "detections": 0,
+    "rawDetections": 151,
+    "maskedDetections": 151,
+    "dropped": [{ "reason": "known heat source", "count": 151 }],
+    "sources": ["MODIS_NRT", "VIIRS_SNPP_NRT"],
+    "corroboratingSources": [],
+    "totalFrpMw": null, "maxFrpMw": null, "confidence": null,
+    "spanM": 0, "hasPerimeter": true,
+    "score": 0, "classification": "NOISE",
+    "incidentId": null, "incidentStatus": null
+  }],
+  "bbox": "0.15,40.50,3.35,42.90",
+  "at": "2026-09-20T04:21:03.114Z",
+  "error": null,
+  "maskIncomplete": false
+}
+```
+
+Served from a 60-second cache; `?force=true` bypasses it. When the upstream poll
+fails, the **last good feed** is returned with `error` set rather than an empty
+list. See [Modes and the feed](./10-modes-and-the-feed.md).
+
+### `POST /api/clusters/:id/adopt`
+
+Work a cluster, including one below the confirmation bar. Opens or updates the
+incident, records on its timeline that an operator asked for it and what the
+score was, and starts the pipeline **without awaiting it** — a simulation takes
+minutes and the screen should fill in over the event stream.
+
+Idempotent: adopting a cluster already being worked returns the existing
+incident and announces nothing. 404 if the cluster has left the feed.
+
 ### `GET /api/incidents?includeClosed=false`
 
 Open incidents with per-incident counts of ranked sites, sites to evacuate now,
@@ -117,12 +163,25 @@ Fresh simulation and re-rank. Slow — a run can take minutes.
 
 Run one watcher pass immediately instead of waiting for the interval.
 
+### `GET /api/scenarios` · `POST /api/scenarios/:name/start?asOf=<iso>`
+
+The synthetic scenarios, described well enough to choose between them — label,
+place, a sentence on what the scenario exercises, detection and asset counts,
+and the incident id if one is already open for it.
+
+Starting one returns as soon as the detections and the recorded model run are
+stored; the exposure query behind it can take a minute when Talaia is slow, and
+a button that stays pressed for that long reads as a hang.
+
+`asOf` filters detections to those observed by that time and recomputes the
+confirmation score, so scrubbing back shows the incident as ARCA would genuinely
+have seen it — often below the confirmation bar.
+
 ### `GET /api/replay` · `POST /api/replay/:name?asOf=<iso>`
 
-List and start replay bundles. `asOf` filters detections to those observed by
-that time and recomputes the confirmation score, so scrubbing back shows the
-incident as ARCA would genuinely have seen it — often below the confirmation
-bar.
+The same bundles by file name, kept for scripts. `POST /api/replay/:name` awaits
+the whole pipeline and reports how many sites were ranked, which is what makes
+it useful in a test.
 
 ### `POST /api/telegram/webhook`
 

@@ -71,6 +71,94 @@ export interface FireCluster {
   active: boolean;
 }
 
+/**
+ * A live cluster, described well enough to choose between it and nine others.
+ *
+ * DeepFire's cluster record carries four fields — id, first seen, last seen,
+ * active — which is not enough to pick one off a list. Everything else here is
+ * derived from that cluster's own detections in the same pass the watcher
+ * already makes, so browsing the feed costs no extra queries per cluster.
+ *
+ * Crucially this is every active cluster, not only the ones that clear the
+ * confirmation bar. A coordinator looking at the feed needs to see what ARCA
+ * rejected as much as what it accepted, with the score that decided it.
+ */
+export interface ClusterSummary {
+  clusterId: string;
+  position: Position;
+  /** Nearest settlement, resolved by reverse geocoding. Null if unavailable. */
+  place: string | null;
+  firstObserved: string;
+  lastObserved: string;
+  /** Detections that survived cleaning. */
+  detections: number;
+  /** Everything DeepFire reported for this cluster inside the window. */
+  rawDetections: number;
+  /** Detections dropped as known persistent heat sources. */
+  maskedDetections: number;
+  /**
+   * Why the rest were dropped, when any were.
+   *
+   * A cluster showing "0 detections" with no explanation invites the reasonable
+   * conclusion that the system is broken. "12 seen, all stale" is a different
+   * statement, and the operator can judge it.
+   */
+  dropped: Array<{ reason: string; count: number }>;
+  /** Distinct satellites that reported it, usable or not. */
+  sources: string[];
+  /** Of those, the ones whose detections survived cleaning. */
+  corroboratingSources: string[];
+  totalFrpMw: number | null;
+  maxFrpMw: number | null;
+  /** The strongest confidence grade any detection carried. */
+  confidence: Confidence | null;
+  /** Greatest distance between two usable detections, in metres. */
+  spanM: number;
+  hasPerimeter: boolean;
+  score: number;
+  classification: ConfirmationClass;
+  /** Set once ARCA is working this cluster as an incident. */
+  incidentId: string | null;
+  incidentStatus: IncidentStatus | null;
+}
+
+/**
+ * A synthetic scenario, described for the picker.
+ *
+ * Replay bundles are the answer to a demo problem — a wildfire system may have
+ * no wildfire — and they are also how the pipeline is regression-tested. Each
+ * one is labelled as synthetic everywhere it appears, including here, so a
+ * scenario can never be read as a live fire.
+ */
+export interface ScenarioSummary {
+  /** Bundle file name, and the id used to start it. */
+  name: string;
+  label: string;
+  place: string;
+  blurb: string;
+  synthetic: boolean;
+  position: Position;
+  firstObserved: string;
+  lastObserved: string;
+  detections: number;
+  /** Assets the bundled exposure carries, when it has one. */
+  assets: number | null;
+  peopleEstimate: number | null;
+  /** Set once this scenario has been started in this deployment. */
+  incidentId: string | null;
+}
+
+/** One pass over the feed: what is burning, and what ARCA made of it. */
+export interface ClusterSurvey {
+  clusters: ClusterSummary[];
+  bbox: string;
+  at: string;
+  /** Set when the feed could not be read; `clusters` is then whatever is cached. */
+  error: string | null;
+  /** True when the mask was unavailable, so nothing could be masked this pass. */
+  maskIncomplete: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Confirmation
 // ---------------------------------------------------------------------------
@@ -324,7 +412,25 @@ export type SiteStatus =
 export type PeopleBasis = "reported" | "registered" | "class_default" | "unknown";
 
 export interface EvacEstimate {
+  /**
+   * Minutes to get the *people* out.
+   *
+   * This and only this is what spare time is computed against, because the
+   * decision it feeds is a life-safety decision. Livestock is counted
+   * separately below — see the note on `livestockMinutes`.
+   */
   minutes: number;
+  /**
+   * Minutes to move the animals, if there are any.
+   *
+   * Kept apart from `minutes` deliberately. An earlier version added the two
+   * together, and on live registry data that put unnamed sheep farms at the top
+   * of every ranked list: two people who can walk out in five minutes, six
+   * thousand animals that cannot be moved in twelve hours, and a combined
+   * estimate that read as "these people cannot escape". They can. The animals
+   * cannot, which is a real and serious loss — and a different instruction.
+   */
+  livestockMinutes: number;
   basis: PeopleBasis;
   people: number;
   assumptions: string[];
@@ -473,6 +579,7 @@ export type TimelineKind =
   | "simulation_requested"
   | "simulation_completed"
   | "simulation_failed"
+  | "exposure_queried"
   | "exposure_computed"
   | "exposure_degraded"
   | "ranked"

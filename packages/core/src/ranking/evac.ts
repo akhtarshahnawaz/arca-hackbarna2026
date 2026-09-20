@@ -106,12 +106,21 @@ export function estimateEvacMinutes(input: EvacInput): EvacEstimate {
     );
   }
 
+  // People only. Livestock is returned alongside rather than folded in; see
+  // the note on EvacEstimate.livestockMinutes for why that distinction is
+  // load-bearing rather than pedantic.
   const total = Math.min(
-    Math.round(base + perPerson + livestock.minutes + mobilityPenalty),
+    Math.round(base + perPerson + mobilityPenalty),
     evacTimes.maxMinutes,
   );
 
-  return { minutes: total, basis, people, assumptions };
+  return {
+    minutes: total,
+    livestockMinutes: Math.round(livestock.minutes),
+    basis,
+    people,
+    assumptions,
+  };
 }
 
 function describeBasis(basis: PeopleBasis, input: EvacInput): string {

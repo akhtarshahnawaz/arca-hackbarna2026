@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { RankedSite, SiteStatus } from "@arca/core";
+import type { CallView } from "@/lib/api";
+import { CallState } from "./CallState";
 import { ACTION_STYLE, minutes, titleCase } from "@/lib/format";
 
 /**
@@ -11,26 +13,40 @@ import { ACTION_STYLE, minutes, titleCase } from "@/lib/format";
  * Each row carries the arithmetic behind its position — arrival, evacuation
  * need, the difference — because a ranked list a coordinator cannot interrogate
  * is a ranked list they will not use twice.
+ *
+ * Shown a page at a time. A live Talaia query over a fast-moving fire returns
+ * thousands of assets — one Empordà run came back with 2,022, of which 1,220
+ * cleared the reach threshold — and a scrolling column of 1,220 rows is not a
+ * ranked list, it is a haystack. The top of the order is the part anyone acts
+ * on; the rest is available and counted, never silently dropped.
  */
+
+/** Rows per page. About a screenful, and more than a shift will get through. */
+const PAGE_SIZE = 25;
 
 export interface RankedListProps {
   /** Ranks to hide, because another component is already showing them. */
   skipRanks?: number[];
   sites: RankedSite[];
+  calls: CallView[];
   selectedId: string | null;
   onSelect: (assetId: string | null) => void;
   onApprove: (site: RankedSite) => void;
   onDeny: (site: RankedSite) => void;
   onSetStatus: (site: RankedSite, status: SiteStatus) => void;
+  onTranscript: (assetId: string, transcript: string) => Promise<void>;
   busyId: string | null;
   canCall: boolean;
 }
 
 export function RankedList(props: RankedListProps) {
   const [showWatch, setShowWatch] = useState(false);
+  const [shown, setShown] = useState(PAGE_SIZE);
   const skip = new Set(props.skipRanks ?? []);
   const ranked = props.sites.filter((site) => site.rank > 0 && !skip.has(site.rank));
   const watch = props.sites.filter((site) => site.rank === 0);
+  const visible = ranked.slice(0, shown);
+  const hidden = ranked.length - visible.length;
 
   if (props.sites.length === 0) {
     return (
@@ -45,10 +61,11 @@ export function RankedList(props: RankedListProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      {ranked.map((site) => (
+      {visible.map((site) => (
         <SiteRow
           key={site.assetId}
           site={site}
+          calls={props.calls}
           selected={props.selectedId === site.assetId}
           busy={props.busyId === site.assetId}
           canCall={props.canCall}
@@ -56,8 +73,23 @@ export function RankedList(props: RankedListProps) {
           onApprove={props.onApprove}
           onDeny={props.onDeny}
           onSetStatus={props.onSetStatus}
+          onTranscript={props.onTranscript}
         />
       ))}
+
+      {hidden > 0 ? (
+        <button
+          type="button"
+          onClick={() => setShown(shown + PAGE_SIZE * 4)}
+          className="w-full rounded-lg border border-dashed border-[var(--color-line-bright)] px-3 py-2.5 text-[11px] text-[var(--color-ink-dim)] hover:text-[var(--color-ink)] hover:bg-[var(--color-surface-2)] transition-colors"
+        >
+          {hidden.toLocaleString("en-GB")} more above the reach threshold
+          <span className="block mt-0.5 text-[10px] text-[var(--color-ink-faint)]">
+            Ordered by spare time; these have more of it. Show the next{" "}
+            {Math.min(hidden, PAGE_SIZE * 4)}.
+          </span>
+        </button>
+      ) : null}
 
       {watch.length > 0 ? (
         <div className="mt-1">
@@ -75,6 +107,7 @@ export function RankedList(props: RankedListProps) {
                 <SiteRow
                   key={site.assetId}
                   site={site}
+                  calls={props.calls}
                   selected={props.selectedId === site.assetId}
                   busy={props.busyId === site.assetId}
                   canCall={props.canCall}
@@ -82,6 +115,7 @@ export function RankedList(props: RankedListProps) {
                   onApprove={props.onApprove}
                   onDeny={props.onDeny}
                   onSetStatus={props.onSetStatus}
+                  onTranscript={props.onTranscript}
                 />
               ))}
             </div>
@@ -94,6 +128,7 @@ export function RankedList(props: RankedListProps) {
 
 function SiteRow(props: {
   site: RankedSite;
+  calls: CallView[];
   selected: boolean;
   busy: boolean;
   canCall: boolean;
@@ -101,9 +136,11 @@ function SiteRow(props: {
   onApprove: (site: RankedSite) => void;
   onDeny: (site: RankedSite) => void;
   onSetStatus: (site: RankedSite, status: SiteStatus) => void;
+  onTranscript: (assetId: string, transcript: string) => Promise<void>;
 }) {
   const { site } = props;
   const style = ACTION_STYLE[site.action];
+  const lastCall = props.calls.filter((call) => call.siteId === site.assetId).at(-1) ?? null;
   const outOfTime = site.action === "SHELTER_CANDIDATE";
   const settled = site.status === "evacuated" || site.status === "do_not_call";
   const phone = site.contacts?.phone?.[0] ?? null;
@@ -150,8 +187,8 @@ function SiteRow(props: {
             </div>
 
             <div className="mt-0.5 text-[10px] text-[var(--color-ink-faint)] truncate">
-              {titleCase(site.subcategory)} · {site.peopleEstimate} people
-              {site.evac.basis === "reported" ? " reported" : " registered"}
+              {titleCase(site.subcategory)} · {site.peopleEstimate} people{" "}
+              {basisLabel(site.evac.basis)}
               {site.livestockUnits ? ` · ${site.livestockUnits} animals` : ""}
             </div>
 
@@ -203,6 +240,22 @@ function SiteRow(props: {
             </span>
           ) : null}
 
+          {/* A site ARCA has already spoken to should not look identical to one
+              nobody has touched, whether or not the row is expanded. */}
+          {lastCall ? (
+            <span
+              className="flex items-center gap-1 text-[10px] text-[var(--color-ink-faint)]"
+              title={
+                lastCall.mode === "web"
+                  ? "A browser voice session was opened for this site."
+                  : `Called on ${lastCall.phoneMasked}.`
+              }
+            >
+              <PhoneIcon />
+              {lastCall.transcript ? "reported" : lastCall.status.replace(/_/g, " ")}
+            </span>
+          ) : null}
+
           {props.selected ? (
             <div className="ml-auto flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
               {settled ? null : (
@@ -244,9 +297,55 @@ function SiteRow(props: {
           ) : null}
         </div>
 
-        {props.selected ? <SiteDetail site={site} /> : null}
+        {props.selected ? (
+          <>
+            <SiteDetail site={site} />
+            <div className="pl-9">
+              <CallState
+                calls={props.calls}
+                assetId={site.assetId}
+                busy={props.busy}
+                onTranscript={props.onTranscript}
+              />
+            </div>
+          </>
+        ) : null}
       </div>
     </article>
+  );
+}
+
+/**
+ * Where a headcount came from.
+ *
+ * With live Talaia data most figures are class defaults — "a farm building
+ * holds about two people" — and printing those as "registered" would dress a
+ * rule of thumb as a registry record. On one live run, 80,750 of 109,104 people
+ * came from defaults.
+ */
+function basisLabel(basis: RankedSite["evac"]["basis"]): string {
+  switch (basis) {
+    case "reported":
+      return "reported by phone";
+    case "registered":
+      return "registered";
+    case "class_default":
+      return "estimated for this kind of site";
+    default:
+      return "basis unknown";
+  }
+}
+
+function PhoneIcon() {
+  return (
+    <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path
+        d="M2.2 1.6h2l.9 2.2-1.2.9a6.5 6.5 0 0 0 2.9 2.9l.9-1.2 2.2.9v2c0 .5-.4.9-.9.8A9 9 0 0 1 1.4 2.5c0-.5.3-.9.8-.9Z"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -271,10 +370,29 @@ function SiteDetail(props: { site: RankedSite }) {
       <div className="flex items-center gap-3 text-[11px]">
         <Metric label="arrival" value={minutes(site.arrivalMinutes)} />
         <span className="text-[var(--color-ink-faint)]">−</span>
-        <Metric label="needs" value={minutes(site.evac.minutes)} />
+        <Metric label="people out" value={minutes(site.evac.minutes)} />
         <span className="text-[var(--color-ink-faint)]">=</span>
         <Metric label="spare" value={minutes(site.spareMinutes)} />
       </div>
+
+      {/* Animal time is shown, never added in. The arithmetic above is about
+          whether the people get out; this is about whether the herd does. */}
+      {site.evac.livestockMinutes > 0 ? (
+        <div className="flex items-center gap-1.5 text-[11px]">
+          <Metric
+            label="moving the animals"
+            value={minutes(site.evac.livestockMinutes)}
+            colour={
+              site.arrivalMinutes !== null && site.evac.livestockMinutes > site.arrivalMinutes
+                ? "var(--color-warn)"
+                : undefined
+            }
+          />
+          <span className="text-[10px] text-[var(--color-ink-faint)]">
+            counted separately from the people
+          </span>
+        </div>
+      ) : null}
 
       <div>
         <span className="text-[var(--color-ink-faint)]">Evacuation estimate assumes </span>

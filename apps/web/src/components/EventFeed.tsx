@@ -18,6 +18,7 @@ const KIND_COLOUR: Record<string, string> = {
   simulation_requested: "var(--color-ink-faint)",
   simulation_completed: "var(--color-ok)",
   simulation_failed: "var(--color-warn)",
+  exposure_queried: "var(--color-ink-faint)",
   exposure_computed: "var(--color-ok)",
   exposure_degraded: "var(--color-warn)",
   ranked: "var(--color-ink)",

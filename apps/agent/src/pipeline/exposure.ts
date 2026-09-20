@@ -72,6 +72,15 @@ export class ExposureService {
       return this.rankFrom(incident, exposure, simulation, options, "fixture");
     }
 
+    // The ladder can take a minute or two when Talaia is struggling, and an
+    // operations screen that shows a detection and then nothing looks broken
+    // rather than busy. Say what is being asked for before asking.
+    await this.ctx.timeline(
+      incident.id,
+      "exposure_queried",
+      `Asking Talaia what is inside the ${bands.features.length}-band footprint.`,
+    );
+
     try {
       exposure = await this.ctx.talaia.exposure(
         {

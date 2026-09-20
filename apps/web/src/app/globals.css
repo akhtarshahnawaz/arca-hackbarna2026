@@ -25,12 +25,19 @@
   --color-ink-faint: #6f6762;
 
   /* Protective actions. One colour each, used on the map, the list and the
-     legend, so a colour always means the same instruction. */
-  --color-shelter: #e879f9;
+     legend, so a colour always means the same instruction.
+     
+     Split along a deliberate axis: warm means the fire, cool means an
+     instruction about people. Red is the single crossover, because "evacuate
+     now" is the one instruction that is about the fire arriving. Earlier
+     versions used a fuchsia for shelter, which read as decoration on a screen
+     otherwise made of amber and ash, and put the most serious state on screen
+     in the least serious colour. */
+  --color-shelter: #60a5fa;
   --color-evacuate: #ef4444;
-  --color-exclusion: #f59e0b;
-  --color-resource: #22d3ee;
-  --color-prepare: #fbbf24;
+  --color-exclusion: #e7e5e4;
+  --color-resource: #2dd4bf;
+  --color-prepare: #f59e0b;
   --color-monitor: #64748b;
 
   /* Burn probability, matching DeepFire's own ramp so the two products read
@@ -129,6 +136,10 @@ body {
   animation: sweep 1.6s ease-in-out infinite;
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes fade-rise {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -140,7 +151,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .urgent,
   .sweep::after,
-  .enter {
+  .enter,
+  [style*="spin"] {
     animation: none;
   }
 }

@@ -38,33 +38,38 @@ Listed because they are the argument for having them.
    when no model run existed to re-rank against, leaving a stale order on screen
    while the caller believed it had updated.
 
-## Replay
+## Synthetic mode
 
-A wildfire system has an obvious demo problem: there may be no wildfire.
+A wildfire system has an obvious demo problem: there may be no wildfire. On a
+normal September day in Catalonia the live feed holds nine active clusters and
+every one of them is a flare, a kiln, or a single uncorroborated pixel.
 
-Replay solves it honestly. A recorded fire is played back through the identical
-cleaning, banding and ranking code — the only difference is where the bytes come
-from, and every replay incident is flagged so it cannot be mistaken for live.
+Synthetic mode solves it honestly. A recorded fire is played back through the
+identical cleaning, banding and ranking code — the only difference is where the
+bytes come from, and every synthetic incident is badged so it cannot be mistaken
+for live. Pick one from the left rail, or:
 
 ```bash
-curl -X POST http://localhost:4000/api/replay/demo-bages-synthetic
+curl -X POST http://localhost:4000/api/scenarios/demo-bages-synthetic/start
 ```
 
-Or click it on the landing screen.
+### The three shipped scenarios
 
-### The shipped bundle
+| Scenario | What it exercises |
+|---|---|
+| **Sant Fruitós de Bages** | The base case. Moderate south-westerly, farms, a school, a care home |
+| **Alt Empordà** | Tramuntana at 17 m/s, campsites at September occupancy. Several sites out of evacuation time at once |
+| **Massís del Garraf** | Wildland-urban interface. A hazardous industrial site and a hospital in the same path |
 
-`fixtures/replay/demo-bages-synthetic.json` is **generated, and says so** in its
-name, a `synthetic` flag, and a note carried into the incident. Nothing in it is
-presented as recorded satellite data.
+Each is **generated, and says so** in its name, a `synthetic` flag, a blurb and a
+note carried into the incident. Nothing in them is presented as recorded
+satellite data. The geography is real and the shape matches the real APIs
+exactly, because the point is that the pipeline cannot tell the difference.
 
-The geography is real — Sant Fruitós de Bages, north-east of Manresa — and the
-shape matches the real APIs exactly, because the point is that the pipeline
-cannot tell the difference.
+Each deliberately contains three things a clean feed would not:
 
-It deliberately contains three things a clean feed would not:
-
-- a quarry two satellites keep reporting, which the static mask excludes;
+- a persistent industrial source two satellites keep reporting, which the static
+  mask excludes;
 - a lone low-confidence pixel in its own cluster, which the corroboration rule
   excludes;
 - a geostationary re-report of the same coarse pixel, which the duplicate rule
@@ -72,24 +77,39 @@ It deliberately contains three things a clean feed would not:
 
 A demo without them would not show the product working.
 
-Regenerate or edit it:
+Regenerate or edit them:
 
 ```bash
-pnpm --filter @arca/agent exec tsx scripts/make-demo-bundle.ts
+pnpm demo:bundle
 ```
 
 ### Scrubbing time
 
-`POST /api/replay/:name?asOf=2026-09-19T12:10:00Z` filters detections to those
-observed by that moment and **recomputes the confirmation score**, so scrubbing
-back shows the incident as ARCA would genuinely have seen it — often below the
-confirmation bar, which is the point.
+`POST /api/scenarios/:name/start?asOf=2026-09-19T12:10:00Z` filters detections
+to those observed by that moment and **recomputes the confirmation score**, so
+scrubbing back shows the incident as ARCA would genuinely have seen it — often
+below the confirmation bar, which is the point.
+
+## Live mode
+
+The left rail lists every active DeepFire cluster in the area of interest, with
+the confirmation score ARCA gave it — including the rejects, with the reason.
+Selecting one opens an incident and runs the full pipeline on it, even below the
+bar; the timeline records that an operator asked.
+
+This is worth showing in a demo even when nothing is burning, because "nine
+clusters, all nine correctly identified as industrial heat" is a stronger claim
+about the cleaning rules than any number of synthetic fires. See
+[Modes and the feed](./10-modes-and-the-feed.md).
 
 ## The three-minute demo
 
-1. **Open on the incident picker.** Usually empty, and say why: ARCA opens an
-   incident only above 60/100, so a flare or a quarry never becomes one.
-2. **Start the replay.** Hover the confirmation score. Two satellites agree,
+1. **Open in Live mode.** Nine active clusters, every one scored as noise — the
+   Tarragona petrochemical complex with 151 detections masked, a stale pixel
+   near Talarn. Say why: ARCA opens an incident only above 60/100, so a flare or
+   a quarry never becomes one, and the rejects stay visible with their reasons
+   so nobody has to take that on trust.
+2. **Switch to Synthetic and start a scenario.** Hover the confirmation score. Two satellites agree,
    detections persisted 61 minutes, peak 270 MW — and two detections masked as a
    known quarry. That is the difference between an alert and a false alarm.
 3. **Press play.** The fire grows hour by hour and the figures recount: 439

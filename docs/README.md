@@ -14,6 +14,7 @@ it. These pages cover how it works and why it is built this way.
 | [07 — Deploying to Railway](./07-deployment-railway.md) | Step by step, plus operating notes |
 | [08 — Extending](./08-extending.md) | New regions, rules, detection sources, agent tools, stores |
 | [09 — Testing and the demo](./09-testing-and-demo.md) | The suite, replay, the three-minute script |
+| [10 — Modes and the feed](./10-modes-and-the-feed.md) | Live vs synthetic, the cluster survey, adopting a cluster, place names |
 
 ## If you only read one thing
 

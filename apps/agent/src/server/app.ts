@@ -86,6 +86,55 @@ export function createApp(deps: ServerDeps) {
   app.get("/api/policy", (c) => c.json(policySnapshot()));
 
   // ---------------------------------------------------------------------------
+  // The live feed — every active cluster, including the rejected ones
+  // ---------------------------------------------------------------------------
+
+  /**
+   * What is burning right now.
+   *
+   * Returns every active cluster in the area of interest with the confirmation
+   * score attached, not only the ones that cleared the bar. Showing the
+   * rejects is the point: a coordinator who cannot see what the system threw
+   * away has no way to judge whether it is throwing away the right things.
+   *
+   * Served from a short cache, so an open screen may poll this freely.
+   * `?force=true` is the "scan now" button and bypasses it.
+   */
+  app.get("/api/clusters", async (c) => {
+    if (!watcher) {
+      return c.json({
+        clusters: [],
+        bbox: env.watch.bbox,
+        at: new Date().toISOString(),
+        error: "DeepFire is not configured, so there is no live feed. Use a synthetic scenario.",
+        maskIncomplete: true,
+      });
+    }
+    return c.json(await watcher.survey({ force: c.req.query("force") === "true" }));
+  });
+
+  /**
+   * Work this cluster.
+   *
+   * Opens an incident for a cluster the watcher may not have opened on its own
+   * and starts the pipeline on it. The pipeline is deliberately not awaited: a
+   * simulation takes minutes, and the screen should show the incident
+   * immediately and fill in as work completes over the event stream.
+   */
+  app.post("/api/clusters/:id/adopt", async (c) => {
+    if (!watcher) return c.json({ error: "DeepFire is not configured" }, 400);
+    try {
+      const incident = await watcher.adopt(c.req.param("id"));
+      if (!incident) {
+        return c.json({ error: "That cluster is no longer in the live feed." }, 404);
+      }
+      return c.json({ ok: true, incidentId: incident.id, incident });
+    } catch (error) {
+      return c.json({ error: describeError(error) }, 500);
+    }
+  });
+
+  // ---------------------------------------------------------------------------
   // Incidents
   // ---------------------------------------------------------------------------
 
@@ -300,6 +349,35 @@ export function createApp(deps: ServerDeps) {
   // ---------------------------------------------------------------------------
 
   app.get("/api/replay", async (c) => c.json({ bundles: await replay.list() }));
+
+  /** The synthetic scenarios, described well enough to choose between them. */
+  app.get("/api/scenarios", async (c) => c.json({ scenarios: await replay.catalogue() }));
+
+  /**
+   * Start a scenario.
+   *
+   * The same code path as a live incident from the moment the bundle is loaded
+   * — same cleaning, same banding, same ranking — which is what makes a
+   * scenario worth showing rather than a mock-up.
+   */
+  app.post("/api/scenarios/:name/start", async (c) => {
+    const asOf = c.req.query("asOf") ?? undefined;
+    const incident = await replay.start(c.req.param("name"), asOf ? { asOf } : {});
+    if (!incident) return c.json({ error: "no such scenario" }, 404);
+
+    // Deliberately not awaited. The detections and the recorded model run are
+    // already stored, so the screen has something to draw immediately; the
+    // exposure query behind this can take a minute when Talaia is slow, and a
+    // button that stays pressed for that long reads as a hang.
+    void incidents.process(incident, { notify: false }).catch((error) => {
+      ctx.log.error("Scenario pipeline failed", {
+        incidentId: incident.id,
+        error: describeError(error),
+      });
+    });
+
+    return c.json({ ok: true, incidentId: incident.id, confirmation: incident.confirmation });
+  });
 
   app.post("/api/replay/:name", async (c) => {
     const asOf = c.req.query("asOf") ?? undefined;

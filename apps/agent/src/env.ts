@@ -86,6 +86,24 @@ export const env = {
   watch: {
     bbox: str("AOI_BBOX", "0.15,40.50,3.35,42.90"),
     intervalMinutes: num("WATCH_INTERVAL_MINUTES", 5),
+    /**
+     * How far back a cluster counts as active.
+     *
+     * Drives the cluster feed the operations screen browses, so it is a
+     * legibility setting as much as a detection one: too short and a fire that
+     * has not been overflown for a few hours vanishes from the list while it is
+     * still burning.
+     */
+    clusterLookbackHours: num("CLUSTER_LOOKBACK_HOURS", 24),
+    /**
+     * Reverse-geocode cluster positions into place names.
+     *
+     * On by default because "near Solsona" is a name someone can act on and a
+     * UUID is not. Set PLACE_LOOKUP=false for a deployment that would rather
+     * not send coordinates to a third party; clusters are then labelled with
+     * their coordinates instead.
+     */
+    placeLookup: bool("PLACE_LOOKUP", true),
     horizonHours: num("SPREAD_HORIZON_HOURS", 6),
     ensembleMembers: num("SPREAD_ENSEMBLE_MEMBERS", 10),
     lookbackHours: num("SPREAD_LOOKBACK_HOURS", 12),

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { SpreadFrameView } from "@/lib/api";
-import { areaKm2 } from "@/lib/format";
+import { areaKm2, compact } from "@/lib/format";
 
 /**
  * Playback for the fire.
@@ -13,6 +13,11 @@ import { areaKm2 } from "@/lib/format";
  *
  * It loops rather than stopping at the end: a wall display left alone should
  * keep showing the fire moving, not freeze on the last frame looking broken.
+ *
+ * The consequence figures live here rather than in the side panel, because
+ * they are a function of the hour this control selects. Dragging to +3h and
+ * watching "people" climb is the whole argument for having a scrubber; the
+ * same three numbers sitting in a separate box read as static trivia.
  */
 
 export interface TimelineScrubberProps {
@@ -20,6 +25,8 @@ export interface TimelineScrubberProps {
   hour: number | null;
   onChange: (hour: number | null) => void;
   disabled?: boolean;
+  /** What is inside the footprint at the selected hour. */
+  impact: { people: number; sites: number; outOfTime: number } | null;
 }
 
 const STEP_MS = 900;
@@ -49,8 +56,11 @@ export function TimelineScrubber(props: TimelineScrubberProps) {
 
   if (maxHour === 0) {
     return (
-      <div className="panel px-4 py-3 text-[11px] text-[var(--color-ink-faint)]">
-        No model frames to play. The map shows detections only.
+      <div className="panel px-4 py-3 flex items-center gap-4">
+        <span className="text-[11px] text-[var(--color-ink-faint)]">
+          No model frames to play. The map shows detections only.
+        </span>
+        {props.impact ? <Impact {...props.impact} hour={null} /> : null}
       </div>
     );
   }
@@ -114,29 +124,21 @@ export function TimelineScrubber(props: TimelineScrubberProps) {
           </div>
         </div>
 
-        <div className="shrink-0 w-[170px] text-right">
-          {frame ? (
-            <>
-              <div className="num text-sm text-[var(--color-ink)]">
-                {areaKm2(frame.cumulativeAreaM2)}
-              </div>
-              <div className="text-[10px] text-[var(--color-ink-faint)]">
-                expected burn {areaKm2(frame.expectedAreaM2)}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="num text-sm text-[var(--color-ink-dim)]">whole horizon</div>
-              <button
-                type="button"
-                onClick={() => props.onChange(1)}
-                className="text-[10px] text-[var(--color-ink-faint)] hover:text-[var(--color-ink-dim)]"
-              >
-                step through hours
-              </button>
-            </>
-          )}
+        <div className="shrink-0 w-[128px] text-right">
+          <div className="num text-[13px] text-[var(--color-ink)]">
+            {frame ? areaKm2(frame.cumulativeAreaM2) : "whole horizon"}
+          </div>
+          <div className="text-[9.5px] text-[var(--color-ink-faint)]">
+            {frame ? `expected burn ${areaKm2(frame.expectedAreaM2)}` : `over ${maxHour} h`}
+          </div>
         </div>
+
+        {props.impact ? (
+          <>
+            <span className="w-px h-8 bg-[var(--color-line)] shrink-0" aria-hidden="true" />
+            <Impact {...props.impact} hour={current} />
+          </>
+        ) : null}
 
         {current !== null ? (
           <button
@@ -150,6 +152,49 @@ export function TimelineScrubber(props: TimelineScrubberProps) {
             all
           </button>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * What is inside the footprint, at the hour on the slider.
+ *
+ * Three figures. Earlier versions showed nine, which meant a coordinator had
+ * to decide which of nine numbers mattered before they could use any of them.
+ */
+function Impact(props: {
+  people: number;
+  sites: number;
+  outOfTime: number;
+  hour: number | null;
+}) {
+  return (
+    <div className="shrink-0 flex items-center gap-4">
+      <Figure value={compact(props.people)} label="people" />
+      <Figure value={String(props.sites)} label="sites" />
+      <Figure
+        value={String(props.outOfTime)}
+        label="out of time"
+        colour={props.outOfTime > 0 ? "var(--color-shelter)" : undefined}
+      />
+      <span className="text-[9px] text-[var(--color-ink-faint)] leading-tight max-w-[86px]">
+        {props.hour === null ? "whole horizon" : `by +${props.hour} h`}
+        <br />
+        capacity, not occupancy
+      </span>
+    </div>
+  );
+}
+
+function Figure(props: { value: string; label: string; colour?: string }) {
+  return (
+    <div>
+      <div className="num text-[17px] leading-none" style={{ color: props.colour ?? "var(--color-ink)" }}>
+        {props.value}
+      </div>
+      <div className="mt-0.5 text-[9px] uppercase tracking-[0.06em] text-[var(--color-ink-faint)]">
+        {props.label}
       </div>
     </div>
   );

@@ -9,6 +9,8 @@
 
 export * from "./domain/types.js";
 export * from "./geo/index.js";
+export { PlaceResolver, describePosition } from "./geo/places.js";
+export type { PlaceLookupOptions } from "./geo/places.js";
 export * from "./config/index.js";
 export * from "./util/http.js";
 

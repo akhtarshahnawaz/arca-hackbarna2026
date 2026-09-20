@@ -15,7 +15,7 @@ export const ACTION_STYLE: Record<
   SHELTER_CANDIDATE: {
     label: "Shelter-in-place candidate",
     short: "SHELTER",
-    colour: "#e879f9",
+    colour: "#60a5fa",
     rank: 5,
     help: "Evacuation probably cannot finish before the fire arrives. Coordinator decides with Bombers.",
   },
@@ -29,21 +29,21 @@ export const ACTION_STYLE: Record<
   EXCLUSION_ZONE: {
     label: "Exclusion zone",
     short: "EXCLUSION",
-    colour: "#f59e0b",
+    colour: "#e7e5e4",
     rank: 3,
     help: "Hazardous site in the fire's path. Keep responders and traffic out.",
   },
   RESOURCE_AT_RISK: {
     label: "Resource at risk",
     short: "RESOURCE",
-    colour: "#22d3ee",
+    colour: "#2dd4bf",
     rank: 2,
     help: "Losing this site removes response capacity mid-incident.",
   },
   PREPARE: {
     label: "Prepare",
     short: "PREPARE",
-    colour: "#fbbf24",
+    colour: "#f59e0b",
     rank: 1,
     help: "Warn the site and ready vehicles. Re-check after the next model run.",
   },

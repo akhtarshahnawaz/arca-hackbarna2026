@@ -58,20 +58,41 @@ the file:
 
 ### 2. What to look at
 
-Open <http://localhost:3000>, then, in order:
+Open <http://localhost:3000>. The screen is three columns: what is burning, where
+this one is going, who to call about it. The switch at the top centre says which
+world you are looking at, and it is the only control that changes where the data
+comes from.
+
+**In Live mode**, the left rail lists every active cluster DeepFire reports
+inside the area of interest — including the ones ARCA rejected, with the reason.
+On a typical day that is the whole list:
+
+> **la Pobla de Mafumet** · 0 of 151 det · 2 sat · 19:08Z
+> All 151 dropped: known heat source.
+
+That is the Tarragona petrochemical complex. Showing it, greyed and explained,
+is the point: a system that silently discards nine tenths of its input gives you
+no way to judge whether it is discarding the right things.
+
+Click any cluster to work it, even one below the confirmation bar. ARCA opens
+the incident, runs the pipeline, and records on the timeline that a human asked.
+
+**Switch to Synthetic** for three generated scenarios that need no live fire,
+then, in order:
 
 1. **Hover the confirmation score** in the header. It shows the arithmetic that
    opened the incident: two satellites agreeing, detections persisting 61
    minutes, a 270 MW peak — and two detections masked as a known quarry.
-2. **Press play** on the timeline. The fire grows hour by hour and the impact
-   figures recount with it, from 439 people exposed in the first two hours to
-   1,247 across all six.
-3. **Read the top of the list.** The care home is first, not the 312-pupil
+2. **Press play** under the map. The fire grows hour by hour and the impact
+   figures beside the scrubber recount with it, from 439 people exposed in the
+   first two hours to 1,247 across all six.
+3. **Read the card at the top right.** The care home is first, not the 312-pupil
    school. Sixty-four residents need 3.6 hours to move against 60 minutes of
    warning, which makes spare time negative and the recommendation
    shelter-in-place rather than evacuate.
-4. **Click a row.** It expands to show the assumptions behind the estimate and
-   which registries each figure came from.
+4. **Click a row** under "At risk". It expands to show the assumptions behind the
+   estimate, which registries each figure came from, and the state of any call
+   ARCA has placed to it.
 5. **Toggle "Masked detections"** in the legend and hover a hollow circle. It
    names the quarry it was excluded for. Nothing is deleted; everything
    excluded keeps its reason.
@@ -330,13 +351,16 @@ mode that is **on by default**.
 
 ## What it looks like
 
-One screen, for a wall display and a laptop at once. The fire is drawn in
-DeepFire's own burn-probability ramp; the scrubber plays the six-hour horizon
-hour by hour, and the impact figures recount as it moves — 439 people exposed in
-the first two hours, 1,247 across all six.
+One screen, for a wall display and a laptop at once, in three columns: the feed
+of active fires, the map, and the decision. The fire is drawn in DeepFire's own
+burn-probability ramp; the scrubber plays the six-hour horizon hour by hour, and
+the impact figures beside it recount as it moves — 439 people exposed in the
+first two hours, 1,247 across all six.
 
 Colour is a language, not decoration: one colour per protective action, used
-identically on the map, in the list and in the legend.
+identically on the map, in the list and in the legend. Warm means the fire, cool
+means an instruction about people, and red is the single crossover because
+"evacuate now" is the one instruction that is about the fire arriving.
 
 ## Running the pieces yourself
 
@@ -359,7 +383,7 @@ packages/core     Every decision, as pure functions. No I/O.
 packages/db       Durable state behind one interface; memory and Postgres.
 apps/agent        Watcher, pipeline, agent, voice, HTTP API, Telegram bot.
 apps/web          The operations screen.
-fixtures/replay   Recorded incidents, replayed through the live code path.
+fixtures/replay   Scenario bundles, replayed through the live code path.
 docs/             How and why it works.
 ```
 
@@ -375,7 +399,8 @@ docs/             How and why it works.
 | [Configuration](docs/06-configuration.md) | Every variable, and what leaving it out costs |
 | [Deploying to Railway](docs/07-deployment-railway.md) | Empty project to a briefing on a phone |
 | [Extending](docs/08-extending.md) | Regions, rules, sources, tools, stores |
-| [Testing and the demo](docs/09-testing-and-demo.md) | Replay, the three-minute script, manual checks |
+| [Testing and the demo](docs/09-testing-and-demo.md) | Scenarios, the three-minute script, manual checks |
+| [Modes and the feed](docs/10-modes-and-the-feed.md) | Live vs synthetic, the cluster survey, working a cluster |
 
 ## Design decisions worth knowing
 

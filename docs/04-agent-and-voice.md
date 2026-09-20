@@ -108,6 +108,36 @@ the site.
 What never happens is a silent success. A call that did not happen is reported
 as a call that did not happen, on the timeline and to the agent.
 
+### Where the voice leg appears on screen
+
+An earlier build dispatched calls, polled them, transcribed them and fed the
+result back into the ranking, and showed none of it. A system that acts on your
+behalf has to show you what it did in your name, so every call is visible in
+three places:
+
+- **The lead card**, under the approve button: mode, outcome, and the reason if
+  it fell back to a browser session.
+- **The ranked row**, as a phone glyph beside the status chip, so a site ARCA
+  has already spoken to does not look identical to one nobody has touched —
+  whether or not the row is expanded.
+- **The timeline**, with the actor who approved it and a masked number.
+
+The web session link is a link, because the failsafe is useless if nobody can
+find the session it opened. The transcript is one click away, under the call.
+
+### Logging a call made by hand
+
+Every site row carries a transcript box. Two reasons it exists and is not a
+debug affordance:
+
+- A coordinator standing in a field with a phone to their ear is the most likely
+  way this information actually arrives.
+- A demo should not depend on a working telephony account to show the
+  re-ranking that follows a call.
+
+It runs the identical extraction and re-rank as a transcript SLNG returned, and
+the timeline records the source as `manual`.
+
 ## Extraction
 
 Transcript to structured report, through Nebius with a JSON schema, validated

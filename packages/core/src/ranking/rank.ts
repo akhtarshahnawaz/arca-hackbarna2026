@@ -158,6 +158,7 @@ export function rankSites(
           hazardous: Boolean(asset.hazardous),
           responseAsset: Boolean(asset.response_asset),
           humanBearing: Boolean(asset.human_bearing),
+          livestockMinutes: evac.livestockMinutes,
         });
 
     const tier: RankedSite["tier"] =
@@ -240,15 +241,42 @@ export function rankSites(
 }
 
 /**
+ * Spare time, at the precision it is actually known to.
+ *
+ * Spare time comes from an ensemble arrival estimate minus a parametric
+ * evacuation model. Neither is accurate to the minute, and the error grows with
+ * the magnitude: "twelve minutes short" is a real distinction, "twelve minutes
+ * apart at thirteen hours short" is noise in both models.
+ *
+ * Sorting on the raw minute treats the two identically, and at scale that has a
+ * specific, bad consequence. A live Talaia query over a large footprint returns
+ * thousands of assets, most of them field parcels with a class-default headcount
+ * of two. Sorted strictly by minute, an unnamed sheep shed that is 13.1 hours
+ * short outranks a care home that is 12.9 hours short. Both lose the race. Only
+ * one of them is who you call first.
+ *
+ * So spare time is compared on a signed log scale: roughly five-minute
+ * resolution near the decision point, widening to hours out in the region where
+ * nothing is going to arrive in time anyway. Monotonic, so a genuinely shorter
+ * clock still sorts first.
+ */
+function spareRank(spareMinutes: number | null): number {
+  if (spareMinutes === null) return Number.POSITIVE_INFINITY;
+  const sign = Math.sign(spareMinutes);
+  return Math.round(sign * Math.log1p(Math.abs(spareMinutes) / 15) * 4);
+}
+
+/**
  * Least spare time first; a site with no clock at all sorts last.
  *
- * Ties break on how many runs agree, then on Talaia's life-safety score, then
- * on id — the last one only so the order is stable across recomputations and
- * the UI does not shuffle rows that did not actually move.
+ * Where two sites are indistinguishable on the clock, the order is how many
+ * runs agree, then Talaia's life-safety score, then id — the last one only so
+ * the order is stable across recomputations and the UI does not shuffle rows
+ * that did not actually move.
  */
 export function compareSites(a: RankedSite, b: RankedSite): number {
-  const aSpare = a.spareMinutes ?? Number.POSITIVE_INFINITY;
-  const bSpare = b.spareMinutes ?? Number.POSITIVE_INFINITY;
+  const aSpare = spareRank(a.spareMinutes);
+  const bSpare = spareRank(b.spareMinutes);
   if (aSpare !== bSpare) return aSpare - bSpare;
   if (a.reach.pReach !== b.reach.pReach) return b.reach.pReach - a.reach.pReach;
   if (a.priorityScore !== b.priorityScore) return b.priorityScore - a.priorityScore;

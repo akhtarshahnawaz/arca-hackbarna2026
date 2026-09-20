@@ -1,6 +1,8 @@
 "use client";
 
 import type { RankedSite, SiteStatus } from "@arca/core";
+import type { CallView } from "@/lib/api";
+import { CallState } from "./CallState";
 import { ACTION_STYLE, minutes } from "@/lib/format";
 
 /**
@@ -18,9 +20,11 @@ import { ACTION_STYLE, minutes } from "@/lib/format";
 export interface NextActionProps {
   site: RankedSite | null;
   totalRanked: number;
+  calls: CallView[];
   onApprove: (site: RankedSite) => void;
   onSetStatus: (site: RankedSite, status: SiteStatus) => void;
   onSelect: (assetId: string) => void;
+  onTranscript: (assetId: string, transcript: string) => Promise<void>;
   busy: boolean;
   canCall: boolean;
 }
@@ -81,7 +85,11 @@ export function NextAction(props: NextActionProps) {
           {site.peopleEstimate > 0 ? (
             <>
               <span className="num text-[var(--color-ink)]">{site.peopleEstimate}</span>{" "}
-              {site.evac.basis === "reported" ? "people reported on site" : "people at capacity"}
+              {site.evac.basis === "reported"
+                ? "people reported on site"
+                : site.evac.basis === "registered"
+                  ? "people at registered capacity"
+                  : "people, estimated for this kind of site"}
               {site.livestockUnits ? (
                 <>
                   {" "}and <span className="num text-[var(--color-ink)]">{site.livestockUnits}</span> animals
@@ -147,57 +155,14 @@ export function NextAction(props: NextActionProps) {
             </span>
           ) : null}
         </div>
+
+        <CallState
+          calls={props.calls}
+          assetId={site.assetId}
+          busy={props.busy}
+          onTranscript={props.onTranscript}
+        />
       </div>
     </section>
   );
-}
-
-/**
- * The scale of it, in one line.
- *
- * Three figures, not nine. The rest stay one click away in the site detail,
- * where they answer a question someone has actually asked.
- */
-export function ImpactStrip(props: {
-  people: number;
-  sites: number;
-  outOfTime: number;
-  hour: number | null;
-  horizonHours: number;
-}) {
-  return (
-    <div className="panel px-4 py-2.5 flex items-center gap-4">
-      <Figure value={props.people.toLocaleString("en-GB")} label="people" />
-      <Divider />
-      <Figure value={String(props.sites)} label="sites" />
-      <Divider />
-      <Figure
-        value={String(props.outOfTime)}
-        label="out of time"
-        colour={props.outOfTime > 0 ? "var(--color-shelter)" : undefined}
-      />
-      <span className="ml-auto text-[10px] text-right text-[var(--color-ink-faint)] leading-tight">
-        {props.hour === null ? `next ${props.horizonHours} h` : `first ${props.hour} h`}
-        <br />
-        registered capacity
-      </span>
-    </div>
-  );
-}
-
-function Figure(props: { value: string; label: string; colour?: string }) {
-  return (
-    <div>
-      <div className="num text-[19px] leading-none" style={{ color: props.colour ?? "var(--color-ink)" }}>
-        {props.value}
-      </div>
-      <div className="mt-0.5 text-[9.5px] uppercase tracking-[0.08em] text-[var(--color-ink-faint)]">
-        {props.label}
-      </div>
-    </div>
-  );
-}
-
-function Divider() {
-  return <span className="w-px h-7 bg-[var(--color-line)]" aria-hidden="true" />;
 }

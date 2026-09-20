@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
+  ClusterSummary,
+  ClusterSurvey,
   ExposureReport,
   Incident,
+  ScenarioSummary,
   RankedSite,
   RankingDiff,
   SiteStatus,
@@ -81,6 +84,9 @@ export interface IncidentDetail {
   diffs: Array<RankingDiff & { at: string }>;
 }
 
+/** Live or synthetic. The one control that changes where data comes from. */
+export type Mode = "live" | "synthetic";
+
 export interface IncidentSummary extends Incident {
   counts: { ranked: number; evacuateNow: number; shelterCandidates: number; people: number };
 }
@@ -112,6 +118,12 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 export const api = {
   health: () => get<{ status: string; capabilities: Record<string, boolean>; storage: string }>("/api/health"),
   incidents: () => get<{ incidents: IncidentSummary[] }>("/api/incidents"),
+  clusters: (force = false) => get<ClusterSurvey>(`/api/clusters${force ? "?force=true" : ""}`),
+  adopt: (clusterId: string) =>
+    post<{ incidentId: string }>(`/api/clusters/${encodeURIComponent(clusterId)}/adopt`),
+  scenarios: () => get<{ scenarios: ScenarioSummary[] }>("/api/scenarios"),
+  startScenario: (name: string) =>
+    post<{ incidentId: string }>(`/api/scenarios/${encodeURIComponent(name)}/start`),
   incident: (id: string) => get<IncidentDetail>(`/api/incidents/${id}`),
   replayBundles: () => get<{ bundles: string[] }>("/api/replay"),
   startReplay: (name: string, asOf?: string) =>
@@ -127,6 +139,59 @@ export const api = {
   chat: (message: string, history: Array<{ role: "user" | "assistant"; content: string }>) =>
     post<{ text: string; toolsUsed: string[] }>("/api/chat", { message, history }),
 };
+
+/**
+ * The left-hand feed, in whichever mode is selected.
+ *
+ * Polls rather than streams, because the feed is about the world outside this
+ * deployment: a new cluster appears when a satellite passes overhead, not when
+ * ARCA does something. The agent serves it from a one-minute cache, so polling
+ * costs nothing upstream.
+ */
+export function useFeed(mode: Mode, pollMs = 60_000) {
+  const [clusters, setClusters] = useState<ClusterSummary[]>([]);
+  const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [feedError, setFeedError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [at, setAt] = useState<string | null>(null);
+
+  const load = useCallback(
+    async (force = false) => {
+      try {
+        if (mode === "live") {
+          const survey = await api.clusters(force);
+          setClusters(survey.clusters);
+          setAt(survey.at);
+          // A survey error is not a fetch error: the payload is the last good
+          // feed, and saying so is more useful than blanking the list.
+          setFeedError(survey.error);
+        } else {
+          const result = await api.scenarios();
+          setScenarios(result.scenarios);
+          setAt(new Date().toISOString());
+          setFeedError(null);
+        }
+        setError(null);
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [mode],
+  );
+
+  useEffect(() => {
+    setLoading(true);
+    void load();
+    if (mode !== "live") return;
+    const timer = setInterval(() => void load(), pollMs);
+    return () => clearInterval(timer);
+  }, [load, mode, pollMs]);
+
+  return { clusters, scenarios, error, feedError, loading, at, reload: load };
+}
 
 /** Poll-free refresh: the stream says when something changed, then we refetch. */
 export function useIncident(incidentId: string | null) {

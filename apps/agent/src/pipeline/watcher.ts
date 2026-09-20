@@ -1,14 +1,20 @@
 import { randomUUID } from "node:crypto";
 import {
+  PlaceResolver,
   StaticSourceIndex,
   cleanHotspots,
   classifySensor,
   confirmationScore,
   cql,
+  describePosition,
   describeWind,
   fetchWeather,
+  haversineMeters,
   type CleanResult,
   type ClusterProperties,
+  type ClusterSummary,
+  type ClusterSurvey,
+  type Confidence,
   type Hotspot,
   type HotspotProperties,
   type Incident,
@@ -29,11 +35,30 @@ import { describeError } from "../logger.js";
  * fire is real, so it is deliberately conservative and deliberately explainable
  * — the score that opened an incident is stored with it and shown on screen.
  *
+ * The scan is split in two. `survey()` reads the feed and scores every active
+ * cluster, including the ones it rejects; `tick()` decides what to do about
+ * them. That split is what lets the operations screen show the whole feed — a
+ * coordinator needs to see what ARCA threw away, with the reason, at least as
+ * much as they need to see what it kept — without a second set of queries that
+ * could disagree with the first.
+ *
  * Idempotent by construction: incidents are keyed by DeepFire's cluster id, so
  * running a tick twice updates one incident rather than opening two.
  */
 
 const STATIC_MASK_TTL_MS = 24 * 60 * 60_000;
+
+/**
+ * How long a survey is reused.
+ *
+ * The satellites that feed this are in polar orbit; the fastest of them
+ * revisits a given point a few times a day, and the geostationary feed updates
+ * every ten minutes. Re-querying more often than this costs DeepFire requests
+ * and returns the same features, so an open operations screen polls the cache.
+ */
+const SURVEY_TTL_MS = 60_000;
+
+const CONFIDENCE_ORDER: Confidence[] = ["LOW", "MEDIUM", "HIGH"];
 
 export interface TickResult {
   clustersSeen: number;
@@ -44,15 +69,34 @@ export interface TickResult {
   error?: string;
 }
 
+/** One cluster, scored, with the detections that scored it. */
+interface ScoredCluster {
+  clusterId: string;
+  position: [number, number];
+  props: ClusterProperties;
+  cleaned: CleanResult;
+  confirmation: ReturnType<typeof confirmationScore>;
+  hasPerimeter: boolean;
+}
+
 export class Watcher {
   private staticIndex: StaticSourceIndex | null = null;
   private staticIndexFetchedAt = 0;
   private running = false;
+  private places: PlaceResolver;
+
+  private cachedSurvey: ClusterSurvey | null = null;
+  private cachedScored: ScoredCluster[] = [];
+  private surveyedAt = 0;
+  private inFlightSurvey: Promise<ClusterSurvey> | null = null;
 
   constructor(
     private readonly ctx: Context,
     private readonly onConfirmed: (incident: Incident) => Promise<void>,
-  ) {}
+    places?: PlaceResolver,
+  ) {
+    this.places = places ?? new PlaceResolver({ enabled: env.watch.placeLookup });
+  }
 
   /**
    * The persistent-anomaly mask, refreshed daily.
@@ -98,46 +142,81 @@ export class Watcher {
     }
   }
 
-  async tick(): Promise<TickResult> {
-    if (this.running) {
-      return { clustersSeen: 0, confirmed: [], candidates: [], noise: 0, skipped: 0, error: "tick already running" };
-    }
-    if (!this.ctx.deepfire) {
-      return { clustersSeen: 0, confirmed: [], candidates: [], noise: 0, skipped: 0, error: "DeepFire not configured" };
-    }
+  // ---------------------------------------------------------------------------
+  // Survey — read the feed, score everything, decide nothing
+  // ---------------------------------------------------------------------------
 
-    this.running = true;
-    const result: TickResult = { clustersSeen: 0, confirmed: [], candidates: [], noise: 0, skipped: 0 };
+  /**
+   * Every active cluster in the area of interest, scored.
+   *
+   * Served from a short cache so that an operations screen polling this costs
+   * nothing. `force` is what the "scan now" button sends.
+   */
+  async survey(options: { force?: boolean } = {}): Promise<ClusterSurvey> {
+    const fresh = Date.now() - this.surveyedAt < SURVEY_TTL_MS;
+    if (!options.force && this.cachedSurvey && fresh) return this.cachedSurvey;
+    if (this.inFlightSurvey) return this.inFlightSurvey;
+
+    this.inFlightSurvey = this.runSurvey().finally(() => {
+      this.inFlightSurvey = null;
+    });
+    return this.inFlightSurvey;
+  }
+
+  /** The scored clusters behind the last survey, for adoption. */
+  private async scoredFor(clusterId: string): Promise<ScoredCluster | null> {
+    if (Date.now() - this.surveyedAt >= SURVEY_TTL_MS) await this.survey();
+    return this.cachedScored.find((entry) => entry.clusterId === clusterId) ?? null;
+  }
+
+  private async runSurvey(): Promise<ClusterSurvey> {
+    const at = new Date().toISOString();
+
+    if (!this.ctx.deepfire) {
+      return { clusters: [], bbox: env.watch.bbox, at, error: "DeepFire is not configured.", maskIncomplete: true };
+    }
 
     try {
       const staticIndex = await this.ensureStaticMask();
 
       const clusterFeatures = await this.ctx.deepfire.clusters({
         bbox: env.watch.bbox,
-        filter: cql.activeClustersRecent(12),
+        filter: cql.activeClustersRecent(env.watch.clusterLookbackHours),
         limit: 2_000,
         maxPages: 3,
       });
-      result.clustersSeen = clusterFeatures.length;
-
-      if (clusterFeatures.length === 0) {
-        this.ctx.log.info("No active clusters in the area of interest.");
-        return result;
-      }
 
       const clusterIds = clusterFeatures
         .map((f) => String(f.id ?? "").replace(/^clusters\./, ""))
         .filter(Boolean);
 
+      if (clusterIds.length === 0) {
+        const empty: ClusterSurvey = {
+          clusters: [],
+          bbox: env.watch.bbox,
+          at,
+          error: null,
+          maskIncomplete: !staticIndex,
+        };
+        this.cachedSurvey = empty;
+        this.cachedScored = [];
+        this.surveyedAt = Date.now();
+        return empty;
+      }
+
       // One query for every cluster's detections rather than one per cluster:
       // the API charges by request shape, and a single IN filter over a bounded
-      // set is far cheaper than fifty round trips.
-      const hotspotFeatures = await this.ctx.deepfire.hotspots({
-        bbox: env.watch.bbox,
-        filter: cql.and(cql.hotspotsForClusters(clusterIds), cql.since("observed_at", cql.hoursAgo(24))),
-        limit: 10_000,
-        maxPages: 5,
-      });
+      // set is far cheaper than fifty round trips. The same applies to
+      // perimeters, which used to be fetched one cluster at a time.
+      const [hotspotFeatures, perimeterClusterIds] = await Promise.all([
+        this.ctx.deepfire.hotspots({
+          bbox: env.watch.bbox,
+          filter: cql.and(cql.hotspotsForClusters(clusterIds), cql.since("observed_at", cql.hoursAgo(24))),
+          limit: 10_000,
+          maxPages: 5,
+        }),
+        this.perimeterClusterIds(clusterIds),
+      ]);
 
       const byCluster = new Map<string, Hotspot[]>();
       for (const feature of hotspotFeatures) {
@@ -165,50 +244,163 @@ export class Watcher {
         else byCluster.set(clusterId, [hotspot]);
       }
 
+      const scored: ScoredCluster[] = [];
       for (const feature of clusterFeatures) {
         const clusterId = String(feature.id ?? "").replace(/^clusters\./, "");
         const props = feature.properties as ClusterProperties;
         const geometry = feature.geometry;
-        if (!clusterId || !geometry || geometry.type !== "Point") {
-          result.skipped++;
-          continue;
-        }
-        const [lon, lat] = geometry.coordinates as [number, number];
+        if (!clusterId || !geometry || geometry.type !== "Point") continue;
         const hotspots = byCluster.get(clusterId) ?? [];
-        if (hotspots.length === 0) {
-          result.skipped++;
-          continue;
-        }
+        // A cluster with no detections inside the window has nothing to score
+        // and nothing to show. It is not evidence of anything either way.
+        if (hotspots.length === 0) continue;
 
         const cleaned = cleanHotspots(hotspots, {
           staticIndex,
           maskComplete: Boolean(staticIndex),
         });
+        const hasPerimeter = perimeterClusterIds.has(clusterId);
 
-        // A perimeter only exists once DeepFire has enough detections to fit
-        // one, so its presence is itself evidence — worth points in the score.
-        const hasPerimeter = await this.hasPerimeter(clusterId);
-        const confirmation = confirmationScore(cleaned, { hasPerimeter });
+        scored.push({
+          clusterId,
+          position: [geometry.coordinates[0] as number, geometry.coordinates[1] as number],
+          props,
+          cleaned,
+          confirmation: confirmationScore(cleaned, { hasPerimeter }),
+          hasPerimeter,
+        });
+      }
 
-        if (confirmation.classification === "NOISE") {
+      const clusters = await this.describe(scored);
+
+      const survey: ClusterSurvey = {
+        clusters,
+        bbox: env.watch.bbox,
+        at,
+        error: null,
+        maskIncomplete: !staticIndex,
+      };
+      this.cachedSurvey = survey;
+      this.cachedScored = scored;
+      this.surveyedAt = Date.now();
+      return survey;
+    } catch (error) {
+      const message = describeError(error);
+      this.ctx.log.error("Cluster survey failed", { error: message });
+      // A failed poll must not blank a screen that was working a minute ago.
+      // Serve the last good survey, labelled with the failure.
+      return {
+        clusters: this.cachedSurvey?.clusters ?? [],
+        bbox: env.watch.bbox,
+        at,
+        error: message,
+        maskIncomplete: !this.staticIndex,
+      };
+    }
+  }
+
+  /** Which of these clusters DeepFire has fitted a perimeter to. One query. */
+  private async perimeterClusterIds(clusterIds: string[]): Promise<Set<string>> {
+    if (!this.ctx.deepfire || clusterIds.length === 0) return new Set();
+    try {
+      const features = await this.ctx.deepfire.perimeters({
+        filter: cql.inList("cluster_id", clusterIds),
+        limit: 2_000,
+        maxPages: 2,
+      });
+      return new Set(
+        features
+          .map((feature) => String((feature.properties as { cluster_id?: string })?.cluster_id ?? ""))
+          .filter(Boolean),
+      );
+    } catch {
+      // Absence of evidence: score without the perimeter bonus rather than
+      // failing the whole survey because one optional lookup timed out.
+      return new Set();
+    }
+  }
+
+  /** Turn scored clusters into something a person can choose between. */
+  private async describe(scored: ScoredCluster[]): Promise<ClusterSummary[]> {
+    const incidents = await this.ctx.store
+      .listIncidents({})
+      .catch(() => [] as Incident[]);
+    const byCluster = new Map(incidents.map((incident) => [incident.clusterId, incident]));
+
+    // Names are a nicety on a 3-second budget: whatever resolves, resolves, and
+    // the rest are filled from cache on the next poll.
+    const names = await this.places.resolveMany(
+      scored.map((entry) => entry.position),
+      { budgetMs: 3_000 },
+    );
+
+    return scored.map((entry, index) => {
+      const usable = entry.cleaned.usable;
+      const frps = usable
+        .map((hotspot) => hotspot.fireRadiativePowerMw)
+        .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+      const incident = byCluster.get(entry.clusterId) ?? null;
+
+      return {
+        clusterId: entry.clusterId,
+        position: entry.position,
+        place: names[index] ?? null,
+        firstObserved: entry.props.first_observed,
+        lastObserved: entry.props.last_observed,
+        detections: usable.length,
+        rawDetections: entry.cleaned.hotspots.length,
+        maskedDetections: entry.cleaned.counts.static_source,
+        dropped: droppedReasons(entry.cleaned.counts),
+        sources: [...new Set(entry.cleaned.hotspots.map((hotspot) => hotspot.source))].sort(),
+        corroboratingSources: entry.confirmation.distinctSources,
+        totalFrpMw: frps.length > 0 ? Number(frps.reduce((sum, value) => sum + value, 0).toFixed(1)) : null,
+        maxFrpMw: frps.length > 0 ? Number(Math.max(...frps).toFixed(1)) : null,
+        confidence: strongestConfidence(usable.map((hotspot) => hotspot.confidence)),
+        spanM: Math.round(spanOf(usable.map((hotspot) => hotspot.position))),
+        hasPerimeter: entry.hasPerimeter,
+        score: entry.confirmation.score,
+        classification: entry.confirmation.classification,
+        incidentId: incident?.id ?? null,
+        incidentStatus: incident?.status ?? null,
+      } satisfies ClusterSummary;
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tick — act on the survey
+  // ---------------------------------------------------------------------------
+
+  async tick(): Promise<TickResult> {
+    if (this.running) {
+      return { clustersSeen: 0, confirmed: [], candidates: [], noise: 0, skipped: 0, error: "tick already running" };
+    }
+    if (!this.ctx.deepfire) {
+      return { clustersSeen: 0, confirmed: [], candidates: [], noise: 0, skipped: 0, error: "DeepFire not configured" };
+    }
+
+    this.running = true;
+    const result: TickResult = { clustersSeen: 0, confirmed: [], candidates: [], noise: 0, skipped: 0 };
+
+    try {
+      const survey = await this.survey({ force: true });
+      result.clustersSeen = survey.clusters.length;
+      if (survey.error) return { ...result, error: survey.error };
+
+      if (this.cachedScored.length === 0) {
+        this.ctx.log.info("No active clusters in the area of interest.");
+        return result;
+      }
+
+      for (const entry of this.cachedScored) {
+        if (entry.confirmation.classification === "NOISE") {
           result.noise++;
-          await this.closeIfOpen(clusterId, confirmation.components[0]?.detail ?? "Scored as noise.");
+          await this.closeIfOpen(entry.clusterId, entry.confirmation.components[0]?.detail ?? "Scored as noise.");
           continue;
         }
 
-        const incident = await this.upsertIncident({
-          clusterId,
-          position: [lon, lat],
-          props,
-          cleaned,
-          confirmation,
-        });
-
-        if (confirmation.classification === "CONFIRMED") {
-          result.confirmed.push(incident.id);
-        } else {
-          result.candidates.push(incident.id);
-        }
+        const incident = await this.upsertIncident(entry);
+        if (entry.confirmation.classification === "CONFIRMED") result.confirmed.push(incident.id);
+        else result.candidates.push(incident.id);
       }
 
       this.ctx.log.info(
@@ -224,29 +416,34 @@ export class Watcher {
     }
   }
 
-  private async hasPerimeter(clusterId: string): Promise<boolean> {
-    if (!this.ctx.deepfire) return false;
-    try {
-      const features = await this.ctx.deepfire.perimeters({
-        filter: `cluster_id = '${clusterId}'`,
-        limit: 1,
-        maxPages: 1,
-      });
-      return features.length > 0;
-    } catch {
-      // Absence of evidence: score without the perimeter bonus rather than
-      // failing the whole cluster because one optional lookup timed out.
-      return false;
+  /**
+   * Work a cluster the watcher would not have opened on its own.
+   *
+   * The confirmation bar exists so ARCA does not wake anyone for a flare, and
+   * it stays where it is. This is the other half of that contract: a
+   * coordinator looking at the feed can point at any cluster and say "work
+   * that one", and the incident it opens records that a human asked for it and
+   * what the score was at the time. Nothing about the pipeline changes — the
+   * same cleaning, the same simulation, the same ranking, the same caveats.
+   */
+  async adopt(clusterId: string): Promise<Incident | null> {
+    const existing = await this.ctx.store.getIncidentByCluster(clusterId);
+    const entry = await this.scoredFor(clusterId);
+
+    if (!entry) {
+      // It may have gone out between the screen rendering and the click. An
+      // incident already open for it is still perfectly workable.
+      return existing ?? null;
     }
+
+    const incident = await this.upsertIncident(entry, { adopted: !existing });
+    return incident;
   }
 
-  private async upsertIncident(input: {
-    clusterId: string;
-    position: [number, number];
-    props: ClusterProperties;
-    cleaned: CleanResult;
-    confirmation: ReturnType<typeof confirmationScore>;
-  }): Promise<Incident> {
+  private async upsertIncident(
+    input: ScoredCluster,
+    options: { adopted?: boolean } = {},
+  ): Promise<Incident> {
     const existing = await this.ctx.store.getIncidentByCluster(input.clusterId);
     const now = new Date().toISOString();
 
@@ -291,17 +488,36 @@ export class Watcher {
 
     // The transition into CONFIRMED is what starts the pipeline, and it happens
     // exactly once per incident: a cluster that keeps growing must not
-    // re-trigger a briefing every five minutes.
-    if (nowConfirmed && !wasConfirmed) {
+    // re-trigger a briefing every five minutes. An operator adopting a cluster
+    // below the bar is the other way in, and it is recorded as such.
+    const adopted = options.adopted === true && !nowConfirmed;
+
+    if (adopted) {
       await this.ctx.timeline(
         incident.id,
-        "confirmed",
-        `Confirmed at ${input.confirmation.score}/100: ${input.confirmation.components
+        "status_changed",
+        `Opened by an operator at ${input.confirmation.score}/100, below the ${
+          input.confirmation.classification === "NOISE" ? "noise" : "confirmation"
+        } threshold. ${input.confirmation.components
           .filter((component) => component.points > 0)
           .map((component) => component.label.toLowerCase())
-          .join(", ")}.`,
-        { data: { components: input.confirmation.components } },
+          .join(", ") || "No positive evidence."}`,
+        { actor: "ops-ui", data: { components: input.confirmation.components, adopted: true } },
       );
+    }
+
+    if ((nowConfirmed && !wasConfirmed) || adopted) {
+      if (nowConfirmed && !wasConfirmed) {
+        await this.ctx.timeline(
+          incident.id,
+          "confirmed",
+          `Confirmed at ${input.confirmation.score}/100: ${input.confirmation.components
+            .filter((component) => component.points > 0)
+            .map((component) => component.label.toLowerCase())
+            .join(", ")}.`,
+          { data: { components: input.confirmation.components } },
+        );
+      }
       await this.onConfirmed(incident).catch((error) => {
         this.ctx.log.error("Incident pipeline failed", {
           incidentId: incident.id,
@@ -315,8 +531,8 @@ export class Watcher {
 
   /** A place name beats a UUID on a wall display. Falls back to coordinates. */
   private async nameFor(position: [number, number]): Promise<string> {
-    if (!this.ctx.talaia) return `${position[1].toFixed(3)}, ${position[0].toFixed(3)}`;
-    return `${position[1].toFixed(3)}, ${position[0].toFixed(3)}`;
+    const place = await this.places.resolve(position).catch(() => null);
+    return place ?? describePosition(position);
   }
 
   private async closeIfOpen(clusterId: string, reason: string): Promise<void> {
@@ -325,4 +541,54 @@ export class Watcher {
     await this.ctx.store.upsertIncident({ ...existing, status: "closed", updatedAt: new Date().toISOString() });
     await this.ctx.timeline(existing.id, "status_changed", `Incident closed: ${reason}`);
   }
+}
+
+/**
+ * Why detections were dropped, in the words the UI shows.
+ *
+ * Ordered by count, because when a cluster is rejected there is usually one
+ * dominant reason and the operator only needs that one.
+ */
+function droppedReasons(counts: CleanResult["counts"]): Array<{ reason: string; count: number }> {
+  const labels: Array<[keyof CleanResult["counts"], string]> = [
+    ["static_source", "known heat source"],
+    ["low_confidence_uncorroborated", "low confidence, nothing to corroborate it"],
+    ["duplicate", "the same pixel reported twice"],
+    ["stale", "too old to act on"],
+    ["outside_aoi", "outside the area of interest"],
+  ];
+  return labels
+    .map(([key, reason]) => ({ reason, count: counts[key] ?? 0 }))
+    .filter((entry) => entry.count > 0)
+    .sort((a, b) => b.count - a.count);
+}
+
+/** The strongest grade any detection carried, for a one-glance quality read. */
+function strongestConfidence(values: Array<Confidence | undefined>): Confidence | null {
+  let best = -1;
+  for (const value of values) {
+    if (!value) continue;
+    const index = CONFIDENCE_ORDER.indexOf(value);
+    if (index > best) best = index;
+  }
+  return best >= 0 ? CONFIDENCE_ORDER[best]! : null;
+}
+
+/**
+ * The greatest distance between any two detections.
+ *
+ * A proxy for how big the thing is, and one of the few size signals available
+ * before a perimeter exists. Quadratic, which is fine: a cluster with more than
+ * a few hundred detections is rare and the loop is arithmetic.
+ */
+function spanOf(positions: Array<[number, number]>): number {
+  if (positions.length < 2) return 0;
+  let max = 0;
+  for (let i = 0; i < positions.length; i++) {
+    for (let j = i + 1; j < positions.length; j++) {
+      const distance = haversineMeters(positions[i]!, positions[j]!);
+      if (distance > max) max = distance;
+    }
+  }
+  return max;
 }
