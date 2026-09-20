@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --webpack -p 3000",
+    "dev": "next dev --webpack -p ${PORT:-3000}",
     "build": "next build --webpack",
     "start": "next start -p ${PORT:-3000}",
     "typecheck": "tsc --noEmit",

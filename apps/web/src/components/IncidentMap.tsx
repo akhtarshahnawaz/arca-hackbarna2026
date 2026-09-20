@@ -106,6 +106,20 @@ export function IncidentMap(props: IncidentMapProps) {
   const filterRef = useRef<number | null>(props.hour);
   filterRef.current = props.hour;
 
+  /**
+   * Work that must wait for the layers to exist.
+   *
+   * Listening for a map event to know when that happened does not work:
+   * `load` may never fire if the basemap's sprite or glyph requests hang, and
+   * `styledata` stops firing once the style settles — so a listener registered
+   * after that point waits forever. The setup runs these directly instead.
+   */
+  const whenReadyRef = useRef<Array<() => void>>([]);
+  const runWhenReady = (fn: () => void) => {
+    if (readyRef.current) fn();
+    else whenReadyRef.current.push(fn);
+  };
+
   // --- sources -------------------------------------------------------------
 
   const spreadGeoJson = useMemo(() => framesToGeoJson(props.spread?.frames ?? null), [props.spread]);
@@ -420,6 +434,7 @@ export function IncidentMap(props: IncidentMapProps) {
 
     return () => {
       clearTimeout(styleWatchdog);
+      whenReadyRef.current = [];
       popupRef.current?.remove();
       map.remove();
       mapRef.current = null;
@@ -435,11 +450,11 @@ export function IncidentMap(props: IncidentMapProps) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    // A map that is not ready yet also pulls the current data from the ref
+    // during setup, so this is the update path rather than the only path.
     if (readyRef.current) {
       applyData(map, { spread: spreadGeoJson, hotspots: hotspotGeoJson, sites: siteGeoJson });
     }
-    // No else branch: a map that is not ready yet pulls this same data from the
-    // ref when its load handler runs.
   }, [spreadGeoJson, hotspotGeoJson, siteGeoJson]);
 
   // Scrubbing the hour is a filter change, which repaints without re-uploading.
@@ -489,19 +504,10 @@ export function IncidentMap(props: IncidentMapProps) {
       centredRef.current = key;
     };
 
-    // Same reason as the layer setup: `load` may never fire if the basemap's
-    // sprite or glyph requests hang, and an unfitted map shows a slice of the
-    // fire with no indication that there is more of it off screen.
-    if (readyRef.current) {
-      fit();
-    } else {
-      const onReady = () => {
-        if (!readyRef.current) return;
-        map.off("styledata", onReady);
-        fit();
-      };
-      map.on("styledata", onReady);
-    }
+    // An unfitted map shows a slice of the fire with no indication that there
+    // is more of it off screen, so this must run even when the map became
+    // usable through a path that fires no further events.
+    runWhenReady(fit);
   }, [props.centre, siteGeoJson, props.hotspots]);
 
   useEffect(() => {

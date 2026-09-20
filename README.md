@@ -61,20 +61,33 @@ identically on the map, in the list and in the legend.
 ## Quick start
 
 ```bash
+./start.sh --replay
+```
+
+That installs what is missing, starts both services, opens the operations
+screen and loads the demo incident. **No credentials are needed** — you get the
+full pipeline: cleaning, confirmation scoring, ensemble bands, exposure,
+ranking, the timeline and the map.
+
+```
+./start.sh              start the agent and the web app
+./start.sh --replay     also load the demo incident
+./start.sh --check      tests and typecheck, then exit
+./start.sh --build      run the production build and serve that
+./start.sh --stop       stop anything it left running
+```
+
+Ctrl+C stops both. Logs go to `.run/`.
+
+To run the pieces yourself instead:
+
+```bash
 pnpm install
 cp .env.example .env        # every key is optional; ARCA degrades to what it has
 
 pnpm dev:agent              # :4000  — pipeline, agent, HTTP, Telegram
 pnpm dev:web                # :3000  — operations screen
-```
-
-Open <http://localhost:3000> and start the replay bundle. With no credentials at
-all you get the full pipeline: cleaning, confirmation scoring, ensemble bands,
-exposure, ranking, the timeline and the map.
-
-```bash
-pnpm test        # 90 tests, no network, no database
-pnpm typecheck
+pnpm test                   # 90 tests, no network, no database
 ```
 
 ## What each key adds
