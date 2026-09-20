@@ -11,15 +11,16 @@
   "scripts": {
     "build": "pnpm build:libs && pnpm --filter @arca/agent build && pnpm --filter @arca/web build",
     "build:libs": "pnpm --filter @arca/core build && pnpm --filter @arca/db build",
-    "dev": "pnpm build:libs && pnpm -r --parallel dev",
-    "dev:agent": "pnpm build:libs && pnpm --filter @arca/agent dev",
-    "dev:web": "pnpm build:libs && pnpm --filter @arca/web dev",
+    "dev": "pnpm build:libs:ensure && pnpm -r --parallel dev",
+    "dev:agent": "pnpm build:libs:ensure && pnpm --filter @arca/agent dev",
+    "dev:web": "pnpm build:libs:ensure && pnpm --filter @arca/web dev",
     "start:agent": "pnpm --filter @arca/agent start",
     "start:web": "pnpm --filter @arca/web start",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "db:push": "pnpm --filter @arca/db push",
-    "demo:bundle": "pnpm --filter @arca/agent exec tsx scripts/make-demo-bundle.ts"
+    "demo:bundle": "pnpm --filter @arca/agent exec tsx scripts/make-demo-bundle.ts",
+    "build:libs:ensure": "node -e \"const f=require('fs');process.exit(f.existsSync('packages/core/dist/index.js')&&f.existsSync('packages/db/dist/index.js')?0:1)\" || pnpm build:libs"
   },
   "devDependencies": {
     "typescript": "^5.7.3",
