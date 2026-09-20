@@ -99,18 +99,71 @@ export interface IncidentSummary extends Incident {
   counts: { ranked: number; evacuateNow: number; shelterCandidates: number; people: number };
 }
 
+/**
+ * The shared operations token.
+ *
+ * `OPS_TOKEN` on the agent turns authentication on for the whole API. It cannot
+ * be a `NEXT_PUBLIC_*` variable — that would compile it into a bundle anyone
+ * can read, which is the opposite of what it is for — so the browser holds it
+ * in local storage and the operator enters it once per device.
+ *
+ * Without this the first protected deployment is a screen of 401s with nothing
+ * to click, which is a bad way to learn that a variable is set.
+ */
+export const TOKEN_KEY = "arca:ops-token";
+
+export function opsToken(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(TOKEN_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function setOpsToken(token: string): void {
+  try {
+    if (token) window.localStorage.setItem(TOKEN_KEY, token.trim());
+    else window.localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* private browsing; the request will 401 again and ask again */
+  }
+}
+
+export class UnauthorisedError extends Error {
+  constructor() {
+    super("This deployment needs an operations token.");
+    this.name = "UnauthorisedError";
+  }
+}
+
+let unauthorisedHandler: (() => void) | null = null;
+
+/** Lets the page put up the token prompt the moment anything 401s. */
+export function onUnauthorised(handler: (() => void) | null): void {
+  unauthorisedHandler = handler;
+}
+
 function opsHeaders(): HeadersInit {
-  const token = typeof window === "undefined" ? "" : window.localStorage.getItem("arca:ops-token");
+  const token = opsToken();
   return {
     "content-type": "application/json",
     ...(token ? { "x-ops-token": token } : {}),
   };
 }
 
-async function get<T>(path: string): Promise<T> {
-  const response = await fetch(`${AGENT_URL}${path}`, { headers: opsHeaders(), cache: "no-store" });
+async function unwrap<T>(response: Response): Promise<T> {
+  if (response.status === 401) {
+    unauthorisedHandler?.();
+    throw new UnauthorisedError();
+  }
   if (!response.ok) throw new Error(`${response.status} ${await response.text().catch(() => "")}`);
   return (await response.json()) as T;
+}
+
+async function get<T>(path: string): Promise<T> {
+  const response = await fetch(`${AGENT_URL}${path}`, { headers: opsHeaders(), cache: "no-store" });
+  return unwrap<T>(response);
 }
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
@@ -119,8 +172,7 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
     headers: opsHeaders(),
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!response.ok) throw new Error(`${response.status} ${await response.text().catch(() => "")}`);
-  return (await response.json()) as T;
+  return unwrap<T>(response);
 }
 
 export const api = {
@@ -245,7 +297,7 @@ export function useIncident(incidentId: string | null) {
 
   useEffect(() => {
     if (!incidentId) return;
-    const token = typeof window === "undefined" ? "" : window.localStorage.getItem("arca:ops-token");
+    const token = opsToken();
     const url = `${AGENT_URL}/api/events?incident=${encodeURIComponent(incidentId)}${token ? `&token=${encodeURIComponent(token)}` : ""}`;
     const source = new EventSource(url);
 

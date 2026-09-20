@@ -12,6 +12,10 @@ Send it as `X-Ops-Token`, `Authorization: Bearer …`, or `?token=` on the event
 stream (browsers cannot set headers on `EventSource`). Compared in constant
 time, so the token cannot be guessed a byte at a time.
 
+The web app holds it in local storage and puts up a prompt the first time
+anything returns 401. It cannot be shipped as a `NEXT_PUBLIC_*` variable,
+because that compiles the secret into a bundle anyone can read.
+
 `/api/health` and `/api/telegram/webhook` are always open — the first so a
 platform health check works, the second because it carries its own Telegram
 secret.

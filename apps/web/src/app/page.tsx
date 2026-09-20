@@ -3,13 +3,14 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ClusterSummary, RankedSite, ScenarioSummary, SiteStatus } from "@arca/core";
-import { api, useFeed, useIncident, useIncidentList, type Mode } from "@/lib/api";
+import { api, onUnauthorised, useFeed, useIncident, useIncidentList, type Mode } from "@/lib/api";
 import { TopBar } from "@/components/TopBar";
 import { FeedRail } from "@/components/FeedRail";
 import { SidePanel } from "@/components/SidePanel";
 import { TimelineScrubber } from "@/components/TimelineScrubber";
 import { Legend } from "@/components/Legend";
 import { EmptyStage } from "@/components/EmptyStage";
+import { TokenGate } from "@/components/TokenGate";
 import { describeSpread } from "@/components/IncidentMap";
 
 // MapLibre touches window at import time, so it cannot be server-rendered.
@@ -39,6 +40,7 @@ export default function OperationsPage() {
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [area, setArea] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
 
   const { incidents, reload: reloadList } = useIncidentList();
   const feed = useFeed(mode, area);
@@ -52,6 +54,13 @@ export default function OperationsPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [capabilities, setCapabilities] = useState<Record<string, boolean>>({});
+
+  // Any 401 anywhere puts the door up, rather than leaving the operator with a
+  // screen of errors and no indication that a token is involved.
+  useEffect(() => {
+    onUnauthorised(() => setLocked(true));
+    return () => onUnauthorised(null);
+  }, []);
 
   useEffect(() => {
     void api
@@ -249,6 +258,19 @@ export default function OperationsPage() {
   }, [incidentId, reload]);
 
   // ---------------------------------------------------------------------------
+
+  if (locked) {
+    return (
+      <TokenGate
+        onSaved={() => {
+          setLocked(false);
+          // Everything on screen was fetched without a token, so start again
+          // rather than leaving half of it empty.
+          window.location.reload();
+        }}
+      />
+    );
+  }
 
   return (
     <main className="h-screen w-screen overflow-hidden flex flex-col gap-2 p-2 bg-[var(--color-ground)]">

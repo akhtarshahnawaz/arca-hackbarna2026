@@ -118,7 +118,7 @@ filter is the one shape that reliably exceeds DeepFire's 30-second budget.
 |---|---|---|
 | `PORT` | `4000` | |
 | `AGENT_PUBLIC_URL` | `http://localhost:4000` | An `https://` non-localhost value switches Telegram to webhook mode |
-| `OPS_TOKEN` | *empty* | Any non-empty value enables API auth |
+| `OPS_TOKEN` | *empty* | Any non-empty value enables API auth on every route but `/api/health` and the Telegram webhook. It cannot be a `NEXT_PUBLIC_*` variable — that would compile it into a bundle anyone can read — so the web app prompts for it once per browser and keeps it in local storage |
 | `DATABASE_URL` | *empty* | Unset runs in memory. Set-but-unreachable fails loudly |
 | `LOG_LEVEL` | `info` | |
 | `NEXT_PUBLIC_AGENT_URL` | `http://localhost:4000` | Web app only, baked in at build time |

@@ -19,6 +19,7 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "db:push": "pnpm --filter @arca/db push",
+    "db:push:ci": "pnpm --filter @arca/db push:ci",
     "demo:bundle": "pnpm --filter @arca/agent exec tsx scripts/make-scenarios.ts",
     "build:libs:ensure": "node -e \"const f=require('fs');process.exit(f.existsSync('packages/core/dist/index.js')&&f.existsSync('packages/db/dist/index.js')?0:1)\" || pnpm build:libs"
   },

@@ -15,7 +15,8 @@
     "push": "drizzle-kit push",
     "generate": "drizzle-kit generate",
     "test": "vitest run",
-    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput"
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "push:ci": "drizzle-kit push --force"
   },
   "dependencies": {
     "@arca/core": "workspace:*",

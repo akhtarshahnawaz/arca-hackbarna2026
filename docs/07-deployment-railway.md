@@ -1,213 +1,450 @@
-# Deploying to Railway
+# Deploying to Railway, from the dashboard
 
-Three services in one Railway project: `arca-agent`, `arca-web`, and Postgres.
-Roughly 20 minutes from an empty project to a coordinator receiving a briefing
+The whole system on Railway, with no terminal. Three services in one project:
+
+```text
+Postgres
+arca-agent
+arca-web
+```
+
+About twenty minutes from an empty project to a coordinator getting a briefing
 on their phone.
 
-Everything below also works on Fly, Render or a plain VPS — only the dashboard
-steps differ.
+Two steps normally reach for the CLI, and both have a dashboard equivalent:
+
+| Normally | Here |
+|---|---|
+| `railway run … db:push` | The agent's **Pre-deploy Command**, run once |
+| `railway run … slng:create-agent` | The same Pre-deploy slot, borrowed once |
+
+## Why both halves live here
+
+The agent polls DeepFire on a timer, holds an in-process event bus, and streams
+server-sent events to every open browser. None of that survives a serverless
+function, so the agent needs a platform that keeps a process alive. Once it is
+here, putting the web app beside it means one platform, one log stream, one
+bill, and no cross-provider URL to keep in step.
+
+Vercel still works for the web half if you prefer it — see the end.
 
 ## 0. Before you start
 
-- A Railway account and the CLI: `npm i -g @railway/cli && railway login`
-- This repository pushed to GitHub
-- Credentials from [docs/06-configuration.md](./06-configuration.md). None are
-  strictly required: ARCA boots without them and tells you what it cannot do.
+- A Railway account.
+- This repository on GitHub.
+- Credentials from [Configuration](./06-configuration.md). **None are required.**
+  ARCA boots without any of them and says at startup what it cannot do.
 
-## 1. Create the project and database
+---
 
-```bash
-railway init --name arca
-railway add --database postgres
-```
+## 1. Create the project
 
-No PostGIS image is needed. ARCA never asks the database a spatial question —
-see [docs/01-architecture.md](./01-architecture.md).
+1. Open the [Railway dashboard](https://railway.com/dashboard).
+2. **New Project → Empty Project**.
+3. Open the project settings and rename it `arca`.
 
-## 2. The agent service
+## 2. Add PostgreSQL
 
-In the Railway dashboard: **New → GitHub Repo → this repository**, then name the
-service `arca-agent` and set:
+On the project canvas:
+
+1. **+ New → Database → PostgreSQL**.
+2. Wait until it shows as deployed.
+3. Rename the service `Postgres` if Railway named it something else — the
+   variable reference in step 3 uses that exact name.
+
+No PostGIS. ARCA never asks the database a spatial question; every geometry
+operation happens in `@arca/core` as a pure function, which is what keeps the
+ranking testable against fixtures. See [Architecture](./01-architecture.md).
+
+> Without a database ARCA still runs, in memory, and says so at boot. State is
+> then lost on every restart — including cached simulations, which is the
+> expensive thing to lose. Worth ten minutes to avoid.
+
+## 3. Add `arca-agent`
+
+1. **+ New → GitHub Repo**, connect GitHub if prompted, pick this repository.
+2. If Railway offers **Add Variables** rather than deploying straight away,
+   take it. Otherwise let the first deploy fail while you configure — it has no
+   variables yet and nothing is lost.
+3. Open the service, go to **Settings**, rename it `arca-agent`.
+
+### Source and build
 
 | Setting | Value |
 |---|---|
-| Root directory | `/` (the monorepo root — pnpm workspaces need it) |
-| Build command | `pnpm install --frozen-lockfile && pnpm --filter @arca/agent build` |
-| Start command | `pnpm --filter @arca/agent start` |
-| Watch paths | `apps/agent/**`, `packages/**` |
+| Root Directory | blank, or `/` |
+| Build Command | `pnpm install --frozen-lockfile && pnpm --filter @arca/agent build` |
+| Start Command | `pnpm --filter @arca/agent start` |
+| Pre-deploy Command | `pnpm --filter @arca/db push:ci` |
+| Pre-deploy Timeout | `300` |
+| Serverless / App Sleeping | **Off** |
+| Replicas | `1` |
+
+The root stays at the monorepo root because this is a pnpm workspace: the
+agent's build pulls `@arca/core` and `@arca/db` from the same tree, and a root
+of `apps/agent` cannot see them. Railway supports per-service build and start
+commands over one repository, which is how two services share this one.
+
+**Leave PORT unset.** Railway injects a different one into each service and the
+agent binds whatever it is given. Generating a domain then targets the right
+port automatically, with nothing to keep in step.
+
+**Serverless off is not optional here.** The watcher is a timer inside the
+process; suspend the container and the fire feed stops with it. `arca-web` can
+sleep freely.
+
+### About that Pre-deploy Command
+
+`pnpm --filter @arca/db push:ci` creates the schema. It runs after the build,
+sees `DATABASE_URL` and the private network, and fails the deployment if the
+schema cannot be applied — which is what you want, rather than an agent booting
+against a database it cannot write to.
+
+Two things to know, in order of how likely they are to bite:
+
+**Use `push:ci`, not `push`.** Plain `drizzle-kit push` asks for confirmation
+before any statement that could lose data. There is no terminal attached to a
+pre-deploy container, so that prompt either hangs until the timeout or fails
+outright. `push:ci` is the same command with `--force`.
+
+**Clear it once the schema exists.** `--force` auto-approves destructive
+statements, and a pre-deploy runs on *every* deployment. Leaving it set means a
+future schema change could drop a column without anyone confirming it. Set it,
+deploy once, confirm the tables exist, then empty the field.
+
+### Watch paths
+
+**Settings → Source → Watch Paths**, one per line:
+
+```text
+/apps/agent/**
+/packages/**
+```
+
+A leading `/` that Railway strips is fine. With these set, a change to
+`apps/web` alone will not redeploy the agent.
 
 ### Variables
 
-Paste into the Raw Editor, filling in your own values:
+**Variables → Raw Editor**, and paste. Everything below is optional except what
+you actually want to work:
 
-```bash
+```dotenv
 NODE_ENV=production
-PORT=4000
 LOG_LEVEL=info
 
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 
+# Detection. Without these, live mode is off and synthetic scenarios still work.
 DEEPFIRE_CLIENT_ID=
 DEEPFIRE_CLIENT_SECRET=
 
+# Exposure. Without this, incidents open detection-only: no ranking.
 TALAIA_URL=https://talaia.up.railway.app
 TALAIA_API_KEY=
 
+# Language. Without this, briefings use the deterministic template and
+# transcripts are not extracted.
 NEBIUS_API_KEY=
 NEBIUS_MODEL=openai/gpt-oss-120b
 
+# Voice. Without these, approvals are recorded but no call is placed.
 SLNG_API_KEY=
 SLNG_AGENT_ID=
 
+# Telegram. Without these there is no proactive briefing; the web UI is fine.
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_BOT_USERNAME=
 TELEGRAM_WEBHOOK_SECRET_TOKEN=
 COORDINATOR_TELEGRAM_CHAT_IDS=
 
-# Safety rails. Leave CALL_ALLOWLIST empty until you mean it.
+# Safety rails. Both fail safe; leave them exactly like this to begin with.
 CALL_ALLOWLIST=
 EXERCISE_MODE=true
 
+# What to watch.
 AOI_BBOX=0.15,40.50,3.35,42.90
 WATCH_INTERVAL_MINUTES=5
+CLUSTER_LOOKBACK_HOURS=24
+PLACE_LOOKUP=true
 
+# Protects the whole API. See the note below before setting it.
 OPS_TOKEN=
 ```
 
-`${{Postgres.DATABASE_URL}}` is a Railway reference — it resolves at deploy time
-and follows the database if it is ever recreated.
+Three things that go wrong here:
 
-Generate `OPS_TOKEN` and `TELEGRAM_WEBHOOK_SECRET_TOKEN` with
-`openssl rand -hex 24`.
+- **Paste plain URLs.** A URL that arrives as Markdown — `[https://x](https://x)`
+  — is stored literally and every request to it fails in a confusing way.
+- **`${{Postgres.DATABASE_URL}}` must match the database service's name.** Safer
+  still: **New Variable → Add Reference → Postgres → DATABASE_URL**, and let
+  Railway build the reference.
+- **Leave `CALL_ALLOWLIST` empty.** Empty means ARCA places no outbound call at
+  all. Every approval still works and opens a browser voice session instead, so
+  the whole workflow is exercised without dialling anyone.
 
-### Domain, then the self-reference
+### Generating the two secrets without a terminal
 
-Settings → Networking → **Generate Domain**. Then add one more variable:
+`OPS_TOKEN` and `TELEGRAM_WEBHOOK_SECRET_TOKEN` are shared secrets — any long
+random string works. Your password manager's generator is the easiest source.
 
-```bash
+Or, in any browser's developer console, run this twice:
+
+```js
+[...crypto.getRandomValues(new Uint8Array(24))]
+  .map((b) => b.toString(16).padStart(2, "0"))
+  .join("")
+```
+
+One value each. Do not reuse the same string for both.
+
+> **`OPS_TOKEN` turns authentication on for the whole API.** It cannot be a
+> `NEXT_PUBLIC_*` variable — that compiles it into a bundle anyone can read — so
+> the web app asks for it once per browser and keeps it in local storage. You
+> will see a small *This deployment is protected* prompt the first time you open
+> the site. That is expected; paste the same value.
+>
+> Leave it empty and the API is open to anyone who can reach the URL, which is
+> flagged in the boot log. For a hackathon demo that may be the right call; for
+> anything carrying real facility phone numbers it is not.
+
+### Deploy
+
+Railway may hold these as staged changes. Click **Deploy** / **Apply Changes**,
+then watch both **Build Logs** and **Deploy Logs**. The schema push should
+complete before the agent starts.
+
+The boot log lists every missing capability with what it costs:
+
+```text
+warn  TALAIA_API_KEY unset. Incidents open detection-only, with no exposure or ranking.
+warn  CALL_ALLOWLIST is empty. Every approved call opens a browser voice session instead of dialling.
+info  ARCA ready  storage=postgres detection=live exposure=true voice=web-sessions
+```
+
+## 4. Give the agent a domain
+
+1. `arca-agent` → **Settings → Networking → Public Networking → Generate Domain**.
+2. If asked for a target port, take the one Railway suggests.
+3. Copy the full URL, e.g. `https://arca-agent-production.up.railway.app`.
+
+Railway does not assign a public domain automatically; this step is required.
+
+Then add one more variable to `arca-agent`, with **no trailing slash**:
+
+```dotenv
 AGENT_PUBLIC_URL=https://arca-agent-production.up.railway.app
 ```
 
-This matters: an `https://` non-localhost value is what switches Telegram from
-long-polling to webhook mode, and polling does not survive a platform that
-sleeps idle containers.
+Deploy the staged change. The agent needs its own address to register a Telegram
+webhook — with it set, Telegram switches from long-polling to webhook mode,
+which is what survives a platform that sleeps idle containers.
 
-### Create the schema
+### Now clear the Pre-deploy Command
 
-```bash
-railway run --service arca-agent pnpm --filter @arca/db push
-```
+The schema exists. **Settings → Pre-deploy Command → empty it**, for the reason
+in step 3. You can always put it back for a migration.
 
-## 3. The web service
+## 5. Add `arca-web`
 
-**New → GitHub Repo → same repository**, named `arca-web`:
+1. **+ New → GitHub Repo → same repository**.
+2. Rename it `arca-web`.
 
 | Setting | Value |
 |---|---|
-| Root directory | `/` |
-| Build command | `pnpm install --frozen-lockfile && pnpm --filter @arca/web build` |
-| Start command | `pnpm --filter @arca/web start` |
-| Watch paths | `apps/web/**`, `packages/core/**` |
+| Root Directory | blank, or `/` |
+| Build Command | `pnpm install --frozen-lockfile && pnpm --filter @arca/web build` |
+| Start Command | `pnpm --filter @arca/web start` |
+| Pre-deploy Command | none |
+| Serverless / App Sleeping | fine to leave on |
+| Replicas | `1` |
 
-```bash
+Watch paths:
+
+```text
+/apps/web/**
+/packages/core/**
+```
+
+Variables:
+
+```dotenv
 NODE_ENV=production
 NEXT_PUBLIC_AGENT_URL=https://arca-agent-production.up.railway.app
 ```
 
-`NEXT_PUBLIC_*` values are **baked in at build time**. Changing this requires a
-redeploy, not a restart.
+Use the real agent domain. **`NEXT_PUBLIC_*` is compiled into the JavaScript
+bundle at build time**, so after changing it choose **Redeploy**, never merely
+**Restart** — a restart serves the old bundle with the old URL baked in.
 
-Both services bind `PORT`, and Railway injects a different one into each, so
-there is nothing to set. Locally the same variable would be handed to both,
-which is why `start.sh` unsets it and passes one explicitly per service.
+Then **Settings → Networking → Generate Domain** for this service too.
 
-Generate a domain for this service too. The agent sends permissive CORS headers,
-so the browser reaches it across origins without further configuration.
+The agent sends permissive CORS headers, so the browser reaches it across
+origins with nothing further to configure.
 
-### Why both halves are here rather than one on Vercel
+## 6. Check it worked
 
-The agent polls DeepFire on a timer, holds an in-process event bus and streams
-server-sent events to every open browser. None of that survives a serverless
-function, so the agent needs a platform that keeps a process alive — and once it
-is here, putting the web app beside it means one platform, one log stream, one
-bill, and no cross-provider URL to keep in step.
+Open this in a browser:
 
-Vercel still works for the web half if you prefer it: root directory
-`apps/web`, the same build command, the same `NEXT_PUBLIC_AGENT_URL`. The build
-config drops `output: "standalone"` when it detects Vercel.
-
-## 4. Verify
-
-```bash
-curl -s https://arca-agent-production.up.railway.app/api/health | jq
+```text
+https://YOUR-AGENT-DOMAIN/api/health
 ```
 
-`capabilities` should reflect what you configured. Anything false there is a
-missing variable, and the deploy logs list each one with what it costs.
+`/api/health` is deliberately exempt from `OPS_TOKEN`, so a platform health
+check works. You should get something like:
 
-Then open the web domain. With no live fire — the normal state — you get the
-feed of active clusters on the left, every one of them scored, and the
-   synthetic scenarios one switch away.
-
-## 5. Telegram
-
-The bot registers its own webhook at boot once `AGENT_PUBLIC_URL` is public.
-Confirm:
-
-```bash
-curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo" | jq
+```json
+{
+  "status": "ok",
+  "storage": "postgres",
+  "capabilities": {
+    "deepfire": true, "talaia": true, "nebius": true, "slng": false,
+    "telegram": true, "outboundCalls": false, "database": true,
+    "exerciseMode": true
+  },
+  "upstream": { "deepfire": true, "talaia": true }
+}
 ```
 
-Message the bot from the coordinator's phone. It replies with that chat's id.
-Put the id in `COORDINATOR_TELEGRAM_CHAT_IDS` and redeploy.
+Read it as: `storage` must say `postgres`, not `memory`. Every `false` in
+`capabilities` is a variable you left out — intentionally or not. `upstream`
+is a live reachability check, so a `true` there means the credential actually
+works rather than merely being present.
 
-Then message it from a phone that has never touched it. It should explain what
-ARCA is and show nothing about any incident. If it shows you a ranked list, the
-allow-list is not set.
+A 503 means DeepFire is configured but unreachable.
 
-## 6. Turning on outbound calls
+Then open the `arca-web` domain. You should get the operations screen: the feed
+of active clusters on the left, each one scored, and the synthetic scenarios one
+switch away. **An empty live feed is the normal state** — ARCA opens an incident
+only above 60/100, so a flare or a quarry never becomes one. Switch to
+**Synthetic** to see the whole pipeline work on a generated fire.
 
-Only after everything above works.
+If something looks wrong, `arca-agent → Deployments → View Logs` and search for
+`error`, `webhook`, `missing` or `database`.
 
-```bash
-pnpm --filter @arca/agent slng:create-agent   # once; prints SLNG_AGENT_ID
+## 7. Telegram
+
+With `AGENT_PUBLIC_URL` and `TELEGRAM_BOT_TOKEN` both deployed, the agent
+registers its webhook at startup. To confirm, open this in a **private** window
+— the token is in the URL:
+
+```text
+https://api.telegram.org/botYOUR_BOT_TOKEN/getWebhookInfo
 ```
 
-Set `SLNG_AGENT_ID`, then add **your own** number to `CALL_ALLOWLIST` in E.164:
+The response should name your Railway agent domain with no recent error.
 
-```bash
+Then:
+
+1. Message the bot from the coordinator's phone. It replies with that chat's id.
+2. `arca-agent → Variables`:
+
+   ```dotenv
+   COORDINATOR_TELEGRAM_CHAT_IDS=123456789
+   ```
+
+   Comma-separated for several: `123456789,987654321`.
+3. Redeploy.
+4. **Message it from a phone that has never touched it.** It must explain what
+   ARCA is and show nothing about any incident. If it shows a ranked list, the
+   allow-list is not doing its job — stop and fix that before going further.
+
+## 8. Create the SLNG voice agent, without a terminal
+
+Only needed if you want outbound voice. It is a one-off: it creates an agent at
+SLNG and prints an id.
+
+**Borrow the Pre-deploy slot.** It runs exactly once per deployment, its output
+lands in the deploy log, and nothing lingers afterwards.
+
+1. `arca-agent → Variables`: set `SLNG_API_KEY` to your real key.
+2. `arca-agent → Settings → Pre-deploy Command`:
+
+   ```text
+   pnpm --filter @arca/agent slng:create-agent
+   ```
+3. Deploy. Open **Deploy Logs** and find:
+
+   ```text
+   Voice agent created.
+
+     SLNG_AGENT_ID=agt_...
+   ```
+4. Put that in `arca-agent → Variables` as `SLNG_AGENT_ID`.
+5. **Empty the Pre-deploy Command again**, then redeploy.
+
+> Step 5 is not tidiness. The script creates a *new* agent every time it runs —
+> deliberately, so an agent mid-incident is never mutated underneath a call in
+> progress. Left in pre-deploy it would mint another one on every deployment.
+
+<details>
+<summary>The temporary-service alternative, and why it is worse</summary>
+
+You can instead add a fourth service from the same repo with a start command of
+`pnpm --filter @arca/agent slng:create-agent`, read the id from its logs, then
+delete it.
+
+It works, but the script exits as soon as it has printed. Railway treats an
+exited process as a crash and restarts it — **and each restart creates another
+SLNG agent.** If you take this route, delete the service the moment you have the
+id.
+
+</details>
+
+## 9. Outbound calls, last
+
+Only after everything above is working:
+
+```dotenv
 CALL_ALLOWLIST=+34600000000
+EXERCISE_MODE=true
 ```
 
-Leave `EXERCISE_MODE=true` so every call opens by saying it is a drill.
+E.164, exact match, no wildcards — an allow-list that can be satisfied by a
+prefix is not an allow-list. Start with your own number. Keep `EXERCISE_MODE`
+on: every call then opens by saying it is a drill.
 
-With an empty allowlist every approval still works and opens a browser voice
-session instead — the whole workflow, without dialling anyone.
+---
 
 ## Operating notes
 
-**Cost.** The agent polls DeepFire every 5 minutes and must stay warm; do not
-put it to sleep or the watcher stops. The web service can sleep freely.
+**Never sleep the agent.** The watcher stops with it.
 
-**Scaling.** One agent instance. The event bus is in-process and the watcher
-assumes a single watermark holder; two instances would double-submit
-simulations against DeepFire's two-in-flight budget. Multi-instance needs a
-shared pub/sub behind `bus.ts`, whose surface is two methods for that reason.
+**One agent replica.** The event bus is in-process and the watcher assumes a
+single scanner. Two replicas means two scans and duplicated work on every tick.
 
-**Logs.** One JSON line per event with `incidentId` on everything, so a whole
-fire comes out of the log with one grep.
+**`NEXT_PUBLIC_*` needs a redeploy**, not a restart.
 
-**Backups.** Railway snapshots Postgres. Losing it costs incident history, not
-the ability to run: ARCA rebuilds live incidents from DeepFire on the next tick.
+**Watch the token budget.** DeepFire tokens last 180 days and an account is
+capped at five keys. ARCA persists its token in the database, so a redeploy does
+not mint a new one — another reason to have Postgres attached.
+
+**Costs.** Both services are small. Postgres is the only thing that grows, and
+it grows slowly: incidents, timeline events and ranked sites.
 
 ## Troubleshooting
 
 | Symptom | Cause |
 |---|---|
-| `/api/health` 503 | DeepFire configured but unreachable. Check credentials, then `DEEPFIRE_BASE_URL` |
-| No incidents, ever | Normal. ARCA opens one only above a 60/100 confirmation score. `POST /api/watch/tick` to force a pass |
-| Web shows "Could not load" | `NEXT_PUBLIC_AGENT_URL` wrong or stale. It is baked at build time — redeploy |
-| Telegram silent | `getWebhookInfo` shows the registered URL and last error. Usually `AGENT_PUBLIC_URL` is still localhost |
-| Approvals recorded, no call | Expected with an empty `CALL_ALLOWLIST`. The timeline says so, and a web session opens instead |
-| Exposure "summary only" | Talaia degraded. The ladder is in [docs/01-architecture.md](./01-architecture.md); the incident stays open |
-| Map with no fire | `spread.synthetic` true — no usable model output, footprint is drawn rings. The legend says so |
+| Deploy hangs in pre-deploy | Using `push` instead of `push:ci`; drizzle is waiting on a prompt that will never come |
+| `storage: "memory"` on `/api/health` | `DATABASE_URL` unset or the reference does not match the Postgres service name |
+| Web shows *This deployment is protected* | `OPS_TOKEN` is set. Paste the same value; it is stored in that browser |
+| Every request 401s and no prompt appears | An old bundle. Redeploy `arca-web` rather than restarting it |
+| Web loads but the feed is empty and errors | `NEXT_PUBLIC_AGENT_URL` wrong or stale — it is baked in at build time |
+| Live feed empty, no errors | The normal state. Nothing has cleared the confirmation bar. See [Modes and the feed](./10-modes-and-the-feed.md) |
+| Telegram silent | `AGENT_PUBLIC_URL` unset, has a trailing slash, or `COORDINATOR_TELEGRAM_CHAT_IDS` is empty |
+| Approvals never dial | Expected. `CALL_ALLOWLIST` is empty, so every approval opens a browser voice session |
+
+## Putting the web app on Vercel instead
+
+It works, and the build config already handles it — `output: "standalone"` is
+dropped when Vercel is detected, since Vercel uses its own adapter.
+
+| Setting | Value |
+|---|---|
+| Root directory | `apps/web` |
+| Build command | `pnpm --filter @arca/web build` |
+| Install command | `pnpm install` |
+
+With the same `NEXT_PUBLIC_AGENT_URL`. The agent still has to live somewhere
+that keeps a process alive.

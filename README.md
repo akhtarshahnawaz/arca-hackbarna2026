@@ -170,99 +170,41 @@ bugs they caught while being written.
 
 ## Deploying
 
-Everything on Railway: three services in one project — `arca-agent`, `arca-web`
-and Postgres. About twenty minutes from an empty project to a coordinator
-getting a briefing on their phone. Full walkthrough with every variable:
-[docs/07-deployment-railway.md](docs/07-deployment-railway.md).
+Everything on Railway, from the dashboard — no terminal needed. Three services
+in one project: `Postgres`, `arca-agent`, `arca-web`. About twenty minutes.
 
-**The agent has to run on a platform that keeps a process alive.** It polls
-DeepFire on a timer, holds an in-process event bus, and streams server-sent
-events to open browsers. Serverless functions cannot do any of that, which is
-why Railway rather than Vercel for that half — and once the agent is there,
-keeping the web app beside it means one platform, one log stream, one bill.
+**Full click-by-click walkthrough, with every variable and the three things that
+reliably go wrong: [docs/07-deployment-railway.md](docs/07-deployment-railway.md).**
 
-### 1. Project and database
+The short version:
 
-```bash
-npm i -g @railway/cli && railway login
-railway init --name arca
-railway add --database postgres
-```
+| | `arca-agent` | `arca-web` |
+|---|---|---|
+| Root directory | blank | blank |
+| Build | `pnpm install --frozen-lockfile && pnpm --filter @arca/agent build` | `pnpm install --frozen-lockfile && pnpm --filter @arca/web build` |
+| Start | `pnpm --filter @arca/agent start` | `pnpm --filter @arca/web start` |
+| Pre-deploy | `pnpm --filter @arca/db push:ci` — once, then clear it | none |
+| Watch paths | `/apps/agent/**`, `/packages/**` | `/apps/web/**`, `/packages/core/**` |
+| Sleeping | **off** | fine |
 
-No PostGIS image. ARCA never asks the database a spatial question.
+Both stay rooted at the monorepo root, because this is a pnpm workspace and the
+agent's build pulls `@arca/core` and `@arca/db` from the same tree. Leave `PORT`
+unset; Railway injects one per service and both bind what they are given.
 
-### 2. The agent service
+**The agent has to run somewhere that keeps a process alive.** It polls DeepFire
+on a timer, holds an in-process event bus, and streams server-sent events to
+open browsers. Serverless functions do none of that — which is why Railway
+rather than Vercel for that half, and once the agent is there, keeping the web
+app beside it means one platform, one log stream, one bill.
 
-**New → GitHub Repo → this repository**, name it `arca-agent`:
+Three things that catch people out, all covered in the guide:
 
-| Setting | Value |
-|---|---|
-| Root directory | `/` — the monorepo root, because pnpm workspaces need it |
-| Build command | `pnpm install --frozen-lockfile && pnpm --filter @arca/agent build` |
-| Start command | `pnpm --filter @arca/agent start` |
-| Watch paths | `apps/agent/**`, `packages/**` |
-
-Variables — everything is optional and ARCA tells you at boot what each missing
-one costs:
-
-```bash
-NODE_ENV=production
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-
-DEEPFIRE_CLIENT_ID=...
-DEEPFIRE_CLIENT_SECRET=...
-TALAIA_API_KEY=...
-NEBIUS_API_KEY=...
-SLNG_API_KEY=...
-SLNG_AGENT_ID=...
-
-OPS_TOKEN=<a long random string>
-
-# Safety rails. Leave the allowlist empty until you mean it.
-CALL_ALLOWLIST=
-EXERCISE_MODE=true
-```
-
-Generate a domain, then set `AGENT_PUBLIC_URL` to it — the agent needs to know
-its own address to register a Telegram webhook. Then create the schema:
-
-```bash
-railway run --service arca-agent pnpm db:push
-```
-
-### 3. The web service
-
-**New → GitHub Repo → same repository**, name it `arca-web`:
-
-| Setting | Value |
-|---|---|
-| Root directory | `/` |
-| Build command | `pnpm install --frozen-lockfile && pnpm --filter @arca/web build` |
-| Start command | `pnpm --filter @arca/web start` |
-| Watch paths | `apps/web/**`, `packages/core/**` |
-
-```bash
-NODE_ENV=production
-NEXT_PUBLIC_AGENT_URL=https://arca-agent-production.up.railway.app
-```
-
-`NEXT_PUBLIC_*` is **baked in at build time**, so changing that URL needs a
-redeploy rather than a restart. Both services bind `PORT`, which Railway injects
-separately for each — there is nothing to configure.
-
-Generate a domain for this service too. The agent sends permissive CORS headers,
-so the browser reaches it from a different origin without further setup.
-
-### 4. Check it
-
-```bash
-curl -s https://arca-agent-production.up.railway.app/api/health | jq
-```
-
-`capabilities` is what this deployment can actually do; anything false is a
-missing variable, and the deploy log names each one with the consequence.
-
-Then open the web domain.
+- **Use `push:ci`, not `push`,** for the schema. Plain `drizzle-kit push` asks
+  for confirmation, and a pre-deploy container has no terminal to ask.
+- **`NEXT_PUBLIC_AGENT_URL` is baked into the bundle at build time.** Changing
+  it needs a redeploy, not a restart.
+- **`OPS_TOKEN` protects the whole API** and cannot be a public variable, so the
+  web app prompts for it once per browser.
 
 <details>
 <summary>Putting the web app on Vercel instead</summary>
