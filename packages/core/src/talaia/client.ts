@@ -73,7 +73,11 @@ export class TalaiaClient {
 
   constructor(private readonly options: TalaiaClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, "");
-    this.timeoutMs = options.timeoutMs ?? 180_000;
+    // Deliberately well under a coordinator's patience. The ladder has several
+    // rungs, so a long per-attempt timeout multiplies into minutes of blank
+    // screen; degrading quickly and saying so is worth more than a complete
+    // answer that arrives after the decision was made.
+    this.timeoutMs = options.timeoutMs ?? 45_000;
   }
 
   private headers(): Record<string, string> {
@@ -138,9 +142,22 @@ export class TalaiaClient {
     return this.get<TalaiaLimits>("/v1/me");
   }
 
+  /**
+   * Is Talaia usable *with this key*?
+   *
+   * Deliberately not `/health`, which answers without one. A revoked key left
+   * the service reporting itself healthy while every exposure request came back
+   * 401 and silently degraded to a fixture — the operator saw a green light and
+   * demo data. `/v1/me` is the endpoint that validates the credential, so it is
+   * the one that decides.
+   */
   async health(): Promise<boolean> {
     try {
-      await requestJson(`${this.baseUrl}/health`, { timeoutMs: 8_000, retries: 0 });
+      await requestJson(`${this.baseUrl}/v1/me`, {
+        headers: this.headers(),
+        timeoutMs: 8_000,
+        retries: 0,
+      });
       return true;
     } catch {
       return false;
@@ -251,11 +268,18 @@ export class TalaiaClient {
                 step: "fixture",
                 message: `Talaia unreachable. Serving recorded fixture "${context.fixtureName}".`,
               });
-              return this.tag(fixture, {
-                mode: "fixture",
-                reason: "Talaia unreachable.",
-                name: context.fixtureName,
-              });
+              return this.tag(
+                {
+                  ...fixture,
+                  warnings: [
+                    "Talaia did not respond, so this exposure is recorded fixture data rather than a live registry query. The figures are illustrative.",
+                    ...(fixture.warnings ?? []).filter(
+                      (warning) => !/TALAIA_API_KEY/.test(warning),
+                    ),
+                  ],
+                },
+                { mode: "fixture", reason: "Talaia did not respond.", name: context.fixtureName },
+              );
             }
           }
 

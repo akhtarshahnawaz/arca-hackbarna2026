@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type IncidentSummary } from "@/lib/api";
+import { BrandMark } from "./Brand";
 import { ACTION_STYLE, compact, timeOfDay } from "@/lib/format";
 
 /**
@@ -59,7 +60,12 @@ export function IncidentPicker(props: {
     <main className="min-h-screen w-screen overflow-y-auto bg-[var(--color-ground)] px-6 py-10">
       <div className="mx-auto max-w-3xl">
         <header className="mb-8">
-          <h1 className="text-2xl text-[var(--color-ink)]">ARCA</h1>
+          <div className="flex items-center gap-3">
+            <BrandMark size={30} />
+            <h1 className="text-2xl text-[var(--color-ink)]" style={{ letterSpacing: "0.12em" }}>
+              ARCA
+            </h1>
+          </div>
           <p className="mt-1.5 text-sm text-[var(--color-ink-dim)] max-w-xl leading-relaxed">
             DeepFire says where a fire may go. Talaia says what is there. ARCA says who to call
             first, calls them once you approve, and re-ranks on what they say.
