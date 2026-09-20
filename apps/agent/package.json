@@ -1,0 +1,29 @@
+{
+  "name": "@arca/agent",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "slng:create-agent": "tsx scripts/slng-create-agent.ts",
+    "seed:replay": "tsx scripts/seed-replay.ts"
+  },
+  "dependencies": {
+    "@arca/core": "workspace:*",
+    "@arca/db": "workspace:*",
+    "@hono/node-server": "^1.13.8",
+    "@mastra/core": "^1.67.0",
+    "hono": "^4.13.8",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  }
+}

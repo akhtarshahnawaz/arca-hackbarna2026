@@ -1,3 +1,5 @@
+import type { Feature, FeatureCollection, Geometry, Polygon } from "geojson";
+
 import { HttpError, requestJson } from "../util/http.js";
 import { bboxOfGeometry } from "../geo/index.js";
 import type {
@@ -23,7 +25,7 @@ export interface TalaiaEvent {
 }
 
 export interface ExposureRequest {
-  aoi: GeoJSON.Geometry | GeoJSON.Feature | BandFeatureCollection | GeoJSON.FeatureCollection;
+  aoi: Geometry | Feature | BandFeatureCollection | FeatureCollection;
   layers?: string[];
   buffer_m?: number;
   band_property?: string;
@@ -290,7 +292,7 @@ export class TalaiaClient {
 
     for (let i = 0; i < splits; i++) {
       for (let j = 0; j < splits; j++) {
-        const tile: GeoJSON.Polygon = {
+        const tile: Polygon = {
           type: "Polygon",
           coordinates: [
             [
@@ -360,14 +362,14 @@ function sumBy<T>(items: T[], pick: (item: T) => number | null | undefined): num
   return items.reduce((sum, item) => sum + (pick(item) ?? 0), 0);
 }
 
-function extractGeometry(aoi: ExposureRequest["aoi"]): GeoJSON.Geometry | null {
+function extractGeometry(aoi: ExposureRequest["aoi"]): Geometry | null {
   if (!aoi || typeof aoi !== "object") return null;
   const type = (aoi as { type?: string }).type;
   if (type === "FeatureCollection") {
-    const features = (aoi as GeoJSON.FeatureCollection).features ?? [];
+    const features = (aoi as FeatureCollection).features ?? [];
     const last = features[features.length - 1];
     return last?.geometry ?? null;
   }
-  if (type === "Feature") return (aoi as GeoJSON.Feature).geometry ?? null;
-  return aoi as GeoJSON.Geometry;
+  if (type === "Feature") return (aoi as Feature).geometry ?? null;
+  return aoi as Geometry;
 }

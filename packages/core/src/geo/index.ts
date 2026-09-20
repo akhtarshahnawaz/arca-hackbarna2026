@@ -8,6 +8,8 @@
  * `polygon-clipping`; everything in this file is arithmetic.
  */
 
+import type { Geometry, Polygon } from "geojson";
+
 export type Position = [number, number];
 export type Ring = Position[];
 export type PolygonCoords = Ring[];
@@ -83,7 +85,7 @@ export function pointInMultiPolygon(point: Position, coords: MultiPolygonCoords)
 /** Point in any GeoJSON Polygon or MultiPolygon geometry. */
 export function pointInGeometry(
   point: Position,
-  geometry: GeoJSON.Geometry | null | undefined,
+  geometry: Geometry | null | undefined,
 ): boolean {
   if (!geometry) return false;
   if (geometry.type === "Polygon") {
@@ -98,7 +100,7 @@ export function pointInGeometry(
   return false;
 }
 
-export function bboxOfGeometry(geometry: GeoJSON.Geometry): BBox | null {
+export function bboxOfGeometry(geometry: Geometry): BBox | null {
   let minLon = Infinity;
   let minLat = Infinity;
   let maxLon = -Infinity;
@@ -193,7 +195,7 @@ export function circlePolygon(
   centre: Position,
   radiusMeters: number,
   steps = 64,
-): GeoJSON.Polygon {
+): Polygon {
   return { type: "Polygon", coordinates: [circleRing(centre, radiusMeters, steps)] };
 }
 
@@ -222,7 +224,7 @@ export function polygonAreaM2(coords: PolygonCoords): number {
   return Math.max(0, area);
 }
 
-export function geometryAreaM2(geometry: GeoJSON.Geometry | null | undefined): number {
+export function geometryAreaM2(geometry: Geometry | null | undefined): number {
   if (!geometry) return 0;
   if (geometry.type === "Polygon") return polygonAreaM2(geometry.coordinates as PolygonCoords);
   if (geometry.type === "MultiPolygon") {

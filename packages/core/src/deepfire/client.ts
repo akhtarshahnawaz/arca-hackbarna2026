@@ -1,3 +1,5 @@
+import type { Feature, FeatureCollection, Geometry } from "geojson";
+
 import { HttpError, Semaphore, TtlCache, request, requestJson } from "../util/http.js";
 import type {
   ClusterProperties,
@@ -129,10 +131,10 @@ export class DeepFireClient {
   async items<P>(
     collection: DeepFireCollection,
     query: ItemsQuery = {},
-  ): Promise<Array<GeoJSON.Feature<GeoJSON.Geometry, P>>> {
+  ): Promise<Array<Feature<Geometry, P>>> {
     const limit = Math.min(query.limit ?? 5_000, 10_000);
     const maxPages = query.maxPages ?? 20;
-    const features: Array<GeoJSON.Feature<GeoJSON.Geometry, P>> = [];
+    const features: Array<Feature<Geometry, P>> = [];
 
     for (let page = 0; page < maxPages; page++) {
       const params = new URLSearchParams({
@@ -148,7 +150,7 @@ export class DeepFireClient {
       }
 
       const url = `${this.baseUrl}/ogc/features/v1/collections/deepfire:${collection}/items?${params}`;
-      const fc = await this.authedJson<GeoJSON.FeatureCollection<GeoJSON.Geometry, P>>(url);
+      const fc = await this.authedJson<FeatureCollection<Geometry, P>>(url);
       const batch = fc.features ?? [];
       features.push(...batch);
       if (batch.length < limit) break;

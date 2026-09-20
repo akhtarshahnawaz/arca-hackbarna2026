@@ -1,3 +1,5 @@
+import type { Geometry, MultiPolygon, Polygon } from "geojson";
+
 import polygonClipping from "polygon-clipping";
 import type { Geom } from "polygon-clipping";
 import {
@@ -43,13 +45,13 @@ function probabilityOf(feature: SpreadFeature): number {
   return value === undefined || value === null ? 1 : value;
 }
 
-function toGeom(geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon): Geom {
+function toGeom(geometry: Polygon | MultiPolygon): Geom {
   return geometry.type === "Polygon"
     ? (geometry.coordinates as unknown as Geom)
     : (geometry.coordinates as unknown as Geom);
 }
 
-function fromMultiPolygon(coords: number[][][][]): GeoJSON.MultiPolygon {
+function fromMultiPolygon(coords: number[][][][]): MultiPolygon {
   return { type: "MultiPolygon", coordinates: coords };
 }
 
@@ -62,8 +64,8 @@ function fromMultiPolygon(coords: number[][][][]): GeoJSON.MultiPolygon {
  * removes the ambiguity.
  */
 export function unionGeometries(
-  geometries: Array<GeoJSON.Polygon | GeoJSON.MultiPolygon>,
-): GeoJSON.MultiPolygon | null {
+  geometries: Array<Polygon | MultiPolygon>,
+): MultiPolygon | null {
   if (geometries.length === 0) return null;
   const [head, ...rest] = geometries;
   if (!head) return null;
@@ -118,7 +120,7 @@ export function bandsFromSimulation(
     [...new Set([...byHour.keys()].filter((h) => h <= horizon))].sort((a, b) => a - b);
 
   const out: BandFeature[] = [];
-  const accumulated: Array<GeoJSON.Polygon | GeoJSON.MultiPolygon> = [];
+  const accumulated: Array<Polygon | MultiPolygon> = [];
 
   for (const hour of hours) {
     const atHour = (byHour.get(hour) ?? []).filter((f) => probabilityOf(f) >= floor);
@@ -155,7 +157,7 @@ export interface SpreadFrame {
   hour: number;
   minutes: number;
   /** Highest probability contour at this hour, outermost first. */
-  contours: Array<{ probability: number; geometry: GeoJSON.MultiPolygon; areaM2: number }>;
+  contours: Array<{ probability: number; geometry: MultiPolygon; areaM2: number }>;
   cumulativeAreaM2: number;
   expectedAreaM2: number;
 }
@@ -176,12 +178,12 @@ export function spreadFrames(
     else byHour.set(hour, [feature]);
   }
 
-  const accumulated: Array<GeoJSON.Polygon | GeoJSON.MultiPolygon> = [];
+  const accumulated: Array<Polygon | MultiPolygon> = [];
   const frames: SpreadFrame[] = [];
 
   for (const hour of [...byHour.keys()].sort((a, b) => a - b)) {
     const atHour = byHour.get(hour) ?? [];
-    const byProbability = new Map<number, Array<GeoJSON.Polygon | GeoJSON.MultiPolygon>>();
+    const byProbability = new Map<number, Array<Polygon | MultiPolygon>>();
 
     for (const feature of atHour) {
       if (!feature.geometry) continue;
@@ -302,7 +304,7 @@ export function reachStats(
  * UI says so in the legend rather than letting it pass as model output.
  */
 export function fallbackBands(
-  origin: Position | GeoJSON.Geometry,
+  origin: Position | Geometry,
   options: { horizonHours?: number; metersPerHour?: number } = {},
 ): BandFeatureCollection {
   const horizon = options.horizonHours ?? rankingPolicy.horizonHours;
@@ -329,7 +331,7 @@ export function fallbackBands(
   return { type: "FeatureCollection", features };
 }
 
-function centroidOfGeometry(geometry: GeoJSON.Geometry): Position | null {
+function centroidOfGeometry(geometry: Geometry): Position | null {
   const points: Position[] = [];
   const visit = (coords: unknown): void => {
     if (!Array.isArray(coords)) return;

@@ -7,6 +7,8 @@
  * assumed, and how confident the source was.
  */
 
+import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from "geojson";
+
 import type { Position } from "../geo/index.js";
 
 // ---------------------------------------------------------------------------
@@ -58,7 +60,7 @@ export interface StaticHeatSource {
   id: string;
   type: string;
   remarks: string | null;
-  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon;
+  geometry: Polygon | MultiPolygon;
 }
 
 export interface FireCluster {
@@ -109,13 +111,13 @@ export interface SpreadFeatureProperties {
   burn_probability?: number;
 }
 
-export type SpreadFeature = GeoJSON.Feature<
-  GeoJSON.Polygon | GeoJSON.MultiPolygon,
+export type SpreadFeature = Feature<
+  Polygon | MultiPolygon,
   SpreadFeatureProperties
 >;
 
-export type SpreadFeatureCollection = GeoJSON.FeatureCollection<
-  GeoJSON.Polygon | GeoJSON.MultiPolygon,
+export type SpreadFeatureCollection = FeatureCollection<
+  Polygon | MultiPolygon,
   SpreadFeatureProperties
 >;
 
@@ -137,7 +139,7 @@ export interface Simulation {
   lookbackHours?: number;
   locationName?: string | null;
   ignitionPointCount?: number;
-  ignition?: GeoJSON.FeatureCollection | null;
+  ignition?: FeatureCollection | null;
   summary?: SimulationSummary | null;
   result?: SpreadFeatureCollection | null;
   errorMessage?: string | null;
@@ -153,13 +155,13 @@ export interface BandProperties {
   areaM2: number;
 }
 
-export type BandFeature = GeoJSON.Feature<
-  GeoJSON.Polygon | GeoJSON.MultiPolygon,
+export type BandFeature = Feature<
+  Polygon | MultiPolygon,
   BandProperties
 >;
 
-export type BandFeatureCollection = GeoJSON.FeatureCollection<
-  GeoJSON.Polygon | GeoJSON.MultiPolygon,
+export type BandFeatureCollection = FeatureCollection<
+  Polygon | MultiPolygon,
   BandProperties
 >;
 
@@ -210,7 +212,7 @@ export interface ExposureAsset {
   category: string;
   subcategory: string;
   name: string;
-  geometry?: GeoJSON.Geometry | null;
+  geometry?: Geometry | null;
   address?: Record<string, unknown> | null;
   contacts?: AssetContacts | null;
   capacity?: AssetCapacity | null;
